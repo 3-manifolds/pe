@@ -372,14 +372,14 @@ class ShapeVector:
         return True
 
 class Fiber:
+    """A fiber for the rational function [holonomy of the meridian]
+    restricted to the curve defined by a gluing system for a cusped
+    manifold.  Can be initialized with a PHCSystem and a list of
+    PHCsolutions.
+
     """
-    A fiber for the rational function [holonomy of the meridian]
-    restricted to the curve defined by a PHCsystem.
-    Manages a single PHCSytem with a complete solution set.  Can
-    be initialized with a list of PHCsolutions.
-    """
-    def __init__(self, manifold, H_meridian, PHCsystem=None,
-                 solutions=None, tolerance=1.0E-05):
+    def __init__(self, manifold, H_meridian, gluing_system=None,
+                 PHCsystem=None, solutions=None, tolerance=1.0E-05):
         self.hp_manifold = manifold.high_precision()
         # Here the tolerance is used to determine which of the PHC solutions
         # are at infinity.
@@ -388,6 +388,10 @@ class Fiber:
         if solutions:
             self.shapes = [ShapeVector(self.hp_manifold, S)
                            for S in solutions]
+        if gluing_system is None:
+            self.gluing_system = GluingSystem(manifold)
+        else:
+            self.gluing_system=gluing_system
         self.system = PHCsystem
         if self.system:
             self.extract_info()
@@ -475,24 +479,58 @@ class Fiber:
         result = []
         target = set(range(len(other.shapes)))
         for m, shape in enumerate(self.shapes):
-            dist, n = min([(shape.dist(other.shapes[k]), k,)
-                           for k in target])
+            dist, n = min([(shape.dist(other.shapes[k]), k) for k in target])
             result.append( (m, n) )
             target.remove(n)
+        return result
+
+    def PHCtransport(self, target_holonomy, allow_collisions=False):
+        """
+        Use PHC to transport this fiber to a different target holonomy.
+        Can only be used if this fiber has a PHCSystem.
+        """
+        target_system = self.parametrized_system.transport(
+            self.system, target_holonomy, allow_collisions)
+        return Fiber(self.hp_manifold, target_holonomy, PHCsystem=self.system,
+                     gluing_system=self.gluing_system)
+
+    def transport(self, target_holonomy, allow_collisions=False, debug=False):
+        """
+        Transport this fiber to a different target holonomy.
+        Can only be used if this fiber has a GluingSystem.
+        """
+        solutions = []
+        dT = 1.0
+        while True:
+            if dT < 1.0/64:
+                raise ValueError('Collision unavoidable. Try a different radius.')
+            for shapevector in self.shapes:
+                Zn = self.gluing_system.track(shapevector(),
+                                              target_holonomy,
+                                              dT=dT,
+                                              debug=debug)
+                solutions.append(Zn)
+            result = Fiber(self.hp_manifold, target_holonomy,
+                           gluing_system=self.gluing_system,
+                           PHCsystem=self.system,
+                           solutions=solutions)
+            if result.collision():
+                dT *= 0.5
+            else:
+                break
         return result
 
 class PHCFibrator:
     """
     A factory for Fibers, computed by PHC or by a GluingSystem
     """
-    def __init__(self, mfld, target=None, saved_base_fiber=None, tolerance=1.0E-5):
+    def __init__(self, manifold, target=None, saved_base_fiber=None, tolerance=1.0E-5):
         # The tolerance is used to decode when PHC solutions are regarded
         # as being at infinity.
         if target is None and saved_base_fiber is None:
             raise ValueError('Supply either a target or a saved base fiber.')
-        self.manifold = mfld
-        self.mfld_name = mfld.name()
-        self.gluing_system = GluingSystem(mfld)
+        self.manifold = manifold
+        self.manifold_name = manifold.name()
         self.target = target
         self.tolerance=tolerance
         self.num_tetrahedra = N = self.manifold.num_tetrahedra()
@@ -519,7 +557,8 @@ class PHCFibrator:
             self.base_system = self.parametrized_system.start(
                 self.target, self.tolerance)
             print 'done. (%s seconds)'%(time.time() - begin)
-            self.base_fiber = Fiber(self.manifold, self.target, self.base_system)
+            self.base_fiber = Fiber(self.manifold, self.target,
+                                    PHCsystem=self.base_system)
             if saved_base_fiber:
                 datafile = open(saved_base_fiber, 'w')
                 datafile.write(repr(self.base_fiber))
@@ -579,37 +618,6 @@ class PHCFibrator:
        except ValueError:
 	   print 'PHC parse error on %s+%sj'%(real,imag)
 
-    def transport(self, start_fiber, target_holonomy, allow_collisions=False):
-        """
-        Use PHC to transport fibers.
-        """
-        target_system = self.parametrized_system.transport(
-            start_fiber.system, target_holonomy, allow_collisions)
-        return Fiber(start_fiber.hp_manifold, target_holonomy, target_system)
-
-    def transport2(self, start_fiber, target_holonomy, allow_collisions=False,
-                   debug=False):
-        """
-        Use a GluingSystem to transport fibers.
-        """
-        solutions = []
-        dT = 1.0
-        while True:
-            if dT < 1.0/64:
-                raise ValueError('Collision unavoidable. Try a different radius.')
-            for shapevector in start_fiber.shapes:
-                Zn = self.gluing_system.track(shapevector(),
-                                              target_holonomy,
-                                              dT=dT,
-                                              debug=debug)
-                solutions.append(Zn)
-            result = Fiber(start_fiber.hp_manifold, target_holonomy,
-                           solutions=solutions)
-            if result.collision():
-                dT *= 0.5
-            else:
-                break
-        return result
     
 class Holonomizer:
     """
@@ -680,26 +688,22 @@ class Holonomizer:
         base_index = self.base_index
         print ' %-5s\r'%base_index,
         # Move to the R-circle, if necessary.
-        self.R_fibers[base_index] = self.fibrator.transport2(
-                self.base_fiber, circle[base_index])
+        self.R_fibers[base_index] = self.base_fiber.transport(circle[base_index])
         for n in xrange(base_index+1, self.order):
             print ' %-5s\r'%n,
             sys.stdout.flush()
-            self.R_fibers[n] = F = self.fibrator.transport2(
-                self.R_fibers[n-1], circle[n])
+            self.R_fibers[n] = F = self.R_fibers[n-1].transport(circle[n])
             # self.R_fibers[n].polish()
             if not F.is_finite():
                 print '**',
         for n in xrange(base_index-1, -1, -1):
             print ' %-5s\r'%n,
             sys.stdout.flush()
-            self.R_fibers[n] = F = self.fibrator.transport2(
-                self.R_fibers[n+1], circle[n])
+            self.R_fibers[n] = F = self.R_fibers[n+1].transport(circle[n])
             if not F.is_finite():
                 print '**',
         print
-        self.last_R_fiber = self.fibrator.transport2(self.R_fibers[-1],
-                                                    self.R_fibers[0].H_meridian)
+        self.last_R_fiber = self.R_fibers[-1].transport(circle[0])
         print 'Polishing the end fibers ...'
         self.R_fibers[0].polish()
         self.last_R_fiber.polish()
@@ -719,7 +723,7 @@ class Holonomizer:
             print ' %-5s\r'%n,
             sys.stdout.flush()
             try:
-                self.T_fibers[n] = self.fibrator.transport2(self.R_fibers[n], circle[n])
+                self.T_fibers[n] = self.R_fibers[n].transport(circle[n])
             except ValueError:
                 print 'Tighten failed at %s'%n
         print '\nChecking for Tillmann points.'
@@ -893,12 +897,12 @@ class PEArc(list):
     """
 
 class PECharVariety:
-    def __init__(self, mfld, order=128, radius=1.02,
+    def __init__(self, manifold, order=128, radius=1.02,
                  holonomizer=None, base_dir='PE_base_fibers', hint_dir='hints'):
-        if isinstance(mfld, Manifold):
-            self.manifold = mfld
+        if isinstance(manifold, Manifold):
+            self.manifold = manifold
         else:
-            self.manifold = Manifold(mfld)
+            self.manifold = Manifold(manifold)
         self.radius = radius
         self.order = order
         self.hint_dir = hint_dir
