@@ -79,7 +79,7 @@ class GluingSystem:
     """
     def __init__(self, manifold):
         assert manifold.num_cusps() == 1, 'Manifold must be one-cusped.'
-        self.manifold = manifold.copy()
+        self.manifold = manifold
         eqns = manifold.gluing_equations('rect')
         # drop the last edge equation
         self.glunomials = [Glunomial(A, B, c) for A, B, c in eqns[:-3]]
@@ -261,7 +261,10 @@ class ShapeVector:
     the underlying array, call as a function.
     """
     def __init__(self, manifold, values, tolerance=1.0E-6):
-        self.hp_manifold = manifold.high_precision()
+        if isinstance(manifold, ManifoldHP):
+            self.hp_manifold = manifold
+        else:
+            self.hp_manifold = manifold.high_precision()
         self.array = array(values)
 
     def __str__(self):
@@ -367,7 +370,6 @@ class ShapeVector:
 #                print 'some generators do not share the fixed point.'
                 return False
         return True
-    
 
 class Fiber:
     """
@@ -483,9 +485,11 @@ class PHCFibrator:
     """
     A factory for Fibers, computed by PHC or by a GluingSystem
     """
-    def __init__(self, mfld, target, saved_base_fiber=None, tolerance=1.0E-5):
+    def __init__(self, mfld, target=None, saved_base_fiber=None, tolerance=1.0E-5):
         # The tolerance is used to decode when PHC solutions are regarded
         # as being at infinity.
+        if target is None and saved_base_fiber is None:
+            raise ValueError('Supply either a target or a saved base fiber.')
         self.manifold = mfld
         self.mfld_name = mfld.name()
         self.gluing_system = GluingSystem(mfld)
@@ -622,19 +626,23 @@ class Holonomizer:
     points on the circle of radius T (= 1.0 by default).
     """
 
-    def __init__(self, manifold, order=128, radius=1.02, base_index=None,
+    def __init__(self, manifold, order=128, radius=1.02, target_arg=None,
                  saved_base_fiber=None):
         self.order = order
         self.radius = radius
-        Darg = 2*pi/order
-        # The minus makes us consistent with the sign convention of numpy.fft
-        self.R_circle = [radius*exp(-n*Darg*1j) for n in range(self.order)]
-        self.base_index = base_index or randint(0,order-1)
-        target = radius*exp(2*pi*1j*self.base_index)
-        self.fibrator = PHCFibrator(manifold, target, saved_base_fiber)
         self.manifold = manifold
         self.hp_manifold = self.manifold.high_precision()
         self.betti2 = [c % 2 for c in manifold.homology().coefficients].count(0)
+        Darg = 2*pi/order
+        # The minus makes us consistent with the sign convention of numpy.fft
+        self.R_circle = [radius*exp(-n*Darg*1j) for n in range(self.order)]
+        if saved_base_fiber is None:
+            target = radius*exp(target_arg) or radius*exp(2*pi*1j*randint(0,order-1))
+        else:
+            target = None
+        self.fibrator = PHCFibrator(manifold, target, saved_base_fiber)
+        arg = log(self.fibrator.target).imag%(2*pi)
+        self.base_index = (self.order - int(arg*self.order/(2*pi)))%self.order
         self.base_fiber = self.fibrator.base_fiber
         if not self.base_fiber.is_finite():
             raise RuntimeError, 'The starting fiber contains Tillmann points.'
@@ -889,10 +897,11 @@ class PECharVariety:
                  holonomizer=None, base_dir='PE_base_fibers', hint_dir='hints'):
         if isinstance(mfld, Manifold):
             self.manifold = mfld
-            self.manifold_name = mfld.name()
         else:
             self.manifold = Manifold(mfld)
-            self.manifold_name = mfld
+        self.radius = radius
+        self.order = order
+        self.hint_dir = hint_dir
         saved_base_fiber = os.path.join(base_dir,
                                         self.manifold.name()+'.base')
         if holonomizer is None:
@@ -904,8 +913,27 @@ class PECharVariety:
             self.holonomizer.tighten()
         else:
             self.holonomizer = holonomizer
-        self.order = self.holonomizer.order
-        self.manifold = self.holonomizer.manifold
+
+    def save_hint(self, basename=None, dir=None):
+        if dir == None:
+            dir = self.hint_dir
+        if not os.path.exists(dir):
+            cwd = os.path.abspath(os.path.curdir)
+            newdir = os.path.join(cwd,dir)
+            response = raw_input("May I create a directory %s?(y/n)"%newdir)
+            if response.lower()[0] != 'y':
+                sys.exit(0)
+            os.mkdir(newdir)
+        if basename == None:
+            basename = self.manifold.name()
+        hintfile_name = os.path.join(dir, basename + '.hint')
+        hintfile = open(hintfile_name,'w')
+        hintfile.write('hint={\n')
+        hintfile.write('"manifold" : %s,\n'%self.manifold)
+        hintfile.write('"radius" : %f,\n'%self.radius)
+        hintfile.write('"order" : %d,\n'%self.order)
+        hintfile.write('}\n')
+        hintfile.close()
 
     def build_arcs(self, show_group=False):
         self.arcs = []
@@ -1059,7 +1087,7 @@ class PECharVariety:
              limits=((0.0, 1.0), (0.0, 0.5)),
              margins=(0,0),
              aspect='equal',
-             title=self.manifold_name,
+             title=self.manifold.name(),
              colors = self.colors,
              extra_lines=[((0.5,0.5),(0.0,1.0))],
              extra_line_args={'color':'black', 'linewidth':0.75},
