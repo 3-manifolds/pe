@@ -512,7 +512,6 @@ class Fiber:
                 solutions.append(Zn)
             result = Fiber(self.hp_manifold, target_holonomy,
                            gluing_system=self.gluing_system,
-                           PHCsystem=self.system,
                            solutions=solutions)
             if result.collision():
                 dT *= 0.5
@@ -524,10 +523,10 @@ class PHCFibrator:
     """
     A factory for Fibers, computed by PHC or by a GluingSystem
     """
-    def __init__(self, manifold, target=None, saved_base_fiber=None, tolerance=1.0E-5):
+    def __init__(self, manifold, target=None, base_fiber_file=None, tolerance=1.0E-5):
         # The tolerance is used to decode when PHC solutions are regarded
         # as being at infinity.
-        if target is None and saved_base_fiber is None:
+        if target is None and base_fiber_file is None:
             raise ValueError('Supply either a target or a saved base fiber.')
         self.manifold = manifold
         self.manifold_name = manifold.name()
@@ -544,9 +543,9 @@ class PHCFibrator:
             't',
             [PHCPoly(self.ring, e) for e in self.equations]
             )
-        if saved_base_fiber and os.path.exists(saved_base_fiber):
-            print 'Loading the starting fiber from %s'%saved_base_fiber
-            datafile = open(saved_base_fiber)
+        if base_fiber_file and os.path.exists(base_fiber_file):
+            print 'Loading the starting fiber from %s'%base_fiber_file
+            datafile = open(base_fiber_file)
             data = datafile.read()
             datafile.close()
             self.base_fiber = eval(data)
@@ -559,11 +558,11 @@ class PHCFibrator:
             print 'done. (%s seconds)'%(time.time() - begin)
             self.base_fiber = Fiber(self.manifold, self.target,
                                     PHCsystem=self.base_system)
-            if saved_base_fiber:
-                datafile = open(saved_base_fiber, 'w')
+            if base_fiber_file:
+                datafile = open(base_fiber_file, 'w')
                 datafile.write(repr(self.base_fiber))
                 datafile.close()
-                print 'Saved as %s'%saved_base_fiber
+                print 'Saved as %s'%base_fiber_file
 
     def __len__(self):
         return len(self.base_fiber.solutions)
@@ -635,7 +634,7 @@ class Holonomizer:
     """
 
     def __init__(self, manifold, order=128, radius=1.02, target_arg=None,
-                 saved_base_fiber=None):
+                 base_fiber_file=None):
         self.order = order
         self.radius = radius
         self.manifold = manifold
@@ -644,11 +643,18 @@ class Holonomizer:
         Darg = 2*pi/order
         # The minus makes us consistent with the sign convention of numpy.fft
         self.R_circle = [radius*exp(-n*Darg*1j) for n in range(self.order)]
-        if saved_base_fiber is None:
-            target = radius*exp(target_arg) or radius*exp(2*pi*1j*randint(0,order-1))
-        else:
+        if base_fiber_file and os.path.exists(base_fiber_file):
             target = None
-        self.fibrator = PHCFibrator(manifold, target, saved_base_fiber)
+        else:
+            if target_arg:
+                target = radius*exp(target_arg)
+            else:
+                base_index = randint(0, order-1)
+                print 'Choosing random base index: %d'%base_index
+                target = radius*exp(-2*pi*1j*base_index/self.order)
+        self.fibrator = PHCFibrator(manifold,
+                                    target=target,
+                                    base_fiber_file=base_fiber_file)
         arg = log(self.fibrator.target).imag%(2*pi)
         self.base_index = (self.order - int(arg*self.order/(2*pi)))%self.order
         self.base_fiber = self.fibrator.base_fiber
@@ -668,9 +674,7 @@ class Holonomizer:
         self.rhs = [1.0]*(len(eqns) - 3)
         self.M_holo, self.L_holo = [Glunomial(A,B,c) for A,B,c in eqns[-2:]]
         self.glunomials.append(self.M_holo)
-        start = time.time()
         self.track_satellite()
-        print 'tracked in %s seconds.'%(time.time() - start)
         self.R_longitude_holos, self.R_longitude_evs = self.longidata(
             self.R_fibers)
             
@@ -682,24 +686,34 @@ class Holonomizer:
         Construct the fibers over the circle of radius R.
         """
         print 'Tracking the satellite at radius %s ...'%self.radius
+        start = time.time()
         arg = log(self.base_fiber.H_meridian).imag%(2*pi)
         R = self.radius
         circle = self.R_circle
         base_index = self.base_index
+        print 'Base index is %s'%base_index
         print ' %-5s\r'%base_index,
         # Move to the R-circle, if necessary.
         self.R_fibers[base_index] = self.base_fiber.transport(circle[base_index])
         for n in xrange(base_index+1, self.order):
             print ' %-5s\r'%n,
             sys.stdout.flush()
-            self.R_fibers[n] = F = self.R_fibers[n-1].transport(circle[n])
+            try:
+                self.R_fibers[n] = F = self.R_fibers[n-1].transport(circle[n])
+            except Exception as e:
+                print '\nfailure at index %d'%n
+                raise e
             # self.R_fibers[n].polish()
             if not F.is_finite():
                 print '**',
         for n in xrange(base_index-1, -1, -1):
             print ' %-5s\r'%n,
             sys.stdout.flush()
-            self.R_fibers[n] = F = self.R_fibers[n+1].transport(circle[n])
+            try:
+                self.R_fibers[n] = F = self.R_fibers[n+1].transport(circle[n])
+            except Exception as e:
+                print '\nfailure at index %d'%n
+                raise e
             if not F.is_finite():
                 print '**',
         print
@@ -714,6 +728,7 @@ class Holonomizer:
             print 'have been unlucky in your choice of base fiber.'
         else:
             print 'OK'
+        print 'Tracked in %s seconds.'%(time.time() - start)
 
     def tighten(self, T=1.0):
         print 'Tightening the circle to radius %s ...'%T
@@ -906,14 +921,14 @@ class PECharVariety:
         self.radius = radius
         self.order = order
         self.hint_dir = hint_dir
-        saved_base_fiber = os.path.join(base_dir,
-                                        self.manifold.name()+'.base')
         if holonomizer is None:
             self.holonomizer = Holonomizer(
                 self.manifold,
                 order=order,
                 radius=radius,
-                saved_base_fiber=saved_base_fiber)
+                base_fiber_file=os.path.join(
+                    base_dir, self.manifold.name()+'.base')
+                )
             self.holonomizer.tighten()
         else:
             self.holonomizer = holonomizer
