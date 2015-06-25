@@ -379,15 +379,15 @@ class Fiber:
 
     """
     def __init__(self, manifold, H_meridian, gluing_system=None,
-                 PHCsystem=None, solutions=None, tolerance=1.0E-05):
+                 PHCsystem=None, shapes=None, tolerance=1.0E-05):
         self.hp_manifold = manifold.high_precision()
         # Here the tolerance is used to determine which of the PHC solutions
         # are at infinity.
         self.H_meridian = H_meridian
         self.tolerance = tolerance
-        if solutions:
+        if shapes:
             self.shapes = [ShapeVector(self.hp_manifold, S)
-                           for S in solutions]
+                           for S in shapes]
         if gluing_system is None:
             self.gluing_system = GluingSystem(manifold)
         else:
@@ -404,7 +404,7 @@ class Fiber:
                        for S in self.solutions]
 
     def __repr__(self):
-        return "Fiber(ManifoldHP('%s'),\n%s,\nsolutions=%s\n)"%(
+        return "Fiber(ManifoldHP('%s'),\n%s,\nshapes=%s\n)"%(
             repr(self.hp_manifold),
             repr(self.H_meridian),
             repr([list(x) for x in self.shapes]).replace('],','],\n')
@@ -499,7 +499,7 @@ class Fiber:
         """
         Transport this fiber to a different target holonomy.
         """
-        solutions = []
+        shapes = []
         dT = 1.0
         while True:
             if dT < 1.0/64:
@@ -509,10 +509,10 @@ class Fiber:
                                               target_holonomy,
                                               dT=dT,
                                               debug=debug)
-                solutions.append(Zn)
+                shapes.append(Zn)
             result = Fiber(self.hp_manifold, target_holonomy,
                            gluing_system=self.gluing_system,
-                           solutions=solutions)
+                           shapes=shapes)
             if result.collision():
                 dT *= 0.5
             else:
@@ -546,9 +546,9 @@ class PHCFibrator:
         if base_fiber_file and os.path.exists(base_fiber_file):
             print 'Loading the starting fiber from %s'%base_fiber_file
             with open(base_fiber_file) as datafile:
-                data = datafile.read()
-            self.base_fiber, check = eval(data)
-            assert check == manifold._to_bytes(), 'Triangulations do not match!'
+                data = eval(datafile.read())
+            assert data['signature'] == manifold._to_bytes(), 'Triangulations do not match!'
+            self.base_fiber = data['fiber']
             self.target = self.base_fiber.H_meridian
         else:
             print 'Computing the starting fiber ... ',
@@ -560,7 +560,7 @@ class PHCFibrator:
                                     PHCsystem=self.base_system)
             if base_fiber_file:
                 with open(base_fiber_file, 'w') as datafile:
-                    datafile.write("(\n%s,\n%s\n)"%(
+                    datafile.write("{\n'fiber': %s,\n'signature': %s\n}"%(
                         repr(self.base_fiber),
                         repr(manifold._to_bytes()))
                     )
@@ -775,12 +775,11 @@ class Holonomizer:
             [( n, self.L_holo(f.shapes[m]()) ) for n, f in enumerate(fiber_list)
              if isinstance(f, Fiber)]
             for m in xrange(self.degree)]
-        # I tried choosing a random fiber here, and things broke badly.
-        # find_shift would get the wrong shift.
-#        if index is None:
-#            index = randint(0,self.order - 1)
-        index = 0 if isinstance(fiber_list[0], Fiber) else randint(0,self.order - 1)
-        print 'starting index = %d'%index 
+        if isinstance(fiber_list[0], Fiber):
+            index = 0;
+        else:
+            index = randint(0,self.order - 1)
+            print 'Taking starting index = %d'%index 
         longitude_traces = self.find_longitude_traces(fiber_list[index])
         longitude_eigenvalues = []
         for m, L in enumerate(longitude_holonomies):
