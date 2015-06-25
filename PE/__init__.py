@@ -489,6 +489,7 @@ class Fiber:
         Use PHC to transport this fiber to a different target holonomy.
         Can only be used if this fiber has a PHCSystem.
         """
+        # Not used.
         target_system = self.parametrized_system.transport(
             self.system, target_holonomy, allow_collisions)
         return Fiber(self.hp_manifold, target_holonomy, PHCsystem=self.system,
@@ -497,7 +498,6 @@ class Fiber:
     def transport(self, target_holonomy, allow_collisions=False, debug=False):
         """
         Transport this fiber to a different target holonomy.
-        Can only be used if this fiber has a GluingSystem.
         """
         solutions = []
         dT = 1.0
@@ -545,10 +545,10 @@ class PHCFibrator:
             )
         if base_fiber_file and os.path.exists(base_fiber_file):
             print 'Loading the starting fiber from %s'%base_fiber_file
-            datafile = open(base_fiber_file)
-            data = datafile.read()
-            datafile.close()
-            self.base_fiber = eval(data)
+            with open(base_fiber_file) as datafile:
+                data = datafile.read()
+            self.base_fiber, check = eval(data)
+            assert check == manifold._to_bytes(), 'Triangulations do not match!'
             self.target = self.base_fiber.H_meridian
         else:
             print 'Computing the starting fiber ... ',
@@ -559,10 +559,12 @@ class PHCFibrator:
             self.base_fiber = Fiber(self.manifold, self.target,
                                     PHCsystem=self.base_system)
             if base_fiber_file:
-                datafile = open(base_fiber_file, 'w')
-                datafile.write(repr(self.base_fiber))
-                datafile.close()
-                print 'Saved as %s'%base_fiber_file
+                with open(base_fiber_file, 'w') as datafile:
+                    datafile.write("(\n%s,\n%s\n)"%(
+                        repr(self.base_fiber),
+                        repr(manifold._to_bytes()))
+                    )
+                print 'Saved base fiber as %s'%base_fiber_file
 
     def __len__(self):
         return len(self.base_fiber.solutions)
