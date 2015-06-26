@@ -21,18 +21,18 @@ from plot import MatplotPlot as Plot
 
 real_array = numpy.vectorize(float)
 
-# Constants for Newton method
+# Constants for Newton's method
 RESIDUAL_BOUND = 1.0E-14
 STEPSIZE_BOUND = 1.0E-14
-
+# The numpy type for our complex arrays
+DTYPE = dtype('c16')
+# Check if we are running in Sage
 try:
     import sage
     got_sage = True
 except ImportError:
     got_sage = False
-    
-DTYPE = dtype('c16')
-    
+
 class Glunomial:
     """
     A product of powers of linear terms z_i or (1-z_i), as appears on
@@ -253,12 +253,11 @@ class GluingSystem:
                     raise ValueError('Track failed: step size limit reached.')
         return Zn
 
-class ShapeVector:
+class Shape:
     """
-    A vector of shape parameters, stored as a numpy.array, but
-    with an approximate equality operator and distance operator.
-    Instantiate with a sequence of complex numbers.  To access
-    the underlying array, call as a function.
+    A vector of shape parameters, stored as a numpy.array.
+    Many methods are available: ...
+    Instantiate with a sequence of complex numbers.
     """
     def __init__(self, manifold, values, tolerance=1.0E-6):
         if isinstance(manifold, ManifoldHP):
@@ -282,9 +281,6 @@ class ShapeVector:
     def dist(self, other):
         return norm(self.array - other.array)
 
-    def __call__(self):
-        return self.array
-
     def __repr__(self):
         return repr(list(self))
     
@@ -296,12 +292,12 @@ class ShapeVector:
                  )
 
     def SL2C(self, word):
-        self.hp_manifold.set_tetrahedra_shapes(self(), None, [(0,0)])
+        self.hp_manifold.set_tetrahedra_shapes(self.array, None, [(0,0)])
         G = self.hp_manifold.fundamental_group()
         return G.SL2C(word)
 
     def O31(self, word):
-        self.hp_manifold.set_tetrahedra_shapes(self(), None, [(0,0)])
+        self.hp_manifold.set_tetrahedra_shapes(self.array, None, [(0,0)])
         G = self.hp_manifold.fundamental_group()
         return G.O31(word)
 
@@ -332,16 +328,16 @@ class ShapeVector:
         for X in [self.SL2C(g) for g in gens]:
             tr = complex(X[0,0] + X[1,1])
             if abs(tr.imag) > tolerance:
-#                print 'trace not real'
+                # print 'trace is not real'
                 return False
             if abs(tr.real) > 2.0:
-#                print 'trace not in [-2,2]'
+                # print 'trace is not in [-2,2]'
                 return False
-        # Get O31 matrix generators
+        # Get O31 matrix generators ...
         o31matrices = [real_array(array(self.O31(g))) for g in gens]
-        # Take the first two
+        # take the first two, ...
         A, B = o31matrices[:2]
-        # find their axes
+        # find their axes, ...
         M = matrix(zeros((4,4)))
         u, s, v = svd(A - eye(4))
         vt = transpose(v)
@@ -349,25 +345,26 @@ class ShapeVector:
         u, s, v = svd(B - eye(4))
         vt = transpose(v)
         M[:,[2,3]] = vt[:,[n for n in range(4) if abs(s[n]) < tolerance]]
-        # Check if the axes cross, and find the fixed point (i.e. Minkwoski line)
+        # check if the axes cross,
+        # and find the fixed point (i.e. Minkwoski line)
         u, s, v = svd(M)
         vt = transpose(v)
         rel = vt[:,[n for n in range(4) if abs(s[n]) < tolerance]]
         if rel.shape != (4,1):
-#            print 'linear algebra failure'
+            # print 'linear algebra failure'
             return False
-        # We have two descriptions -- average them
+        # We now have two descriptions -- let's average them.
         rel[2] = -rel[2]
         rel[3] = -rel[3]
         fix = M*rel
-        # check if the fixed line is in the light cone
+        # Check if the fixed line is in the light cone.
         if abs(fix[0]) <= norm(fix[1:]):
-#            print 'fixed line is not in the light cone'
+            # print 'fixed line is not in the light cone'
             return False
-        # check if all generators fix the same point
+        # Check if all of the generators fix the same point.
         for O in o31matrices:
             if norm(O*fix - fix) > tolerance:
-#                print 'some generators do not share the fixed point.'
+                # print 'some generators do not share the fixed point.'
                 return False
         return True
 
@@ -386,8 +383,7 @@ class Fiber:
         self.H_meridian = H_meridian
         self.tolerance = tolerance
         if shapes:
-            self.shapes = [ShapeVector(self.hp_manifold, S)
-                           for S in shapes]
+            self.shapes = [Shape(self.hp_manifold, S) for S in shapes]
         if gluing_system is None:
             self.gluing_system = GluingSystem(manifold)
         else:
@@ -400,8 +396,7 @@ class Fiber:
         N = self.system.num_variables()/2
         self.solutions = self.system.solution_list(tolerance=self.tolerance)
         # We only keep the "X" variables.
-        self.shapes = [ShapeVector(self.hp_manifold, S.point[:N])
-                       for S in self.solutions]
+        self.shapes = [Shape(self.hp_manifold, S.point[:N]) for S in self.solutions]
 
     def __repr__(self):
         return "Fiber(ManifoldHP('%s'),\n%s,\nshapes=%s\n)"%(
@@ -504,8 +499,8 @@ class Fiber:
         while True:
             if dT < 1.0/64:
                 raise ValueError('Collision unavoidable. Try a different radius.')
-            for shapevector in self.shapes:
-                Zn = self.gluing_system.track(shapevector(),
+            for shape in self.shapes:
+                Zn = self.gluing_system.track(shape.array,
                                               target_holonomy,
                                               dT=dT,
                                               debug=debug)
@@ -519,53 +514,60 @@ class Fiber:
                 break
         return result
 
-class PHCFibrator:
+class Fibrator:
     """
-    A factory for Fibers, computed by PHC or by a GluingSystem
+    A factory for Fibers, used to construct an initial Fiber.  Either loads
+    a pre-computed Fiber from a file, or uses PHC to construct one.
     """
-    def __init__(self, manifold, target=None, base_fiber_file=None, tolerance=1.0E-5):
+    def __init__(self, manifold, target=None, fiber_file=None, tolerance=1.0E-5):
         # The tolerance is used to decode when PHC solutions are regarded
         # as being at infinity.
-        if target is None and base_fiber_file is None:
+        if target is None and fiber_file is None:
             raise ValueError('Supply either a target or a saved base fiber.')
         self.manifold = manifold
         self.manifold_name = manifold.name()
         self.target = target
+        self.fiber_file = fiber_file
         self.tolerance=tolerance
-        self.num_tetrahedra = N = self.manifold.num_tetrahedra()
-        variables = ( ['X%s'%n for n in range(N)] +
-                      ['Y%s'%n for n in range(N)] )
-        self.ring = PolyRing(variables + ['t'])
-        self.equations = self.build_equations()
-        self.equations += ['X%s + Y%s - 1'%(n,n) for n in range(N)] 
-        self.parametrized_system = ParametrizedSystem(
-            self.ring,
-            't',
-            [PHCPoly(self.ring, e) for e in self.equations]
-            )
-        if base_fiber_file and os.path.exists(base_fiber_file):
-            print 'Loading the starting fiber from %s'%base_fiber_file
-            with open(base_fiber_file) as datafile:
+
+    def __call__(self):
+        """Construct a Fiber, or read in a precomputed Fiber, and return it."""
+        fiber_file = self.fiber_file
+        signature = self.manifold._to_bytes()
+        if fiber_file and os.path.exists(fiber_file):
+            print 'Loading the starting fiber from %s'%fiber_file
+            with open(fiber_file) as datafile:
                 data = eval(datafile.read())
-            assert data['signature'] == manifold._to_bytes(), 'Triangulations do not match!'
-            self.base_fiber = data['fiber']
-            self.target = self.base_fiber.H_meridian
+            assert data['signature'] == signature, 'Triangulations do not match!'
+            return data['fiber']
         else:
             print 'Computing the starting fiber ... ',
             begin = time.time()
+            N = self.manifold.num_tetrahedra()
+            variables = ( ['X%s'%n for n in range(N)] +
+                      ['Y%s'%n for n in range(N)] )
+            self.ring = PolyRing(variables + ['t'])
+            self.equations = self.build_equations()
+            self.equations += ['X%s + Y%s - 1'%(n,n) for n in range(N)] 
+            self.parametrized_system = ParametrizedSystem(
+                self.ring,
+                't',
+                [PHCPoly(self.ring, e) for e in self.equations]
+            )
             self.base_system = self.parametrized_system.start(
                 self.target, self.tolerance)
-            print 'done. (%s seconds)'%(time.time() - begin)
-            self.base_fiber = Fiber(self.manifold, self.target,
-                                    PHCsystem=self.base_system)
-            if base_fiber_file:
-                with open(base_fiber_file, 'w') as datafile:
+            result = Fiber(self.manifold, self.target,
+                           PHCsystem=self.base_system)
+            print 'done. (%.3f seconds)'%(time.time() - begin)
+            if fiber_file:
+                with open(fiber_file, 'w') as datafile:
                     datafile.write("{\n'fiber': %s,\n'signature': %s\n}"%(
-                        repr(self.base_fiber),
-                        repr(manifold._to_bytes()))
+                        repr(result),
+                        repr(signature))
                     )
-                print 'Saved base fiber as %s'%base_fiber_file
-
+                print 'Saved base fiber as %s'%fiber_file
+            return result
+                
     def __len__(self):
         return len(self.base_fiber.solutions)
     
@@ -619,22 +621,28 @@ class PHCFibrator:
        except ValueError:
 	   print 'PHC parse error on %s+%sj'%(real,imag)
 
-    
-class Holonomizer:
+class CircleElevation:
+    """A family of fibers for the meridian holonomy map, lying above the
+    points Rξ^m where ξ = e^(2πi/N). The value of N is specified by
+    the keyword argument *order* (default 128) and the value of R is
+    specified by the keyword argument *radius* (default 1.02).
+
+    The construction begins by using PHC to find a single fiber over
+    the point ξ_0 = Re^(2πi/N_0).  The value of N_0 can be specified
+    with the keyword argument *base_index*.  The default behavior is
+    to choose N_0 at random.
+
+    Once a base Fiber has been constructed, it is transported around
+    the circle, using Newton's method, to construct the full family of
+    Fibers.
+
+    A CircleElevation can be tightened, which means tranporting each
+    fiber lying over a point on the R-circle to one lying over a point
+    on the circle of radius T. (T = 1.0 by default.) Singularities are
+    common on the unit circle, and may prevent the transport. Such
+    failures are reported on the console and then ignored.
+
     """
-    A family of fibers for the meridian holonomy map, lying
-    above the points Rξ^m where ξ = e^(2πi/N). The value of N is specified
-    by the keyword argument *order* (default 128) and the value of R
-    is specified by the keyword argument *radius* (default 1.02).
-
-    The construction begins by using PHC to find a single fiber over the
-    point ξ_0 = e^(2πi/N_0).  The value of N_0 can be specified with the
-    keyword argument *base_index*.  The default is to choose N_0 at random.
-
-    The holonomizer can be tightened, to also contain fibers over
-    points on the circle of radius T (= 1.0 by default).
-    """
-
     def __init__(self, manifold, order=128, radius=1.02, target_arg=None,
                  base_fiber_file=None):
         self.order = order
@@ -643,7 +651,7 @@ class Holonomizer:
         self.hp_manifold = self.manifold.high_precision()
         self.betti2 = [c % 2 for c in manifold.homology().coefficients].count(0)
         Darg = 2*pi/order
-        # The minus makes us consistent with the sign convention of numpy.fft
+        # The minus sign is for consistency with the sign convention of numpy.fft
         self.R_circle = [radius*exp(-n*Darg*1j) for n in range(self.order)]
         if base_fiber_file and os.path.exists(base_fiber_file):
             target = None
@@ -654,15 +662,13 @@ class Holonomizer:
                 base_index = randint(0, order-1)
                 print 'Choosing random base index: %d'%base_index
                 target = radius*exp(-2*pi*1j*base_index/self.order)
-        self.fibrator = PHCFibrator(manifold,
-                                    target=target,
-                                    base_fiber_file=base_fiber_file)
-        arg = log(self.fibrator.target).imag%(2*pi)
+        self.fibrator = Fibrator(manifold, target=target, fiber_file=base_fiber_file)
+        self.base_fiber = base_fiber = self.fibrator()
+        arg = log(base_fiber.H_meridian).imag%(2*pi)
         self.base_index = (self.order - int(arg*self.order/(2*pi)))%self.order
-        self.base_fiber = self.fibrator.base_fiber
-        if not self.base_fiber.is_finite():
+        if not base_fiber.is_finite():
             raise RuntimeError, 'The starting fiber contains Tillmann points.'
-        self.degree = len(self.base_fiber)
+        self.degree = len(base_fiber)
         print 'Degree is %s.'%self.degree
         # pre-initialize by just inserting an integer for each fiber
         # if the fiber construction fails, this can be detected by
@@ -750,7 +756,7 @@ class Holonomizer:
                 if t:
                     print 'Tillmann points %s found in fiber %s.'%(t, n)
             except AttributeError: # If the fiber was not computed.
-                print 'skipping %s'%n
+                print ' Skipping %s'%n
         self.T_longitude_holos, self.T_longitude_evs = self.longidata(self.T_fibers)
 
     def longidata(self, fiber_list):
@@ -772,14 +778,14 @@ class Holonomizer:
         print 'Computing longitude holonomies and eigenvalues.'
         # This crashes if there are bad fibers.
         longitude_holonomies = [
-            [( n, self.L_holo(f.shapes[m]()) ) for n, f in enumerate(fiber_list)
+            [( n, self.L_holo(f.shapes[m].array) ) for n, f in enumerate(fiber_list)
              if isinstance(f, Fiber)]
             for m in xrange(self.degree)]
         if isinstance(fiber_list[0], Fiber):
             index = 0;
         else:
             index = randint(0,self.order - 1)
-            print 'Taking starting index = %d'%index 
+            print 'Using %d as the starting index.'%index 
         longitude_traces = self.find_longitude_traces(fiber_list[index])
         longitude_eigenvalues = []
         for m, L in enumerate(longitude_holonomies):
@@ -820,8 +826,8 @@ class Holonomizer:
         trace = lambda rep : complex(rep[0,0] + rep[1,1])
         traces = []
         for shape in fiber.shapes:
-            sh = shape()
-            self.hp_manifold.set_tetrahedra_shapes(sh, sh, [(0,0)])
+            a = shape.array
+            self.hp_manifold.set_tetrahedra_shapes(a, a, [(0,0)])
             G = self.hp_manifold.fundamental_group()
             longitude = G.peripheral_curves()[0][1]
             relators = G.relators()
@@ -855,8 +861,7 @@ class Holonomizer:
         T_plot = Plot([[x for n,x in track] for track in self.T_longitude_evs])
 
     def holo_permutation(self):
-        return [self.R_fibers[0].shapes.index(p)
-                for p in self.last_R_fiber.shapes]
+        return [self.R_fibers[0].shapes.index(p) for p in self.last_R_fiber.shapes]
 
     def holo_orbits(self):
         P = self.holo_permutation()
@@ -923,7 +928,7 @@ class PECharVariety:
         self.order = order
         self.hint_dir = hint_dir
         if holonomizer is None:
-            self.holonomizer = Holonomizer(
+            self.holonomizer = CircleElevation(
                 self.manifold,
                 order=order,
                 radius=radius,
