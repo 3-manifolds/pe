@@ -216,7 +216,8 @@ class GluingSystem:
         delta = (M_target - M_start)
         T = 0.0
         Zn = Z
-        if debug: print 'Z = %s; condition=%s'%(Z, [self.condition(x) for x in Z]) 
+        if debug: print 'Z = %s; condition=%s'%(
+                Z, [self.condition(x) for x in Z]) 
         # First we try the cheap and easy method
         while T < 1.0:
             T = T+dT
@@ -919,7 +920,7 @@ class PEArc(list):
 
 class PECharVariety:
     def __init__(self, manifold, order=128, radius=1.02,
-                 holonomizer=None, base_dir='PE_base_fibers', hint_dir='hints'):
+                 elevation=None, base_dir='PE_base_fibers', hint_dir='hints'):
         if isinstance(manifold, Manifold):
             self.manifold = manifold
         else:
@@ -927,17 +928,17 @@ class PECharVariety:
         self.radius = radius
         self.order = order
         self.hint_dir = hint_dir
-        if holonomizer is None:
-            self.holonomizer = CircleElevation(
+        if elevation is None:
+            self.elevation = CircleElevation(
                 self.manifold,
                 order=order,
                 radius=radius,
                 base_fiber_file=os.path.join(
                     base_dir, self.manifold.name()+'.base')
                 )
-            self.holonomizer.tighten()
+            self.elevation.tighten()
         else:
-            self.holonomizer = holonomizer
+            self.elevation = elevation
 
     def save_hint(self, basename=None, dir=None):
         if dir == None:
