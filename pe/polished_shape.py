@@ -9,21 +9,27 @@ if _within_sage:
 
 from . import Shape
 
+def sage_complex_to_pari(z, dec_prec):
+    return pari.complex( float_to_pari(z.real(), dec_prec), float_to_pari(z.imag(), dec_prec) )
+
+def pari_set_precision(x, dec_prec):
+    return pari(0) if x == 0 else pari(x).precision(dec_prec)
+
 class GoodShapesNotFound(Exception):
     pass
 
 class PolishedShape(Shape):
-    """
-    A refined Shape containing a solution to the gluing equations with
-    the specified accuracy.  This assumes that the meridian holonomy
-    lies on the unit circle.
-    
+    """A refined Shape containing an arbitrarily precise solution to the
+    gluing equations with a specified target value for the meridian
+    holonomy.
+
     >>> M = snappy.Manifold('m071(0,0)')
     >>> alpha = polished_tetrahedra_shapes(M, 0, bits_prec=500)
     >>> M = snappy.Manifold('m071(7,0)')
     >>> beta = polished_tetrahedra_shapes(M, 2*CC.pi()/7, bits_prec=1000)
+
     """
-    def __init__(self, manifold, values, tolerance=1.0E-6,
+    def __init__(self, manifold, target_holonomy, values, tolerance=1.0E-6,
                  dec_prec=None, bits_prec=200, ignore_solution_type=False):
         super(self, Shape).__init__(manifold, values, tolerance)
         if dec_prec is None:
@@ -31,17 +37,16 @@ class PolishedShape(Shape):
         else:
             bits_prec = prec_dec_to_bits(dec_prec)
         working_prec = dec_prec + 10
-        target_espilon = float_to_pari(10.0, working_prec)**-dec_prec
-        det_epsilon = float_to_pari(10.0, working_prec)**-(dec_prec//10)
+        target_espilon = pari_set_precision(10.0, working_prec)**-dec_prec
+        det_epsilon = pari_set_precision(10.0, working_prec)**-(dec_prec//10)
         init_shapes = pari_column_vector(
             [complex_to_pari(z, working_prec) for z in self.array])
         manifold = manifold.copy()
         manifold.dehn_fill( (1, 0) ) 
         init_equations = manifold.gluing_equations('rect')
-        CC = ComplexField(bits_prec)
-        arg_high_precision = CC(target_meridian_holonomy_arg)*CC.gen()
-        target = sage_complex_to_pari(arg_high_precision.exp(), working_prec)
-        
+        target = pari.complex(
+            pari_set_precision(target_holonomy.real(), dec_prec),
+            pari_set_precision(target_holonomy.imag(), dec_prec))
         if gluing_equation_error(init_equations, init_shapes, target) > pari(0.000001):
             raise GoodShapesNotFound('Initial solution not very good')
     
@@ -85,8 +90,8 @@ class PolishedShape(Shape):
         return infinity_norm(gluing_equation_errors(eqns, shapes, RHS_of_last_eqn))
     
     def clean_pari_complex(z, working_prec):
-        epsilon = float_to_pari(10.0, working_prec)**-(working_prec//2)
-        zero = float_to_pari(0.0, working_prec)
+        epsilon = pari_set_precision(10.0, working_prec)**-(working_prec//2)
+        zero = pari_set_precision(0.0, working_prec)
         r, i = z.real().abs(), z.imag().abs()
         if r < epsilon and i < epsilon:
             ans = zero
