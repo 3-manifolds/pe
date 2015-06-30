@@ -17,6 +17,7 @@ snappy.SnapPyHP.matrix = matrix
 from snappy import *
 from spherogram.graphs import Graph
 from point import PEPoint
+from shape import Shape, PolishedShape
 from plot import MatplotPlot as Plot
 
 real_array = numpy.vectorize(float)
@@ -254,121 +255,6 @@ class GluingSystem:
                     raise ValueError('Track failed: step size limit reached.')
         return Zn
 
-class Shape:
-    """
-    A vector of shape parameters, stored as a numpy.array.
-    Many methods are available: ...
-    Instantiate with a sequence of complex numbers.
-    """
-    def __init__(self, manifold, values, tolerance=1.0E-6):
-        if isinstance(manifold, ManifoldHP):
-            self.hp_manifold = manifold
-        else:
-            self.hp_manifold = manifold.high_precision()
-        self.array = array(values)
-
-    def __str__(self):
-        return self.array.__str__()
-
-    def __getitem__(self, value):
-        return self.array[value]
-
-    def __len__(self):
-        return len(self.array)
-        
-    def __eq__(self, other):
-        return norm(self.array - other.array) < 1.0E-6
-
-    def dist(self, other):
-        return norm(self.array - other.array)
-
-    def __repr__(self):
-        return repr(list(self))
-    
-    def is_degenerate(self):
-        moduli = abs(self.array)
-        return ( (moduli < 1.0E-6).any() or
-                 (moduli < 1.0E-6).any() or
-                 (moduli > 1.0E6).any()
-                 )
-
-    def SL2C(self, word):
-        self.hp_manifold.set_tetrahedra_shapes(self.array, None, [(0,0)])
-        G = self.hp_manifold.fundamental_group()
-        return G.SL2C(word)
-
-    def O31(self, word):
-        self.hp_manifold.set_tetrahedra_shapes(self.array, None, [(0,0)])
-        G = self.hp_manifold.fundamental_group()
-        return G.O31(word)
-
-    def has_real_traces(self):
-        tolerance = 1.0E-10
-        gens = self.hp_manifold.fundamental_group().generators()
-        gen_mats = [self.SL2C(g) for g in gens]
-        for A in gen_mats:
-            tr = complex(A[0,0] + A[1,1])
-            if abs(tr.imag) > tolerance:
-                return False
-        mats = gen_mats[:]
-        for i in range(1, len(gens) + 1):
-            new_mats = []
-            for A in gen_mats:
-                for B in mats:
-                    C = B*A
-                    tr = complex(C[0,0] + C[1,1])
-                    if abs(tr.imag) > tolerance:
-                        return False
-                    new_mats.append(C)
-        return True
-        
-    def in_SU2(self):
-        tolerance = 1.0E-5
-        gens = self.hp_manifold.fundamental_group().generators()
-        # Check that all generators have real trace in [-2,2]
-        for X in [self.SL2C(g) for g in gens]:
-            tr = complex(X[0,0] + X[1,1])
-            if abs(tr.imag) > tolerance:
-                # print 'trace is not real'
-                return False
-            if abs(tr.real) > 2.0:
-                # print 'trace is not in [-2,2]'
-                return False
-        # Get O31 matrix generators ...
-        o31matrices = [real_array(array(self.O31(g))) for g in gens]
-        # take the first two, ...
-        A, B = o31matrices[:2]
-        # find their axes, ...
-        M = matrix(zeros((4,4)))
-        u, s, v = svd(A - eye(4))
-        vt = transpose(v)
-        M[:,[0,1]] = vt[:,[n for n in range(4) if abs(s[n]) < tolerance]]
-        u, s, v = svd(B - eye(4))
-        vt = transpose(v)
-        M[:,[2,3]] = vt[:,[n for n in range(4) if abs(s[n]) < tolerance]]
-        # check if the axes cross,
-        # and find the fixed point (i.e. Minkwoski line)
-        u, s, v = svd(M)
-        vt = transpose(v)
-        rel = vt[:,[n for n in range(4) if abs(s[n]) < tolerance]]
-        if rel.shape != (4,1):
-            # print 'linear algebra failure'
-            return False
-        # We now have two descriptions -- let's average them.
-        rel[2] = -rel[2]
-        rel[3] = -rel[3]
-        fix = M*rel
-        # Check if the fixed line is in the light cone.
-        if abs(fix[0]) <= norm(fix[1:]):
-            # print 'fixed line is not in the light cone'
-            return False
-        # Check if all of the generators fix the same point.
-        for O in o31matrices:
-            if norm(O*fix - fix) > tolerance:
-                # print 'some generators do not share the fixed point.'
-                return False
-        return True
-
 class Fiber:
     """A fiber for the rational function [holonomy of the meridian]
     restricted to the curve defined by a gluing system for a cusped
@@ -409,7 +295,7 @@ class Fiber:
     def __len__(self):
         return len(self.shapes)
 
-    def __get_item(self, index):
+    def __getitem__(self, index):
         return self.shapes[index]
     
     def __eq__(self, other):
@@ -515,6 +401,10 @@ class Fiber:
                 break
         return result
 
+    def polished_shape(self, n, dec_prec=None, bits_prec=200):
+        return PolishedShape(self[n], self.H_meridian,
+                             dec_prec=dec_prec, bits_prec=bits_prec)
+        
 class Fibrator:
     """
     A factory for Fibers, used to construct an initial Fiber.  Either loads
