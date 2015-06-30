@@ -18,7 +18,6 @@ def pari_set_precision(x, dec_prec):
 class GoodShapesNotFound(Exception):
     pass
 
-
 class Shape(object):
     """
     A vector of shape parameters, stored as a numpy.array.
