@@ -257,9 +257,9 @@ class GluingSystem:
 
 class Fiber:
     """A fiber for the rational function [holonomy of the meridian]
-    restricted to the curve defined by a gluing system for a cusped
-    manifold.  Can be initialized with a PHCSystem and a list of
-    PHCsolutions.
+    restricted to the curve defined by the gluing system for a
+    triangulated cusped manifold.  Can be initialized with a PHCSystem
+    and a list of PHCsolutions.
 
     """
     def __init__(self, manifold, H_meridian, gluing_system=None,
@@ -401,10 +401,12 @@ class Fiber:
                 break
         return result
 
-    def polished_shape(self, n, dec_prec=None, bits_prec=200):
-        return PolishedShapes(self[n], self.H_meridian,
+    def polished_shape(self, n, target_holonomy=None, dec_prec=None, bits_prec=200):
+        if target_holonomy is None:
+            target_holonomy = self.H_meridian
+        return PolishedShapes(self[n], target_holonomy,
                              dec_prec=dec_prec, bits_prec=bits_prec)
-        
+
 class Fibrator:
     """
     A factory for Fibers, used to construct an initial Fiber.  Either loads
