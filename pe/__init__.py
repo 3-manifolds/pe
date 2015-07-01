@@ -17,7 +17,7 @@ snappy.SnapPyHP.matrix = matrix
 from snappy import *
 from spherogram.graphs import Graph
 from point import PEPoint
-from shape import Shape, PolishedShape
+from shape import Shapes, PolishedShapes, U1Q
 from plot import MatplotPlot as Plot
 
 real_array = numpy.vectorize(float)
@@ -270,7 +270,7 @@ class Fiber:
         self.H_meridian = H_meridian
         self.tolerance = tolerance
         if shapes:
-            self.shapes = [Shape(self.hp_manifold, S) for S in shapes]
+            self.shapes = [Shapes(self.hp_manifold, S) for S in shapes]
         if gluing_system is None:
             self.gluing_system = GluingSystem(manifold)
         else:
@@ -283,7 +283,7 @@ class Fiber:
         N = self.system.num_variables()/2
         self.solutions = self.system.solution_list(tolerance=self.tolerance)
         # We only keep the "X" variables.
-        self.shapes = [Shape(self.hp_manifold, S.point[:N]) for S in self.solutions]
+        self.shapes = [Shapes(self.hp_manifold, S.point[:N]) for S in self.solutions]
 
     def __repr__(self):
         return "Fiber(ManifoldHP('%s'),\n%s,\nshapes=%s\n)"%(
@@ -402,7 +402,7 @@ class Fiber:
         return result
 
     def polished_shape(self, n, dec_prec=None, bits_prec=200):
-        return PolishedShape(self[n], self.H_meridian,
+        return PolishedShapes(self[n], self.H_meridian,
                              dec_prec=dec_prec, bits_prec=bits_prec)
         
 class Fibrator:
