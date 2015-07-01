@@ -1,35 +1,56 @@
+# -*- coding: utf-8 -*-
+
 import snappy
 from snappy.snap.shapes import (
-    float_to_pari, complex_to_pari, pari_column_vector, prec_bits_to_dec,
+    float_to_pari, complex_to_pari, pari_column_vector,
     infinity_norm, pari_matrix, pari_vector_to_list,
     enough_gluing_equations, eval_gluing_equation, _within_sage,
+    pari, prec_dec_to_bits, prec_bits_to_dec
 )
-from numpy import array, matrix
+from numpy import array, matrix, complex128
 from numpy.linalg import norm
 
 if _within_sage:
-    from sage.all import exp, CC, ComplexField, pari, gen
+    from sage.all import exp, CC, ComplexField, pari
+    def Number(z, precision=212):
+        CC = ComplexField(precision+1)
+        return CC(z)
 else:
-    from cypari import gen
-    pari = gen.pari
+    from snappy.SnapPy import Number
+
+def U1Q(p, q, dec_prec=None, bits_prec=212):
+    """An arbitrarily precise value for exp(2πip/q)"""
+    if dec_prec is not None:
+        bits_prec = gen.prec_dec_to_bits(dec_prec)
+    result = (2*pari.pi(precision=bits_prec)*p*pari('I')/q).exp(precision=bits_prec)
+    return Number(result, precision=bits_prec)
 
 def pari_set_precision(x, dec_prec):
     return pari(0) if x == 0 else pari(x).precision(dec_prec)
 
+def pari_complex(z, dec_prec):
+    try:
+        real, imag = z.real(), z.imag()
+    except TypeError:
+        real, imag = z.real, z.imag
+    return pari.complex(pari_set_precision(real, dec_prec), pari_set_precision(imag, dec_prec))
+                 
 class GoodShapesNotFound(Exception):
     pass
 
-class Shape(object):
+class Shapes(object):
     """
     A vector of shape parameters, stored as a numpy.array.
     Many methods are available: ...
     Instantiate with a sequence of complex numbers.
     """
-    def __init__(self, manifold, values, tolerance=1.0E-6):
+    def __init__(self, manifold, values=None, tolerance=1.0E-6):
         if isinstance(manifold, snappy.ManifoldHP):
             self.hp_manifold = manifold
         else:
             self.hp_manifold = manifold.high_precision()
+        if values is None:
+            values = [complex128(z) for z in manifold.tetrahedra_shapes('rect')]
         self.array = array(values)
 
     def __str__(self):
@@ -134,19 +155,30 @@ class Shape(object):
                 return False
         return True
 
-class PolishedShape(object):
-    """A refined Shape containing an arbitrarily precise solution to the
-    gluing equations with a specified target value for the meridian
-    holonomy.
+class PolishedShapes(object):
+    """An arbitrarily precise solution to the gluing equations with a
+    specified target value for the meridian holonomy.  Initialize with
+    a rough Shapes object and a target_holonomy.
 
     >>> M = snappy.Manifold('m071(0,0)')
-    >>> alpha = polished_tetrahedra_shapes(M, 0, bits_prec=500)
+    >>> rough = Shapes(M)
+    >>> rough[0]
+    (0.94501569508040595+1.0738656547982881j)
+    >>> polished = PolishedShapes(rough, target_holonomy=1.0)
+    >>> polished[0].real()
+    0.945015695080404498443984810708552561800525308148667497814911662
+    >>> M.high_precision().tetrahedra_shapes('rect')[0].real()
+    0.94501569508040449844398481070855256180052530814866749781491
     >>> M = snappy.Manifold('m071(7,0)')
-    >>> beta = polished_tetrahedra_shapes(M, 2*CC.pi()/7, bits_prec=1000)
+    >>> beta = PolishedShapes(Shapes(M), U1Q(1,7, bits_prec=256), bits_prec=256)
+    >>> beta[0].real()
+    1.78068392631530372708547775577353937466128526916049412782747357929395329299446
+    >>> M.high_precision().tetrahedra_shapes('rect')[0].real()
+    1.78068392631530372708547775577353937466128526916049412782747
 
     """
     def __init__(self, rough_shape, target_holonomy, tolerance=1.0E-6,
-                 dec_prec=None, bits_prec=200, ignore_solution_type=False):
+                 dec_prec=None, bits_prec=212, ignore_solution_type=False):
         if dec_prec is None:
             dec_prec = prec_bits_to_dec(bits_prec)
         else:
@@ -159,9 +191,7 @@ class PolishedShape(object):
         self.manifold = manifold = rough_shape.hp_manifold.copy()
         manifold.dehn_fill( (1, 0) ) 
         init_equations = manifold.gluing_equations('rect')
-        target = pari.complex(
-            pari_set_precision(target_holonomy.real, dec_prec),
-            pari_set_precision(target_holonomy.imag, dec_prec))
+        target = pari_complex(target_holonomy, dec_prec)
         if self._gluing_equation_error(
                 init_equations, init_shapes, target) > pari(0.000001):
             raise GoodShapesNotFound('Initial solution not very good')
@@ -194,11 +224,12 @@ class PolishedShape(object):
         total_change = infinity_norm(init_shapes - shapes)
         if error > 1000*target_espilon or total_change > pari(0.0000001):
             raise GoodShapesNotFound('Failed to find solution')
-        self.shapes = pari_vector_to_list(shapes)
-        if _within_sage:
-            CC = ComplexField(bits_prec)
-            self.shapes = [CC(z) for z in self.shapes]
+        shapes = pari_vector_to_list(shapes)
+        self.shapelist = [Number(z, precision=bits_prec) for z in shapes]
 
+    def __getitem__(self, index):
+        return self.shapelist[index]
+    
     def _gluing_equation_errors(self, eqns, shapes, RHS_of_last_eqn):
         last = [eval_gluing_equation(eqns[-1], shapes) - RHS_of_last_eqn]
         return [eval_gluing_equation(eqn, shapes) - 1
