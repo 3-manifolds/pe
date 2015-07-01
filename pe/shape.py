@@ -10,7 +10,8 @@ from numpy.linalg import norm
 if _within_sage:
     from sage.all import exp, CC, ComplexField, pari, gen
 else:
-    from Cypari import pari, gen
+    from cypari import gen
+    pari = gen.pari
 
 def pari_set_precision(x, dec_prec):
     return pari(0) if x == 0 else pari(x).precision(dec_prec)
