@@ -20,8 +20,6 @@ from point import PEPoint
 from shape import Shapes, PolishedShapes, U1Q
 from plot import MatplotPlot as Plot
 
-real_array = numpy.vectorize(float)
-
 # Constants for Newton's method
 RESIDUAL_BOUND = 1.0E-14
 STEPSIZE_BOUND = 1.0E-14
@@ -863,10 +861,10 @@ class PECharVariety:
     def build_arcs(self, show_group=False):
         self.arcs = []
         self.arc_info = []
-        H = self.holonomizer
+        H = self.elevation
         delta_M = -1.0/self.order
         M_args = 0.5 * ( arange(self.order, dtype=float64)*delta_M % 1.0 )
-        for m, track in enumerate(self.holonomizer.T_longitude_evs):
+        for m, track in enumerate(self.elevation.T_longitude_evs):
             arc, info = PEArc(), []
             marker = ''
             for n, ev in track:
@@ -902,9 +900,9 @@ class PECharVariety:
                 else:
                     if len(arc) > 1:
                         m, n = arc.first_info = info[0]
-                        arc.first_shape = self.holonomizer.T_fibers[n].shapes[m]
+                        arc.first_shape = self.elevation.T_fibers[n].shapes[m]
                         m, n = arc.last_info = info[-1]
-                        arc.last_shape = self.holonomizer.T_fibers[n].shapes[m]
+                        arc.last_shape = self.elevation.T_fibers[n].shapes[m]
                         self.arcs.append(arc)
                         self.arc_info.append(info)
                     arc = PEArc()
@@ -912,9 +910,9 @@ class PECharVariety:
             if arc:
                 # Dumb repetition
                 m, n = arc.first_info = info[0]
-                arc.first_shape = self.holonomizer.T_fibers[n].shapes[m]
+                arc.first_shape = self.elevation.T_fibers[n].shapes[m]
                 m, n = arc.last_info = info[-1]
-                arc.last_shape = self.holonomizer.T_fibers[n].shapes[m]
+                arc.last_shape = self.elevation.T_fibers[n].shapes[m]
                 self.arcs.append(arc)
                 self.arc_info.append(info)
         self.curve_graph = curve_graph = Graph([], range(len(self.arcs)))

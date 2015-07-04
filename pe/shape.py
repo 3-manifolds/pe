@@ -7,8 +7,10 @@ from snappy.snap.shapes import (
     enough_gluing_equations, eval_gluing_equation, _within_sage,
     pari, prec_dec_to_bits, prec_bits_to_dec
 )
-from numpy import array, matrix, complex128
-from numpy.linalg import norm
+import numpy
+from numpy import array, matrix, complex128, zeros, eye, transpose
+from numpy.linalg import svd, norm
+real_array = numpy.vectorize(float)
 
 if _within_sage:
     from sage.all import exp, CC, ComplexField, pari
