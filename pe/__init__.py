@@ -529,11 +529,12 @@ class CircleElevation:
     the circle, using Newton's method, to construct the full family of
     Fibers.
 
-    A CircleElevation can be tightened, which means tranporting each
-    fiber lying over a point on the R-circle to one lying over a point
-    on the circle of radius T. (T = 1.0 by default.) Singularities are
-    common on the unit circle, and may prevent the transport. Such
-    failures are reported on the console and then ignored.
+    A CircleElevation can be tightened, which means radially
+    transporting each fiber lying over a point on the R-circle to one
+    lying over a point on the circle of radius T. (T = 1.0 by
+    default.) Singularities are common on the unit circle, and may
+    prevent the transport. Such failures are reported on the console
+    and then ignored.
 
     """
     def __init__(self, manifold, order=128, radius=1.02, target_arg=None,
@@ -821,6 +822,7 @@ class PECharVariety:
         self.order = order
         self.hint_dir = hint_dir
         if elevation is None:
+            self.check_dir(base_dir, 'I need a directory for storing base fibers.')
             self.elevation = CircleElevation(
                 self.manifold,
                 order=order,
@@ -832,16 +834,21 @@ class PECharVariety:
         else:
             self.elevation = elevation
 
-    def save_hint(self, basename=None, dir=None):
-        if dir == None:
-            dir = self.hint_dir
+    def check_dir(self, dir, message=''):
         if not os.path.exists(dir):
             cwd = os.path.abspath(os.path.curdir)
             newdir = os.path.join(cwd,dir)
-            response = raw_input("May I create a directory %s?(y/n)"%newdir)
-            if response.lower()[0] != 'y':
+            print '\n'+ message
+            response = raw_input("May I create a directory %s?(Y/n)"%newdir)
+            if response and response.lower()[0] != 'y':
                 sys.exit(0)
+            print
             os.mkdir(newdir)
+
+    def save_hint(self, basename=None, dir=None):
+        if dir == None:
+            dir = self.hint_dir
+        self.check_dir(dir, 'I need a directory for storing hint files.')
         if basename == None:
             basename = self.manifold.name()
         hintfile_name = os.path.join(dir, basename + '.hint')
