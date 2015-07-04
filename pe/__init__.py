@@ -1017,32 +1017,6 @@ class PECharVariety:
              show_group=show_group,
              )
 
-class Slope:
-      def __init__(self, xy, power_scale=(1,1)):
-            x, y = xy
-            x, y = x*power_scale[0], y*power_scale[1]
-            if x == 0:
-                  if y == 0:
-                        raise ValueError('gcd(0,0) is undefined.')
-                  else:
-                        gcd = abs(y)
-            else:
-                  x0 = abs(x)
-                  y0 = abs(y)
-                  while y0 != 0:
-                        r = x0%y0
-                        x0 = y0
-                        y0 = r
-                  gcd = x0
-            if x < 0:
-                  x, y = -x, -y
-            self.x = x/gcd
-            self.y = y/gcd
-      def __cmp__(self, other):
-            return int.__cmp__(self.y*other.x - other.y*self.x, 0)
-      def __repr__(self):
-            return '%d/%d'%(self.y, self.x)
-
 class Permutation(dict):
     def orbits(self):
         points = set(self.keys())
