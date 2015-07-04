@@ -19,6 +19,7 @@ else:
                            reduce(lambda x,y:x+y, list_of_lists))
     def prod(factors):
         return reduce(lambda x,y:x*y, factors)
+    RR = Number
 
 def random_word(letters, N):
     return ''.join( [random.choice(letters) for i in range(N)] )
@@ -103,10 +104,13 @@ def polished_holonomy(M, target_holonomy,
 
 def format_complex(z, digits=5):
     conv = '%.' + repr(digits) + 'g'
-    ten = RR(10)
-    z = CC(z)
+    if _within_sage:
+        ten = RR(10)
+        z = CC(z)
+    else:
+        ten = 10.0
+        z = Number(z)
     real = conv % z.real()
-    
     if abs(z.imag()) < ten**-(digits):
         return real
     if abs(z.real()) < ten**-(digits):
@@ -121,7 +125,7 @@ class PSL2CRepOf3ManifoldGroup:
 
     >>> import snappy
     >>> M = snappy.Manifold('m004')
-    >>> rho = PSL2CRepOf3ManifoldGroup(M, 0, precision=100)
+    >>> rho = PSL2CRepOf3ManifoldGroup(M, 1.0, precision=100)
     >>> rho
     <m004(0,0): [0.5+0.86603I, 0.5+0.86603I]>
     >>> G = rho.polished_holonomy()
@@ -148,7 +152,7 @@ class PSL2CRepOf3ManifoldGroup:
         self._cache = {}
 
     def __repr__(self):
-        return "<%s" % self.manifold + ": [" + ", ".join([format_complex(z) % z for z in self.rough_shapes]) + "]>"
+        return "<%s" % self.manifold + ": [" + ", ".join([format_complex(z) for z in self.rough_shapes]) + "]>"
 
     def _update_precision(self, precision):
         if precision != None:
@@ -166,7 +170,8 @@ class PSL2CRepOf3ManifoldGroup:
                                 self.target_holonomy,
                                 bits_prec=precision,
                                 fundamental_group_args=self.fundamental_group_args,
-                                lift_to_SL2=False, ignore_solution_type=True)
+                                lift_to_SL2=False,
+                                ignore_solution_type=True)
                 if not G.check_representation() < RR(2.0)**(-0.8*precision):
                     raise CheckRepresentationFailed
 
