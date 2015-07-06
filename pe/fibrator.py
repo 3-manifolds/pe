@@ -1,6 +1,8 @@
 import os, time
+from gluing import GluingSystem
 from phc import PolyRing, PHCPoly, PHCSystem, ParametrizedSystem
-from . import Fiber
+from fiber import Fiber
+from snappy import Manifold, ManifoldHP
 
 class Fibrator:
     """
