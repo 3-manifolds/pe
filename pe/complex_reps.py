@@ -5,20 +5,16 @@ from snappy.snap import  generators
 from snappy.snap.polished_reps import (initial_tet_ideal_vertices,
                                        reconstruct_representation,
                                        clean_matrix,
-                                       ManifoldGroup)
+                                       ManifoldGroup, prod)
 if _within_sage:
-    from sage.all import vector, matrix, MatrixSpace, ZZ, RR, CC, prod, pari
+    from sage.all import vector, matrix, MatrixSpace, ZZ, RR, CC, pari
     Id2 = MatrixSpace(ZZ, 2)(1)
 else:
     import snappy
-    from snappy.SnapPy import Number
+    from snappy.number import Number
+    from snappy.snap.utilities import Matrix2x2 as matrix
     from cypari.gen import pari
-    Id2 = pari.matrix(2,2,[1,0,0,1])
-    def matrix(list_of_lists):
-        return pari.matrix(len(list_of_lists), len(list_of_lists[0]),
-                           reduce(lambda x,y:x+y, list_of_lists))
-    def prod(factors):
-        return reduce(lambda x,y:x*y, factors)
+    Id2 = matrix(1,0,0,1)
     RR = Number
 
 def random_word(letters, N):
@@ -58,10 +54,10 @@ class CheckRepresentationFailed(Exception):
     pass
 
 def SL2C_inverse(A):
-    return matrix([[A[1,1], -A[0,1]], [-A[1,0], A[0, 0]]])
+    return A.adjoint()
 
 def GL2C_inverse(A):
-    return (1/A.det())*matrix([[A[1,1], -A[0,1]], [-A[1,0], A[0, 0]]])
+    return (1/A.det())*A.adjoint()
 
 def apply_representation(word, gen_images):
     gens = string.ascii_lowercase[:len(gen_images)]
@@ -69,7 +65,7 @@ def apply_representation(word, gen_images):
                [(g.upper(), SL2C_inverse(gen_images[i])) for i, g in enumerate(gens)])
     return prod( [rho[g] for g in word], Id2)
 
-def polished_holonomy(M, target_holonomy,
+def polished_holonomy(M, target_meridian_holonomy,
                          bits_prec=100,
                          fundamental_group_args = [],
                          lift_to_SL2 = True,
@@ -83,7 +79,7 @@ def polished_holonomy(M, target_holonomy,
         error = pari(2.0)**(-bits_prec*0.8)
 
     try:
-        shapes = PolishedShapes(Shapes(M), target_holonomy,
+        shapes = PolishedShapes(Shapes(M), target_meridian_holonomy,
                                 bits_prec=bits_prec, dec_prec=dec_prec).shapelist
     except GoodShapesNotFound:
         raise CheckRepresentationFailed
@@ -133,7 +129,7 @@ class PSL2CRepOf3ManifoldGroup:
     -2.0
     """
     def __init__(self, manifold,
-                 target_holonomy=None,
+                 target_meridian_holonomy=None,
                  rough_shapes=None,
                  precision=100,
                  fundamental_group_args=tuple() ):
@@ -144,10 +140,10 @@ class PSL2CRepOf3ManifoldGroup:
         else:
             rough_shapes = manifold.tetrahedra_shapes('rect')
         self.rough_shapes = rough_shapes
-        if target_holonomy is None:
+        if target_meridian_holonomy is None:
             Hm = manifold.cusp_info('holonomies')[0][0]
-            target_holonomy= (2*pari.pi()*pari('I')*Hm).exp()
-        self.target_holonomy = target_holonomy
+            target_meridian_holonomy= (2*pari.pi()*pari('I')*Hm).exp()
+        self.target_meridian_holonomy = target_meridian_holonomy
         self.fundamental_group_args = fundamental_group_args
         self._cache = {}
 
@@ -167,7 +163,7 @@ class PSL2CRepOf3ManifoldGroup:
                 G = self.manifold.fundamental_group(*self.fundamental_group_args)
             else:
                 G = polished_holonomy(self.manifold,
-                                self.target_holonomy,
+                                self.target_meridian_holonomy,
                                 bits_prec=precision,
                                 fundamental_group_args=self.fundamental_group_args,
                                 lift_to_SL2=False,

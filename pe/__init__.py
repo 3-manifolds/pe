@@ -9,7 +9,6 @@ from numpy import log, exp, pi, sqrt, ceil
 from numpy import dtype, take, arange, sum, where, vstack, argmin
 from numpy import float64
 from numpy.linalg import svd, norm, eig, solve, lstsq, matrix_rank
-from numpy.fft import ifft
 import snappy
 snappy.SnapPy.matrix = matrix
 snappy.SnapPyHP.matrix = matrix
@@ -22,11 +21,6 @@ from point import PEPoint
 from shape import Shapes, PolishedShapes, U1Q
 from plot import MatplotPlot as Plot
 
-# Constants for Newton's method
-RESIDUAL_BOUND = 1.0E-14
-STEPSIZE_BOUND = 1.0E-14
-# The numpy type for our complex arrays
-DTYPE = dtype('c16')
 # Check if we are running in Sage
 try:
     import sage
