@@ -82,14 +82,17 @@ def eigenvector(A):
     """
     evalues =  eigenvalues(A)
     evalue = max(evalues, key=lambda x: x.abs())
-    return right_kernel_two_by_two(A - Id2*evalue)
+    return right_kernel_two_by_two(A - evalue*Id2)
     
 def eigenbasis(A, B):
     """
     Given loxodromic matrices A and B, return a basis of C^2 consisting of
     one eigenvector from each. 
     """
-    return matrix([eigenvector(A), eigenvector(B)]).transpose()
+    eA = eigenvector(A)
+    eB = eigenvector(B)
+    return matrix([[eA[0], eB[0]], [eA[1], eB[1]]])
+    #return matrix([eigenvector(A), eigenvector(B)]).transpose()
 
 def conjugator_into_PSL2R(A, B):
     """
