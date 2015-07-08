@@ -194,8 +194,9 @@ class PolishedShapes(object):
         manifold.dehn_fill( (1, 0) ) 
         init_equations = manifold.gluing_equations('rect')
         target = pari_complex(target_holonomy, dec_prec)
-        if self._gluing_equation_error(
-                init_equations, init_shapes, target) > pari(0.000001):
+        error = self._gluing_equation_error(
+                init_equations, init_shapes, target)
+        if error > pari(0.000001):
             raise GoodShapesNotFound('Initial solution not very good')
     
         # Now begin the actual computation

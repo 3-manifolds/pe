@@ -1,11 +1,13 @@
 import random, string
+from itertools import chain
 from .shape import Shapes, PolishedShapes, GoodShapesNotFound
 from snappy import _within_sage
 from snappy.snap import  generators
 from snappy.snap.polished_reps import (initial_tet_ideal_vertices,
                                        reconstruct_representation,
                                        clean_matrix,
-                                       ManifoldGroup, prod)
+                                       ManifoldGroup,
+                                       prod)
 if _within_sage:
     from sage.all import vector, matrix, MatrixSpace, ZZ, RR, CC, pari
     Id2 = MatrixSpace(ZZ, 2)(1)
@@ -213,7 +215,11 @@ class PSL2CRepOf3ManifoldGroup:
         return G.check_representation() < RR(2.0)**(-0.8*self.precision)
 
     def peripheral_curves(self):
-        return self.manifold.fundamental_group().peripheral_curves()
+        M = self.manifold
+        if False in M.cusp_info('is_complete'):
+            M = M.copy()
+            M.dehn_fill([(0,0) for n in range(M.num_cusps())])
+        return M.fundamental_group(*self.fundamental_group_args).peripheral_curves()
 
     def meridian(self):
         return self.peripheral_curves()[0][0]
@@ -229,7 +235,10 @@ class PSL2CRepOf3ManifoldGroup:
 
     def coboundary_1_matrix(self):
         gens, rels = self.generators(), self.relators()
-        return matrix(ZZ, [[R.count(g) - R.count(g.swapcase()) for g in gens] for R in rels])
+        # coP maps Free(gens)* -> Free(rels)*
+        coP = [[r.count(g) - r.count(g.swapcase()) for g in gens] for r in rels]
+        entries = list(chain(*coP))
+        return pari.matrix(len(rels), len(gens), entries)
 
     def H2(self):
         """
@@ -237,11 +246,10 @@ class PSL2CRepOf3ManifoldGroup:
         zero map. 
         """
         if not 'smith_form' in self._cache:
-            self._cache['smith_form'] = self.coboundary_1_matrix().smith_form()
-
-        D, U, V = self._cache['smith_form']
-        ans = [d for d in D.diagonal() if d != 1]
-        assert self.manifold.homology().coefficients == ans
+            self._cache['smith_form'] = self.coboundary_1_matrix().matsnf(flag=1)
+        U, V, D = self._cache['smith_form'] # D = U*coP*V  
+        elementary_divisors = D.matsnf()
+        ans = [d for d in elementary_divisors if d != 1]
         return ans
 
     def has_2_torsion_in_H2(self):
@@ -250,13 +258,17 @@ class PSL2CRepOf3ManifoldGroup:
 
     def class_in_H2(self, cocycle):
         self.H2()
-        D, U, V = self._cache['smith_form']
+        U, V, D = self._cache['smith_form']
+        # U rewrites relators in the smith basis
+        elementary_divisors = list(D.matsnf())
+        co = pari(cocycle).mattranspose()
         ans = []
-        for c, d in zip(U*cocycle, D.diagonal()):
+        coeffs = list(U*co[:][0])
+        for c, d in zip(coeffs, elementary_divisors):
             if d != 1:
                 a = c if d == 0 else c % d
                 ans.append(a)
-        return vector(ans)
+        return ans
 
     def matrix_field(self):
         return self.trace_field_generators()[0].parent()

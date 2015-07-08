@@ -5,16 +5,22 @@ from .complex_reps import (PSL2CRepOf3ManifoldGroup, polished_holonomy,
 from . import euler
 from euler import wedge, orientation
 if _within_sage:
-    from sage.all import RealField, vector, matrix, pari
+    from sage.all import RealField, ComplexField, MatrixSpace, ZZ, vector, matrix, pari, arg
     eigenvalues =  lambda A: A.charpoly().roots(CC, False)
     Id2 = MatrixSpace(ZZ, 2)(1)
 else:
     from cypari.gen import pari
-    from snappy.number import SnapPyNumbers
+    from snappy.number import Number, SnapPyNumbers
     from snappy.snap.utilities import Vector2 as vector, Matrix2x2 as matrix
     eigenvalues = lambda A: A.eigenvalues()
     Id2 = matrix(1,0,0,1)
     RealField = SnapPyNumbers
+    ComplexField = SnapPyNumbers
+    def arg(x):
+        if isinstance(x, Number):
+            return x.arg()
+        else:
+            return Number(x).arg()
 
 class CouldNotConjugateIntoPSL2R(Exception):
     pass
@@ -134,14 +140,14 @@ def conjugate_into_PSL2R(rho, max_error, depth=7):
     raise CouldNotConjugateIntoPSL2R
 
 def elliptic_fixed_point(A):
-    assert abs(A.trace()) < 2.0
+    assert A.trace().abs() <= 2.0
     RR = A.base_ring()
     x = pari('x')
     a, b, c, d = [pari(z) for z in A.list()]
     p = c*x*x + (d - a)*x - b
     if p == 0:
         return R(pari('I'))
-    fp = max(p.polroots(flag=1, precision=RR.precision()), key=lambda z: z.imag())
+    fp = max(p.polroots(precision=RR.precision()), key=lambda z: z.imag())
     return RR(fp)
 
 # Preserve for testing
@@ -165,7 +171,7 @@ def elliptic_rotation_angle(A):
     a, b, c, d = A.list()
     derivative = 1/(c*z + d)**2
     pi = A.base_ring().pi()
-    r = -derivative.argument()
+    r = arg(derivative)
     if r < 0:
         r = r + 2*pi
     return r/(2*pi)
@@ -185,7 +191,8 @@ def shift_of_central(A_til):
 def normalizer_wrt_target_meridian_holonomy(meridian_matrix, target):
     current = elliptic_rotation_angle(meridian_matrix)
     CC = current.parent()
-    target_arg = target.arg
+    target = CC(target)
+    target_arg = arg(target)
     target_arg *= 1/(2*CC.pi())
     target_arg += -target_arg.floor()
     other = 1 - current
@@ -274,33 +281,33 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
     def thurston_class(self, init_pt = (2,-3)):
         init_pt = vector(self.matrix_field(), init_pt)
         ans = [self.thurston_class_of_relation(R, init_pt) for R in self.relators()]
-        thurston, error = vector(ZZ, [x[0] for x in ans]), min([x[1] for x in ans])
+        thurston, error = [x[0] for x in ans], min([x[1] for x in ans])
         return self.class_in_H2(thurston), error
 
     def euler_class(self, double=False):
         rels = self.relators()
-        e = vector(ZZ, [euler.euler_cocycle_of_relation(self, R) for R in rels])
+        e = [euler.euler_cocycle_of_relation(self, R) for R in rels]
         if double:
-            e = 2*e
+            e = [2*x for x in e]
         return self.class_in_H2(e)
 
     def representation_lifts(self, precision=None):
         self._update_precision(precision)
         thurston, error = self.thurston_class()
-        if thurston == 0:
+        if False in [x == 0 for x in thurston]:
+            return False
+        else:
             if not self.has_2_torsion_in_H2():
                 return True
             else:
-                return self.euler_class() == 0
-
-        return False
+                return False in [x == 0 for x in self.euler_class()]
 
     def lift_on_cusped_manifold(rho):
         rel_cutoff = len(rho.generators()) - 1
         rels = rho.relators()[:rel_cutoff ]
         euler_cocycle = [euler.euler_cocycle_of_relation(rho, R) for R in rels]
         D = rho.coboundary_1_matrix()[:rel_cutoff]
-        M = matrix(ZZ, [euler_cocycle] + D.columns())
+        M = matrix([euler_cocycle] + D.columns())
         k = M.left_kernel().basis()[0]
         if k[0] != 1:
             # Two reasons we could be here: the euler class isn't zero or
