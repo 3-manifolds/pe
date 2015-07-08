@@ -23,12 +23,13 @@ if _within_sage:
     # Switching to the below causes crashes elsewhere. Weird.
     # from sage.all import matrix, vector, sqrt, arccos, floor, cos, sin
     from sage.all import *
+    Id2 = matrix(ZZ, [[1,0],[0,1]])
+else:
+    from snappy.snap.utilities import Matrix2x2 as matrix, Vector2 as vector
+    Id2 = matrix(1,0,0,1)
 
 def wedge(a, b):
     return -a[0]*b[1] + a[1]*b[0]
-
-def norm(v):
-    return sqrt(v[0]*v[0]+ v[1]*v[1])
 
 def orientation(a, b, c):
     return cmp( wedge(a,b) * wedge(b,c) * wedge(c, a), 0)
@@ -50,7 +51,7 @@ class PointInP1R():
         self.v = self.normalize(vector(v))
 
     def normalize(self, v):
-        v = v/norm(v)
+        v = v/v.norm()
         if v[1] < 0:
             v = -v
         R = v.base_ring()
@@ -59,7 +60,7 @@ class PointInP1R():
         return v
 
     def angle(self):
-        return arccos(self.v[0])
+        return self.v[0].arccos()
 
     def normalized_angle(self):
         theta = self.angle()
@@ -105,8 +106,8 @@ def univ_euler_cocycle(f1, f2, samples=3):
 
     R = f1.base_ring()
     if is_almost_identity(f1) or is_almost_identity(f2):
-        return ZZ(0)
-    epsilon = R(2)**(-R.prec()//2) 
+        return 0
+    epsilon = R(2.0)**(-R.prec()//2)
     x = R.random_element()
     y = sigma_action(f1, sigma_action(f2, x))
     if is_almost_identity(f1*f2):
@@ -115,7 +116,7 @@ def univ_euler_cocycle(f1, f2, samples=3):
         z = sigma_action(f1*f2, x)
     s = y - z
     ans = s.round()
-    assert abs(s - ans) < epsilon
+    assert (s - ans).abs() < epsilon
     return ans
 
 def my_matrix_norm(A):
@@ -127,9 +128,9 @@ def my_matrix_norm(A):
     
 def is_almost_identity(A, tol=0.8):
     RR = A.base_ring()
-    error = min( my_matrix_norm(A - RR(1)),
-                 my_matrix_norm(A+RR(1)))
-    epsilon = RR(2)**floor(-tol*RR.prec())
+    error = min( my_matrix_norm(A - Id2),
+                 my_matrix_norm(A + Id2))
+    epsilon = RR(2.0)**RR(-tol*RR.prec()).floor()
     return error <= epsilon
 
 class PSL2RtildeElement:
@@ -179,21 +180,16 @@ class LiftedFreeGroupRep:
         for w in word[1: ]:
             ans = ans * ims[w]
         return ans
-        
     
 def euler_cocycle_of_relation(rho, rel):
-    """
-    Not sure where the sign comes from, but hey. 
-    """
     if isinstance(rho, LiftedFreeGroupRep):
         rho_til = rho
     else:
         rho_til = LiftedFreeGroupRep(rho)
     R_til = rho_til(rel)
     assert R_til.is_central()
-    return -R_til.s
+    return R_til.s
     
-
 def thurston_cocycle_of_relation(rho, rel):
     assert len(rel) > 2
     ans, g = [], rho(rel[0])
