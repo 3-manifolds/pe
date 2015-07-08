@@ -8,6 +8,7 @@ if _within_sage:
     from sage.all import RealField, ComplexField, MatrixSpace, ZZ, vector, matrix, pari, arg
     eigenvalues =  lambda A: A.charpoly().roots(CC, False)
     Id2 = MatrixSpace(ZZ, 2)(1)
+    complex_I = lambda R: R.gen()
 else:
     from cypari.gen import pari
     from snappy.number import Number, SnapPyNumbers
@@ -16,6 +17,7 @@ else:
     Id2 = matrix(1,0,0,1)
     RealField = SnapPyNumbers
     ComplexField = SnapPyNumbers
+    complex_I = lambda R: R.I()
     def arg(x):
         if isinstance(x, Number):
             return x.arg()
@@ -197,7 +199,7 @@ def normalizer_wrt_target_meridian_holonomy(meridian_matrix, target):
     target_arg += -target_arg.floor()
     other = 1 - current
     if abs(other - target_arg) < abs(current - target_arg):
-        I = CC.gen()
+        I = complex_I(CC)
         C =  matrix(CC, [[I, 0], [0, -I]])
     else:
         C = matrix(CC, [[1, 0], [0, 1]])

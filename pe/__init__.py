@@ -20,6 +20,8 @@ from fibrator import Fibrator
 from point import PEPoint
 from shape import Shapes, PolishedShapes, U1Q
 from plot import MatplotPlot as Plot
+from complex_reps import PSL2CRepOf3ManifoldGroup
+from real_reps import PSL2RRepOf3ManifoldGroup
 
 # Check if we are running in Sage
 try:
@@ -27,7 +29,6 @@ try:
     got_sage = True
 except ImportError:
     got_sage = False
-
 
 class CircleElevation:
     """A family of fibers for the meridian holonomy map, lying above the
