@@ -1,5 +1,6 @@
 from . import Plot
-from .real_reps import (PSL2RRepOf3ManifoldGroup, translation_amount, CouldNotConjugateIntoPSL2R)
+from .real_reps import (PSL2RRepOf3ManifoldGroup, translation_amount,
+                        CouldNotConjugateIntoPSL2R)
 from .shape import U1Q
 from .euler import euler_cocycle_of_relation, PSL2RtildeElement, LiftedFreeGroupRep
 from snappy import CensusKnots
@@ -70,7 +71,7 @@ class SL2RLifter:
             reps = []
             for sn,  S in arc:
                 s, n = sn
-                target = U1Q(-n, self.order, bits_prec=1000)
+                target = U1Q(-n, self.order, precision=1000)
                 try:
                     rho = PSL2RRepOf3ManifoldGroup(
                         self.elevation.manifold,

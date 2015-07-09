@@ -144,7 +144,10 @@ def conjugate_into_PSL2R(rho, max_error, depth=7):
     raise CouldNotConjugateIntoPSL2R
 
 def elliptic_fixed_point(A):
-    assert A.trace().abs() <= 2.0, 'Please make sure you have not changed the generators!'
+    if A.trace().abs() == 2.0:
+        # weird stuff happens if we have equality here.
+        raise CouldNotConjugateIntoPSL2R
+    assert A.trace().abs() < 2.0, 'Please make sure you have not changed the generators!'
     CC = complex_field(A.base_ring())
     x = pari('x')
     a, b, c, d = [pari(z) for z in A.list()]
@@ -175,7 +178,7 @@ def elliptic_rotation_angle(A):
     a, b, c, d = A.list()
     derivative = 1/(c*z + d)**2
     pi = A.base_ring().pi()
-    r = arg(derivative)
+    r = -arg(derivative)
     if r < 0:
         r = r + 2*pi
     return r/(2*pi)
@@ -189,7 +192,7 @@ def rot(R, t, s):
     return euler.PSL2RtildeElement(A, s)
 
 def shift_of_central(A_til):
-    assert A_til.is_central(), 'Central element does not seem to be in the center.'
+    assert A_til.is_central(), "Central element isn't really central."
     return A_til.s
 
 def normalizer_wrt_target_meridian_holonomy(meridian_matrix, target):
