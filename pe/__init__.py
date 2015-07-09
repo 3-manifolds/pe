@@ -26,7 +26,7 @@ from real_reps import PSL2RRepOf3ManifoldGroup
 # Check if we are running in Sage
 try:
     import sage
-    from sl2R_lifting import SL2RLifter
+    from SL2R_lifting import SL2RLifter
     got_sage = True
 except ImportError:
     got_sage = False
