@@ -6,9 +6,10 @@ from . import euler
 from euler import wedge, orientation
 if _within_sage:
     from sage.all import RealField, ComplexField, MatrixSpace, ZZ, vector, matrix, pari, arg
-    eigenvalues =  lambda A: A.charpoly().roots(CC, False)
+    eigenvalues =  lambda A: A.charpoly().roots(A.base_ring(), False)
     Id2 = MatrixSpace(ZZ, 2)(1)
     complex_I = lambda R: R.gen()
+    complex_field = lambda R: R.complex_field()
 else:
     from cypari.gen import pari
     from snappy.number import Number, SnapPyNumbers
@@ -18,6 +19,7 @@ else:
     RealField = SnapPyNumbers
     ComplexField = SnapPyNumbers
     complex_I = lambda R: R.I()
+    complex_field = lambda R: R
     def arg(x):
         if isinstance(x, Number):
             return x.arg()
@@ -143,14 +145,14 @@ def conjugate_into_PSL2R(rho, max_error, depth=7):
 
 def elliptic_fixed_point(A):
     assert A.trace().abs() <= 2.0, 'Please make sure you have not changed the generators!'
-    RR = A.base_ring()
+    CC = complex_field(A.base_ring())
     x = pari('x')
     a, b, c, d = [pari(z) for z in A.list()]
     p = c*x*x + (d - a)*x - b
     if p == 0:
-        return complex_I(RR)
-    fp = max(p.polroots(precision=RR.precision()), key=lambda z: z.imag())
-    return RR(fp)
+        return complex_I(CC)
+    fp = max(p.polroots(precision=CC.precision()), key=lambda z: z.imag())
+    return CC(fp)
 
 # Preserved for testing
 def Sage_elliptic_fixed_point(A):
@@ -192,10 +194,11 @@ def shift_of_central(A_til):
 
 def normalizer_wrt_target_meridian_holonomy(meridian_matrix, target):
     current = elliptic_rotation_angle(meridian_matrix)
-    CC = current.parent()
+    RR = current.parent()
+    CC = complex_field(current.parent())
     target = CC(target)
     target_arg = arg(target)
-    target_arg *= 1/(2*CC.pi())
+    target_arg *= 1/(2*RR.pi())
     target_arg += -target_arg.floor()
     other = 1 - current
     if abs(other - target_arg) < abs(current - target_arg):
@@ -304,26 +307,6 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
             else:
                 return False in [x == 0 for x in self.euler_class()]
 
-    def lift_on_cusped_manifold(rho):
-        rel_cutoff = len(rho.generators()) - 1
-        rels = rho.relators()[:rel_cutoff ]
-        euler_cocycle = [euler.euler_cocycle_of_relation(rho, R) for R in rels]
-        D = rho.coboundary_1_matrix()[:rel_cutoff]
-        M = matrix([euler_cocycle] + D.columns())
-        k = M.left_kernel().basis()[0]
-        if k[0] != 1:
-            # Two reasons we could be here: the euler class isn't zero or
-            # the implicit assumption about how left_kernel works is violated.
-            # Only the latter is actually worrysome.
-            if D.elementary_divisors() == M.transpose().elementary_divisors():
-                raise AssertionError('Need better implementation, Nathan')
-            else:
-                return 
-        shifts = (-k)[1:]
-        good_lifts = [euler.PSL2RtildeElement(rho(g), s)
-                      for g, s in zip(rho.generators(), shifts)]
-        rho_til= euler.LiftedFreeGroupRep(rho, good_lifts)
-        return rho_til
 
 if __name__ == '__main__':
     import doctest

@@ -26,6 +26,7 @@ from real_reps import PSL2RRepOf3ManifoldGroup
 # Check if we are running in Sage
 try:
     import sage
+    from sl2R_lifting import SL2RLifter
     got_sage = True
 except ImportError:
     got_sage = False
@@ -330,7 +331,7 @@ class PEArc(list):
 class PECharVariety:
     def __init__(self, manifold, order=128, radius=1.02,
                  elevation=None, base_dir='PE_base_fibers', hint_dir='hints'):
-        if isinstance(manifold, Manifold):
+        if isinstance(manifold, (Manifold, ManifoldHP)):
             self.manifold = manifold
         else:
             self.manifold = Manifold(manifold)

@@ -20,12 +20,10 @@ if _within_sage:
 else:
     from snappy.SnapPy import Number
 
-def U1Q(p, q, dec_prec=None, bits_prec=212):
+def U1Q(p, q, precision=212):
     """An arbitrarily precise value for exp(2πip/q)"""
-    if dec_prec is not None:
-        bits_prec = gen.prec_dec_to_bits(dec_prec)
-    result = (2*pari.pi(precision=bits_prec)*p*pari('I')/q).exp(precision=bits_prec)
-    return Number(result, precision=bits_prec)
+    result = (2*pari.pi(precision=precision)*p*pari('I')/q).exp(precision=precision)
+    return Number(result, precision=precision)
 
 def pari_set_precision(x, dec_prec):
     return pari(0) if x == 0 else pari(x).precision(dec_prec)
@@ -47,10 +45,11 @@ class Shapes(object):
     Instantiate with a sequence of complex numbers.
     """
     def __init__(self, manifold, values=None, tolerance=1.0E-6):
-        if isinstance(manifold, snappy.ManifoldHP):
-            self.hp_manifold = manifold
-        else:
-            self.hp_manifold = manifold.high_precision()
+        self.manifold = manifold
+        # if isinstance(manifold, snappy.ManifoldHP):
+        #     self.hp_manifold = manifold
+        # else:
+        #     self.hp_manifold = manifold.high_precision()
         if values is None:
             values = [complex128(z) for z in manifold.tetrahedra_shapes('rect')]
         self.array = array(values)
@@ -81,18 +80,18 @@ class Shapes(object):
                  )
 
     def SL2C(self, word):
-        self.hp_manifold.set_tetrahedra_shapes(self.array, None, [(0,0)])
-        G = self.hp_manifold.fundamental_group()
+        self.manifold.set_tetrahedra_shapes(self.array, None, [(0,0)])
+        G = self.manifold.fundamental_group()
         return G.SL2C(word)
 
     def O31(self, word):
-        self.hp_manifold.set_tetrahedra_shapes(self.array, None, [(0,0)])
-        G = self.hp_manifold.fundamental_group()
+        self.manifold.set_tetrahedra_shapes(self.array, None, [(0,0)])
+        G = self.manifold.fundamental_group()
         return G.O31(word)
 
     def has_real_traces(self):
         tolerance = 1.0E-10
-        gens = self.hp_manifold.fundamental_group().generators()
+        gens = self.manifold.fundamental_group().generators()
         gen_mats = [self.SL2C(g) for g in gens]
         for A in gen_mats:
             tr = complex(A[0,0] + A[1,1])
@@ -112,7 +111,7 @@ class Shapes(object):
         
     def in_SU2(self):
         tolerance = 1.0E-5
-        gens = self.hp_manifold.fundamental_group().generators()
+        gens = self.manifold.fundamental_group().generators()
         # Check that all generators have real trace in [-2,2]
         for X in [self.SL2C(g) for g in gens]:
             tr = complex(X[0,0] + X[1,1])
@@ -172,7 +171,7 @@ class PolishedShapes(object):
     >>> M.high_precision().tetrahedra_shapes('rect')[0].real()
     0.94501569508040449844398481070855256180052530814866749781491
     >>> M = snappy.Manifold('m071(7,0)')
-    >>> beta = PolishedShapes(Shapes(M), U1Q(1,7, bits_prec=256), bits_prec=256)
+    >>> beta = PolishedShapes(Shapes(M), U1Q(1,7, precision=256), precision=256)
     >>> beta[0].real()
     1.78068392631530372708547775577353937466128526916049412782747357929395329299446
     >>> M.high_precision().tetrahedra_shapes('rect')[0].real()
@@ -180,17 +179,17 @@ class PolishedShapes(object):
 
     """
     def __init__(self, rough_shape, target_holonomy, tolerance=1.0E-6,
-                 dec_prec=None, bits_prec=212, ignore_solution_type=False):
+                 dec_prec=None, precision=212, ignore_solution_type=False):
         if dec_prec is None:
-            dec_prec = prec_bits_to_dec(bits_prec)
+            dec_prec = prec_bits_to_dec(precision)
         else:
-            bits_prec = prec_dec_to_bits(dec_prec)
+            precision = prec_dec_to_bits(dec_prec)
         working_prec = dec_prec + 10
         target_espilon = pari_set_precision(10.0, working_prec)**-dec_prec
         det_epsilon = pari_set_precision(10.0, working_prec)**-(dec_prec//10)
         init_shapes = pari_column_vector(
             [complex_to_pari(z, working_prec) for z in rough_shape.array])
-        self.manifold = manifold = rough_shape.hp_manifold.copy()
+        self.manifold = manifold = rough_shape.manifold.copy()
         manifold.dehn_fill( (1, 0) ) 
         init_equations = manifold.gluing_equations('rect')
         target = pari_complex(target_holonomy, dec_prec)
@@ -228,7 +227,7 @@ class PolishedShapes(object):
         if error > 1000*target_espilon or total_change > pari(0.0000001):
             raise GoodShapesNotFound('Failed to find solution')
         shapes = pari_vector_to_list(shapes)
-        self.shapelist = [Number(z, precision=bits_prec) for z in shapes]
+        self.shapelist = [Number(z, precision=precision) for z in shapes]
 
     def __getitem__(self, index):
         return self.shapelist[index]

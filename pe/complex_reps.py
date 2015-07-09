@@ -11,11 +11,13 @@ from snappy.snap.polished_reps import (initial_tet_ideal_vertices,
 if _within_sage:
     from sage.all import vector, matrix, MatrixSpace, ZZ, RR, CC, pari
     Id2 = MatrixSpace(ZZ, 2)(1)
+    coboundary_matrix = matrix
 else:
     import snappy
     from snappy.number import Number
     from snappy.snap.utilities import Matrix2x2 as matrix
     from cypari.gen import pari
+    coboundary_matrix = pari.matrix
     Id2 = matrix(1,0,0,1)
     RR = Number
 
@@ -68,21 +70,21 @@ def apply_representation(word, gen_images):
     return prod( [rho[g] for g in word], Id2)
 
 def polished_holonomy(M, target_meridian_holonomy,
-                         bits_prec=100,
+                         precision=100,
                          fundamental_group_args=(True, False, True),
                          lift_to_SL2 = True,
                          ignore_solution_type=False,
                          dec_prec=None):
 
     if dec_prec:
-        bits_prec = None
+        precision = None
         error = pari(10.0)**(-dec_prec*0.8)
     else:
-        error = pari(2.0)**(-bits_prec*0.8)
+        error = pari(2.0)**(-precision*0.8)
 
     try:
         shapes = PolishedShapes(Shapes(M), target_meridian_holonomy,
-                                bits_prec=bits_prec, dec_prec=dec_prec).shapelist
+                                precision=precision, dec_prec=dec_prec).shapelist
     except GoodShapesNotFound:
         raise CheckRepresentationFailed
     
@@ -166,7 +168,7 @@ class PSL2CRepOf3ManifoldGroup:
             else:
                 G = polished_holonomy(self.manifold,
                                 self.target_meridian_holonomy,
-                                bits_prec=precision,
+                                precision=precision,
                                 fundamental_group_args=self.fundamental_group_args,
                                 lift_to_SL2=False,
                                 ignore_solution_type=True)
@@ -242,7 +244,7 @@ class PSL2CRepOf3ManifoldGroup:
         # coP maps Free(gens)* -> Free(rels)*
         coP = [[r.count(g) - r.count(g.swapcase()) for g in gens] for r in rels]
         entries = list(chain(*coP))
-        return pari.matrix(len(rels), len(gens), entries)
+        return coboundary_matrix(len(rels), len(gens), entries)
 
     def H2(self):
         """
