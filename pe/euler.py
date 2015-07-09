@@ -182,13 +182,16 @@ class LiftedFreeGroupRep:
         return ans
     
 def euler_cocycle_of_relation(rho, rel):
+    """
+    Not sure where the sign comes from, but hey. 
+    """
     if isinstance(rho, LiftedFreeGroupRep):
         rho_til = rho
     else:
         rho_til = LiftedFreeGroupRep(rho)
     R_til = rho_til(rel)
     assert R_til.is_central()
-    return R_til.s
+    return -R_til.s
     
 def thurston_cocycle_of_relation(rho, rel):
     assert len(rel) > 2
