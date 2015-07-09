@@ -69,7 +69,7 @@ def apply_representation(word, gen_images):
 
 def polished_holonomy(M, target_meridian_holonomy,
                          bits_prec=100,
-                         fundamental_group_args = [],
+                         fundamental_group_args=(True, False, True),
                          lift_to_SL2 = True,
                          ignore_solution_type=False,
                          dec_prec=None):
@@ -216,9 +216,13 @@ class PSL2CRepOf3ManifoldGroup:
 
     def peripheral_curves(self):
         M = self.manifold
-        if False in M.cusp_info('is_complete'):
-            M = M.copy()
-            M.dehn_fill([(0,0) for n in range(M.num_cusps())])
+        #   Warning: Changing the fundamental group args from the default (True,False,True)
+        #   can lead to cases where the saved meridian word is expressed in terms of
+        #   different generators than are actually being used.  Something like this code
+        #   might be necessary ...
+        #        if False in M.cusp_info('is_complete'):
+        #            M = M.copy()
+        #            M.dehn_fill([(0,0) for n in range(M.num_cusps())])
         return M.fundamental_group(*self.fundamental_group_args).peripheral_curves()
 
     def meridian(self):
