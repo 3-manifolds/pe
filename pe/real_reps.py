@@ -62,15 +62,15 @@ def right_kernel_two_by_two(A):
     """
     prec = A.base_ring().precision()
     epsilon = (2.0)**(-0.8*prec)
-    assert A.determinant().abs() < epsilon
+    assert A.determinant().abs() < epsilon, 'Matrix looks non-singular'
     a, b = max(A.rows(), key=lambda v:v.norm())
     v = vector([1, -a/b]) if b.abs() > a.abs() else vector([-b/a, 1])
-    assert (A*v).norm() < epsilon
+    assert (A*v).norm() < epsilon, 'Supposed kernel vector is not in the kernel.'
     return (1/v.norm())*v
     
 def eigenvectors(A):
     """
-    Returns the two eigenvectors of a loxodromic matrix A
+    Returns the two eigenvectors of a loxodromic matrix A.
     """
     CC = A.base_ring()
     return [right_kernel_two_by_two(A-eigval) for eigval in A.charpoly().roots(CC, False)]
@@ -137,22 +137,22 @@ def conjugate_into_PSL2R(rho, max_error, depth=7):
                 C =  conjugator_into_PSL2R(U, V)
                 new_mats = [GL2C_inverse(C) * rho(g) * C for g in gens]
                 final_mats, error = real_part_of_matrices_with_error(new_mats)
-                assert error < max_error
+                assert error < max_error, 'Matrices do not seem to be real.'
                 return final_mats
     raise CouldNotConjugateIntoPSL2R
 
 def elliptic_fixed_point(A):
-    assert A.trace().abs() <= 2.0
+    assert A.trace().abs() <= 2.0, 'Please make sure you have not changed the generators!'
     RR = A.base_ring()
     x = pari('x')
     a, b, c, d = [pari(z) for z in A.list()]
     p = c*x*x + (d - a)*x - b
     if p == 0:
-        return R(pari('I'))
+        return complex_I(RR)
     fp = max(p.polroots(precision=RR.precision()), key=lambda z: z.imag())
     return RR(fp)
 
-# Preserve for testing
+# Preserved for testing
 def Sage_elliptic_fixed_point(A):
     assert abs(A.trace()) < 2.0
     RR = A.base_ring()
@@ -187,7 +187,7 @@ def rot(R, t, s):
     return euler.PSL2RtildeElement(A, s)
 
 def shift_of_central(A_til):
-    assert A_til.is_central()
+    assert A_til.is_central(), 'Central element does not seem to be in the center.'
     return A_til.s
 
 def normalizer_wrt_target_meridian_holonomy(meridian_matrix, target):
@@ -211,7 +211,7 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
     >>> M = snappy.Manifold('m004(3,2)')
     >>> M.set_peripheral_curves('fillings')
     >>> shapes = [0.48886560625734599, 0.25766090533555303]
-    >>> rho = PSL2RRepOf3ManifoldGroup(M, 1.0, shapes, 250, [False, True, False])
+    >>> rho = PSL2RRepOf3ManifoldGroup(M, 1.0, shapes, 250)
     >>> rho
     <m004(1,0): [0.48887, 0.25766]>
     >>> rho.representation_lifts()
@@ -221,7 +221,7 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
                  target_meridian_holonomy=None,
                  rough_shapes=None,
                  precision=None,
-                 fundamental_group_args=tuple()):
+                 fundamental_group_args=(True, False, True)):
         if isinstance(rep_or_manifold, PSL2CRepOf3ManifoldGroup):
             rep = rep_or_manifold
         else:
