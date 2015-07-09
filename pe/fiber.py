@@ -11,13 +11,13 @@ class Fiber:
     """
     def __init__(self, manifold, H_meridian, gluing_system=None,
                  PHCsystem=None, shapes=None, tolerance=1.0E-05):
-        self.hp_manifold = manifold.high_precision()
+        self.manifold = manifold
         # Here the tolerance is used to determine which of the PHC solutions
         # are at infinity.
         self.H_meridian = H_meridian
         self.tolerance = tolerance
         if shapes:
-            self.shapes = [Shapes(self.hp_manifold, S) for S in shapes]
+            self.shapes = [Shapes(self.manifold, S) for S in shapes]
         if gluing_system is None:
             self.gluing_system = GluingSystem(manifold)
         else:
@@ -30,11 +30,11 @@ class Fiber:
         N = self.system.num_variables()/2
         self.solutions = self.system.solution_list(tolerance=self.tolerance)
         # We only keep the "X" variables.
-        self.shapes = [Shapes(self.hp_manifold, S.point[:N]) for S in self.solutions]
+        self.shapes = [Shapes(self.manifold, S.point[:N]) for S in self.solutions]
 
     def __repr__(self):
         return "Fiber(ManifoldHP('%s'),\n%s,\nshapes=%s\n)"%(
-            repr(self.hp_manifold),
+            repr(self.manifold),
             repr(self.H_meridian),
             repr([list(x) for x in self.shapes]).replace('],','],\n')
             )
@@ -121,7 +121,7 @@ class Fiber:
         # Not used.
         target_system = self.parametrized_system.transport(
             self.system, target_holonomy, allow_collisions)
-        return Fiber(self.hp_manifold, target_holonomy, PHCsystem=self.system,
+        return Fiber(self.manifold, target_holonomy, PHCsystem=self.system,
                      gluing_system=self.gluing_system)
 
     def transport(self, target_holonomy, allow_collisions=False, debug=False):
@@ -139,7 +139,7 @@ class Fiber:
                                               dT=dT,
                                               debug=debug)
                 shapes.append(Zn)
-            result = Fiber(self.hp_manifold, target_holonomy,
+            result = Fiber(self.manifold, target_holonomy,
                            gluing_system=self.gluing_system,
                            shapes=shapes)
             if result.collision():
@@ -148,9 +148,9 @@ class Fiber:
                 break
         return result
 
-    def polished_shape(self, n, target_holonomy=None, dec_prec=None, bits_prec=200):
+    def polished_shape(self, n, target_holonomy=None, dec_prec=None, precision=200):
         if target_holonomy is None:
             target_holonomy = self.H_meridian
         return PolishedShapes(self[n], target_holonomy,
-                             dec_prec=dec_prec, bits_prec=bits_prec)
+                             dec_prec=dec_prec, precision=precision)
 
