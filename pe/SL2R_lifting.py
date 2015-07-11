@@ -1,4 +1,4 @@
-from . import Plot
+from .plot import MatplotPlot as Plot
 from .real_reps import (PSL2RRepOf3ManifoldGroup, translation_amount,
                         CouldNotConjugateIntoPSL2R)
 from .shape import U1Q
