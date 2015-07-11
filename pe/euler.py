@@ -18,7 +18,7 @@ that the RHS being cbar(g1, g2)
 
 
 """
-from snappy import _within_sage
+from .sage_helper import _within_sage
 if _within_sage:
     # Switching to the below causes crashes elsewhere. Weird.
     # from sage.all import matrix, vector, sqrt, arccos, floor, cos, sin

@@ -1,10 +1,10 @@
 import time, sys, os, Tkinter, numpy, math, collections
 from subprocess import Popen, PIPE
 try:
-    from tkplot import MatplotFigure, Tk, ttk
+    from .tkplot import MatplotFigure, Tk, ttk
 except ImportError:
     pass
-from point import PEPoint
+from .point import PEPoint
 from collections import defaultdict
 
 class Plot:

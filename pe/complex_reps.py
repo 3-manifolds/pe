@@ -1,13 +1,14 @@
 import random, string
 from itertools import chain
 from .shape import Shapes, PolishedShapes, GoodShapesNotFound
-from snappy import _within_sage
+from .sage_helper import _within_sage
 from snappy.snap import  generators
 from snappy.snap.polished_reps import (initial_tet_ideal_vertices,
                                        reconstruct_representation,
                                        clean_matrix,
                                        ManifoldGroup,
                                        prod)
+
 if _within_sage:
     from sage.all import vector, matrix, MatrixSpace, ZZ, RR, CC, pari
     Id2 = MatrixSpace(ZZ, 2)(1)

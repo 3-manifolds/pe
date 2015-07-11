@@ -1,4 +1,4 @@
-from snappy import _within_sage
+from .sage_helper import _within_sage
 from .complex_reps import (PSL2CRepOf3ManifoldGroup, polished_holonomy,
                          apply_representation, GL2C_inverse, SL2C_inverse,
                          CheckRepresentationFailed, conjugacy_classes_in_Fn)

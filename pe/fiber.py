@@ -1,6 +1,6 @@
 import numpy
-from gluing import GluingSystem
-from shape import Shapes
+from .gluing import GluingSystem
+from .shape import Shapes
 
 class Fiber:
     """A fiber for the rational function [holonomy of the meridian]

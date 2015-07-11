@@ -14,22 +14,18 @@ snappy.SnapPy.matrix = matrix
 snappy.SnapPyHP.matrix = matrix
 from snappy import *
 from spherogram.graphs import Graph
-from gluing import Glunomial, GluingSystem
-from fiber import Fiber
-from fibrator import Fibrator
-from point import PEPoint
-from shape import Shapes, PolishedShapes, U1Q
-from plot import MatplotPlot as Plot
-from complex_reps import PSL2CRepOf3ManifoldGroup
-from real_reps import PSL2RRepOf3ManifoldGroup
+from .gluing import Glunomial, GluingSystem
+from .fiber import Fiber
+from .fibrator import Fibrator
+from .point import PEPoint
+from .shape import Shapes, PolishedShapes, U1Q
+from .plot import MatplotPlot as Plot
+from .complex_reps import PSL2CRepOf3ManifoldGroup
+from .real_reps import PSL2RRepOf3ManifoldGroup
+from .sage_helper import _within_sage
 
-# Check if we are running in Sage
-try:
-    import sage
+if _within_sage:
     from SL2R_lifting import SL2RLifter
-    got_sage = True
-except ImportError:
-    got_sage = False
 
 class CircleElevation:
     """A family of fibers for the meridian holonomy map, lying above the
