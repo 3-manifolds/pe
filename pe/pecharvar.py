@@ -6,9 +6,7 @@ import numpy
 from numpy import array, matrix, ndarray
 from numpy import dot, prod, diag, transpose, zeros, ones, eye
 from numpy import log, exp, pi, sqrt, ceil
-from numpy import dtype, take, arange, sum, where, vstack, argmin
-from numpy import float64
-from numpy.linalg import svd, norm, eig, solve, lstsq, matrix_rank
+from numpy import arange, argmin, float64
 import snappy
 snappy.SnapPy.matrix = matrix
 snappy.SnapPyHP.matrix = matrix
