@@ -2,11 +2,7 @@
 
 import time, sys, os
 from random import randint
-import numpy
-from numpy import array, matrix, ndarray
-from numpy import dot, prod, diag, transpose, zeros, ones, eye
-from numpy import log, exp, pi, sqrt, ceil
-from numpy import arange, argmin, float64
+from numpy import arange, argmin, array, dot, float64, matrix, log, exp, pi, sqrt, ceil, zeros
 import snappy
 snappy.SnapPy.matrix = matrix
 snappy.SnapPyHP.matrix = matrix
