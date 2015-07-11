@@ -1,6 +1,9 @@
 import os, time
 from gluing import GluingSystem
-from phc import PolyRing, PHCPoly, PHCSystem, ParametrizedSystem
+try:
+    from phc import PolyRing, PHCPoly, PHCSystem, ParametrizedSystem
+except ImportError:
+    print('No phc module, so will only work with precomputed fibers')
 from fiber import Fiber
 from snappy import Manifold, ManifoldHP
 
