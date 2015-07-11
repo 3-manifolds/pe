@@ -47,11 +47,15 @@ class PointInP1R():
                 v = vector(R, (1, 0) )
             else:
                 v = vector(R, (theta.cos(), theta.sin()))
-
-        self.v = self.normalize(vector(v))
+            
+        else:
+            v = self.normalize(v)
+        self.v = v
 
     def normalize(self, v):
-        v = v/v.norm()
+        a, b = v
+        norm = sqrt(a**2 + b**2)
+        v = vector((a/norm, b/norm)) 
         if v[1] < 0:
             v = -v
         R = v.base_ring()
