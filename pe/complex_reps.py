@@ -13,12 +13,19 @@ if _within_sage:
     from sage.all import vector, matrix, MatrixSpace, ZZ, RR, CC, pari
     Id2 = MatrixSpace(ZZ, 2)(1)
     coboundary_matrix = matrix
+    elementary_divisors = lambda M: M.elementary_divisors()
+    smith_normal_form = lambda M: M.smith_form()
 else:
     import snappy
     from snappy.number import Number
     from snappy.snap.utilities import Matrix2x2 as matrix
     from cypari.gen import pari
     coboundary_matrix = pari.matrix
+    elementary_divisors = lambda M: M.matsnf()
+    def smith_normal_form(M):
+        U, V, D = M.matsnf(flag=1)
+        # Sage returns D, U, V and Pari returns U, V, D
+        return D, U, V
     Id2 = matrix(1,0,0,1)
     RR = Number
 
@@ -253,10 +260,10 @@ class PSL2CRepOf3ManifoldGroup:
         zero map. 
         """
         if not 'smith_form' in self._cache:
-            self._cache['smith_form'] = self.coboundary_1_matrix().matsnf(flag=1)
-        U, V, D = self._cache['smith_form'] # D = U*coP*V  
-        elementary_divisors = D.matsnf()
-        ans = [d for d in elementary_divisors if d != 1]
+            self._cache['smith_form'] = smith_normal_form(self.coboundary_1_matrix())
+        D, U, V = self._cache['smith_form'] # D = U*coP*V  
+        ed = elementary_divisors(D)
+        ans = [d for d in ed if d != 1]
         return ans
 
     def has_2_torsion_in_H2(self):
@@ -265,13 +272,13 @@ class PSL2CRepOf3ManifoldGroup:
 
     def class_in_H2(self, cocycle):
         self.H2()
-        U, V, D = self._cache['smith_form']
+        D, U, V = self._cache['smith_form']
         # U rewrites relators in the smith basis
-        elementary_divisors = list(D.matsnf())
+        ed = elementary_divisors(D)
         co = pari(cocycle).mattranspose()
         ans = []
         coeffs = list(U*co[:][0])
-        for c, d in zip(coeffs, elementary_divisors):
+        for c, d in zip(coeffs, list(ed)):
             if d != 1:
                 a = c if d == 0 else c % d
                 ans.append(a)
