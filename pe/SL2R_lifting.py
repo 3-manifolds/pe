@@ -71,6 +71,11 @@ class SL2RLifter:
             reps = []
             for sn,  S in arc:
                 s, n = sn
+                # Skipping reps which send the meridian to a parabolic
+                # makes for more beautiful pictures, due to the ambiguity
+                # of the translation length.  (Is it 0 or 1?)
+                if n == 0:
+                    continue
                 target = U1Q(-n, self.order, precision=1000)
                 try:
                     rho = PSL2RRepOf3ManifoldGroup(
@@ -91,7 +96,7 @@ class SL2RLifter:
         for arc in self.SL2R_rep_arcs:
             translations = []
             for sn, rho in arc:
-                rho.translations = None
+                rho.translations = None 
                 meridian, longitude = rho.polished_holonomy().peripheral_curves()[0]
                 rho_til = lift_on_cusped_manifold(rho)
                 if rho_til is None:

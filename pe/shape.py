@@ -15,7 +15,7 @@ real_array = numpy.vectorize(float)
 if _within_sage:
     from sage.all import exp, CC, ComplexField, pari
     def Number(z, precision=212):
-        CC = ComplexField(precision+1)
+        CC = ComplexField(precision)
         return CC(z)
 else:
     from snappy.SnapPy import Number
@@ -166,16 +166,16 @@ class PolishedShapes(object):
     >>> rough[0]
     (0.94501569508040595+1.0738656547982881j)
     >>> polished = PolishedShapes(rough, target_holonomy=1.0)
-    >>> polished[0].real()
-    0.945015695080404498443984810708552561800525308148667497814911662
-    >>> M.high_precision().tetrahedra_shapes('rect')[0].real()
-    0.94501569508040449844398481070855256180052530814866749781491
+    >>> print '%.60s'%polished[0].real()
+    0.9450156950804044984439848107085525618005253081486674978149
+    >>> print '%.60s'%M.high_precision().tetrahedra_shapes('rect')[0].real()
+    0.9450156950804044984439848107085525618005253081486674978149
     >>> M = snappy.Manifold('m071(7,0)')
     >>> beta = PolishedShapes(Shapes(M), U1Q(1,7, precision=256), precision=256)
-    >>> beta[0].real()
-    1.78068392631530372708547775577353937466128526916049412782747357929395329299446
-    >>> M.high_precision().tetrahedra_shapes('rect')[0].real()
-    1.78068392631530372708547775577353937466128526916049412782747
+    >>> print '%.60s'%beta[0].real()
+    1.7806839263153037270854777557735393746612852691604941278274
+    >>> print '%.60s'%M.high_precision().tetrahedra_shapes('rect')[0].real()
+    1.7806839263153037270854777557735393746612852691604941278274
 
     """
     def __init__(self, rough_shape, target_holonomy, tolerance=1.0E-6,

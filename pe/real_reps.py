@@ -144,11 +144,8 @@ def conjugate_into_PSL2R(rho, max_error, depth=7):
     raise CouldNotConjugateIntoPSL2R
 
 def elliptic_fixed_point(A):
-    if A.trace().abs() == 2.0:
-        # Although this computation works when A is parabolic, we will have trouble
-        # with the plot, since we can't decide which integer translation to assign.
-        raise CouldNotConjugateIntoPSL2R("parabolic meridian")
-    assert A.trace().abs() < 2.0, 'Please make sure you have not changed the generators!'
+    # In spite of the name of this function, we actually allow A to be parabolic.
+    assert A.trace().abs() <= 2.0, 'Please make sure you have not changed the generators!'
     CC = complex_field(A.base_ring())
     x = pari('x')
     a, b, c, d = [pari(z) for z in A.list()]
