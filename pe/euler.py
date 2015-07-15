@@ -18,7 +18,7 @@ that the RHS being cbar(g1, g2)
 
 
 """
-from .sage_helper import _within_sage
+from .sage_helper import _within_sage, get_pi
 if _within_sage:
     # Switching to the below causes crashes elsewhere. Weird.
     # from sage.all import matrix, vector, sqrt, arccos, floor, cos, sin
@@ -42,7 +42,7 @@ class PointInP1R():
     def __init__(self, v=None, t=None):
         if t != None:
             R = t.parent()
-            theta = (t - t.floor())*R.pi()
+            theta = (t - t.floor())*get_pi(R)
             if theta == 0:
                 v = vector(R, (1, 0) )
             else:
@@ -69,7 +69,7 @@ class PointInP1R():
     def normalized_angle(self):
         theta = self.angle()
         R = theta.parent()
-        return theta/R.pi()
+        return theta/get_pi(R)
     
     def __repr__(self):
         return "<%.5f in P^1(R)>" % self.normalized_angle()
