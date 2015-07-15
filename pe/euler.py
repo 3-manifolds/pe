@@ -91,7 +91,7 @@ def sigma_action(A, x):
     return x.floor() + b1
 
 
-def univ_euler_cocycle(f1, f2, samples=3):
+def univ_euler_cocycle(f1, f2, samples=2):
     """
     Returns the value of the euler cocycle
     on [f1 | f2] = (1, f1, f1*f2).
@@ -165,7 +165,7 @@ class PSL2RtildeElement:
         return is_almost_identity(self.A)
 
 
-def thurston_cocycle_of_homs(f1, f2, b, samples=3):
+def thurston_cocycle_of_homs(f1, f2, b, samples=2):
     return orientation(b, f1*b, (f1*f2)*b)
 
 class LiftedFreeGroupRep:
