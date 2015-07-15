@@ -131,6 +131,9 @@ def my_matrix_norm(A):
     return max( abs(e) for e in A.list() )
     
 def is_almost_identity(A, tol=0.8):
+    # First a quick check to rule out most inputs.  
+    if abs(A[0][1]) > 1e-10 or abs(A[1][0]) > 1e-10:
+        return False
     RR = A.base_ring()
     error = min( my_matrix_norm(A - Id2),
                  my_matrix_norm(A + Id2))
