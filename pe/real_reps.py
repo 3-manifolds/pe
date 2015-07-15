@@ -1,4 +1,4 @@
-from .sage_helper import _within_sage
+from .sage_helper import _within_sage, get_pi
 from .complex_reps import (PSL2CRepOf3ManifoldGroup, polished_holonomy,
                          apply_representation, GL2C_inverse, SL2C_inverse,
                          CheckRepresentationFailed, conjugacy_classes_in_Fn)
@@ -122,8 +122,9 @@ def conjugator_into_PSL2R(A, B):
 
     return C * matrix(A.base_ring(), [[e, 0], [0, f]])
 
+
 def conjugate_into_PSL2R(rho, max_error, depth=7):
-    gens = rho.generators()
+    gens = tuple(rho.generators())
     new_mats, error = real_part_of_matrices_with_error(rho(g) for g in gens)
     if error < max_error:
         return new_mats
@@ -175,7 +176,7 @@ def elliptic_rotation_angle(A):
     
     a, b, c, d = A.list()
     derivative = 1/(c*z + d)**2
-    pi = A.base_ring().pi()
+    pi = get_pi(A.base_ring())
     r = -arg(derivative)
     if r < 0:
         r = r + 2*pi
@@ -185,7 +186,7 @@ def translation_amount(A_til):
     return elliptic_rotation_angle(A_til.A) + A_til.s
 
 def rot(R, t, s):
-    t = R.pi()*R(t)
+    t = get_pi(R)*R(t)
     A = matrix(R, [[cos(t), -sin(t)], [sin(t), cos(t)]])
     return euler.PSL2RtildeElement(A, s)
 
@@ -199,7 +200,7 @@ def normalizer_wrt_target_meridian_holonomy(meridian_matrix, target):
     CC = complex_field(current.parent())
     target = CC(target)
     target_arg = arg(target)
-    target_arg *= 1/(2*RR.pi())
+    target_arg *= 1/(2*get_pi(RR))
     target_arg += -target_arg.floor()
     other = 1 - current
     if abs(other - target_arg) < abs(current - target_arg):

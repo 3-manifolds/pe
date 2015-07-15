@@ -1,7 +1,7 @@
 import random, string
 from itertools import chain
 from .shape import Shapes, PolishedShapes, GoodShapesNotFound
-from .sage_helper import _within_sage
+from .sage_helper import _within_sage, cached_function
 from snappy.snap import  generators
 from snappy.snap.polished_reps import (initial_tet_ideal_vertices,
                                        reconstruct_representation,
@@ -37,7 +37,7 @@ def inverse_word(word):
 
 def words_in_Fn(gens, n):
     next_letter = dict()
-    sym_gens = gens + [g.swapcase() for g in gens]
+    sym_gens = list(gens) + [g.swapcase() for g in gens]
     for g in sym_gens:
         next_letter[g] = [h for h in sym_gens if h != g.swapcase()]
     if n == 1:
@@ -58,6 +58,7 @@ def is_lex_first_in_conjugacy_class(word):
             return False
     return True
 
+@cached_function
 def conjugacy_classes_in_Fn(gens, n):
     return [word for word in words_in_Fn(gens, n) if is_lex_first_in_conjugacy_class(word)]
 

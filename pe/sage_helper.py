@@ -31,6 +31,20 @@ else:
         return decorator.decorator(_sage_method, function)
 
 
+# Sage has nice caching decorators which
+
+if _within_sage:
+    from sage.misc.cachefunc import cached_function, cached_method
+else:
+    cached_function = lambda x : x
+    cached_method = lambda x : x
+
+# Stop recomputing Pi constantly
+@cached_function
+def get_pi(R):
+    return R.pi()
+
+
 # Not currently used, but could be exploited by an interpeter to hide
 # sage_methods when in plain Python.
 
