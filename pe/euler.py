@@ -44,9 +44,9 @@ class PointInP1R():
             R = t.parent()
             theta = (t - t.floor())*get_pi(R)
             if theta == 0:
-                v = vector(R, (1, 0) )
+                v = (1, 0)
             else:
-                v = vector(R, (theta.cos(), theta.sin()))
+                v = (theta.cos(), theta.sin())
             
         else:
             v = self.normalize(v)
@@ -55,13 +55,10 @@ class PointInP1R():
     def normalize(self, v):
         a, b = v
         norm = sqrt(a**2 + b**2)
-        v = vector((a/norm, b/norm)) 
-        if v[1] < 0:
-            v = -v
-        R = v.base_ring()
-        if v[0] == R(-1) and v[1] == R(0):
-            v = -v 
-        return v
+        a, b = a/norm, b/norm
+        if b < 0 or (a == -1 and b == 0):
+            a, b = -a, -b
+        return (a, b)
 
     def angle(self):
         return self.v[0].arccos()
@@ -75,7 +72,8 @@ class PointInP1R():
         return "<%.5f in P^1(R)>" % self.normalized_angle()
 
     def __rmul__(self, mat):
-        return PointInP1R(mat * self.v)
+        a, b = self.v
+        return PointInP1R( (mat[0][0]*a + mat[0][1]*b,  mat[1][0]*a + mat[1][1]*b) )
 
     def __getitem__(self, i):
         return self.v[i]
