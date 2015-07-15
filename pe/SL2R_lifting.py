@@ -6,7 +6,7 @@ from .euler import euler_cocycle_of_relation, PSL2RtildeElement, LiftedFreeGroup
 from snappy import CensusKnots
 from snappy.snap.polished_reps import MapToFreeAbelianization
 
-from sage.all import RealField, ComplexField, ZZ, log, pi, vector, matrix
+from sage.all import RealField, ComplexField, ZZ, log, pi, vector, matrix, xgcd
 from snappy.snap.nsagetools import hyperbolic_torsion
 
 
@@ -41,6 +41,27 @@ class SL2RLifter:
         if m < 0:
             m, l = -m, -l
         self.m_abelian, self.l_abelian = m, l
+
+        # We also want to be able to view things from a more homologically
+        # natural point of view.
+
+        hom_l = self.manifold.homological_longitude()
+        if abs(hom_l[1]) == 1:
+            hom_m = (1, 0)
+        else:
+            g, a, b = xgcd(*hom_l)
+            hom_m = (b, -a)
+            M = self.manifold.copy()
+            M.set_peripheral_curves([hom_m, hom_l])
+            cusp = M.cusp_info(0).shape
+            assert abs(1 + cusp) > 1 and abs(1 - cusp) > 1
+        self.hom_m = hom_m
+        self.hom_l = hom_l
+        self.hom_m_abelian = abs(self.m_abelian*hom_m[0] + self.l_abelian*hom_m[1])
+        self.change_trans_to_hom_framing = matrix([hom_m, hom_l])
+        
+        
+        
 
     def find_shapes(self):
         self.SL2R_arcs = []
@@ -112,7 +133,7 @@ class SL2RLifter:
                     self.translation_dict[sn] = P
                     rho.translations = P
                 except AssertionError:
-                    pass
+                    print "Warning: assertion failing somewhere"
             self.translation_arcs.append(translations)
 
     def show(self, add_lines=False):
@@ -123,6 +144,30 @@ class SL2RLifter:
             for edge in self.l_space_edges():
                 self.draw_line(edge, color='red')
 
+    def show_homological(self):
+        A = self.change_trans_to_hom_framing
+        m = self.hom_m_abelian
+        plotlist = []
+        for arc in self.translation_arcs:
+            reframed_arc = []
+            for t in arc:
+                x, y = A*vector(t)
+                while x < 0:
+                    x += m 
+                while x > m:
+                    x -= m
+                # Primitive way of dealing with crossing fundamental domains
+                if reframed_arc and abs(reframed_arc[-1].real - x) > 0.5:
+                    plotlist.append(reframed_arc)
+                    reframed_arc = []
+                reframed_arc.append(complex(x,y))
+            plotlist.append(reframed_arc)
+        self.plot = Plot(plotlist, title=self.manifold.name() + ' reframed')
+        # Draw longitude
+        ax = self.plot.figure.axis
+        ax.plot( (0,1), (0,0), color='green')
+        self.plot.figure.draw()
+        
     def show_slopes(self):
         M = self.elevation.manifold.copy()
         plotlist = []
