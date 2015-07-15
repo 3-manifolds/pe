@@ -85,9 +85,9 @@ def sigma_action(A, x):
     sigma(A)(0) is in [0, 1)
     """
     R = x.parent()
-    p0, p1 = A*PointInP1R( vector(R, (1,0) )), A*PointInP1R(t=x)
-    a0, a1 = p0.normalized_angle(), p1.normalized_angle()
-    b1 = a1 if a0 <= a1 else a1 + 1
+    p0, p1 = A*PointInP1R( (R(1), R(0)) ), A*PointInP1R(t=x)
+    a1 = p1.normalized_angle()
+    b1 = a1 if p0[0] >= p1[0] else a1 + 1
     return x.floor() + b1
 
 
