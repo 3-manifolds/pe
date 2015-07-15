@@ -37,17 +37,22 @@ def orientation(a, b, c):
 class PointInP1R():
     """
     A point in P^1(R), stored as a point on S^1 in R^2
-    where the angle satisfies 0 <= t < pi.  
+    where the angle satisfies 0 <= theta < pi.
+
+    Instantiate either with a point v in R^2 - 0 or a real number t
+    which is a pseudo-angle that determines the x coordinate of the
+    point.
     """
     def __init__(self, v=None, t=None):
         if t != None:
-            R = t.parent()
-            theta = (t - t.floor())*get_pi(R)
-            if theta == 0:
-                v = (1, 0)
+            if t == 0:
+                R = t.parent()
+                v = (R(1), R(0))
             else:
-                v = (theta.cos(), theta.sin())
-            
+                t = t - t.floor()
+                x = 1 - 2*t
+                y = sqrt(1 - x**2)
+                v = (x, y)            
         else:
             v = self.normalize(v)
         self.v = v
@@ -60,16 +65,11 @@ class PointInP1R():
             a, b = -a, -b
         return (a, b)
 
-    def angle(self):
-        return self.v[0].arccos()
-
-    def normalized_angle(self):
-        theta = self.angle()
-        R = theta.parent()
-        return theta/get_pi(R)
+    def pseudo_angle(self):
+        return (1-self.v[0])/2
     
     def __repr__(self):
-        return "<%.5f in P^1(R)>" % self.normalized_angle()
+        return "<%.5f in P^1(R)>" % self.pseudo_angle()
 
     def __rmul__(self, mat):
         a, b = self.v
@@ -86,7 +86,7 @@ def sigma_action(A, x):
     """
     R = x.parent()
     p0, p1 = A*PointInP1R( (R(1), R(0)) ), A*PointInP1R(t=x)
-    a1 = p1.normalized_angle()
+    a1 = p1.pseudo_angle()
     b1 = a1 if p0[0] >= p1[0] else a1 + 1
     return x.floor() + b1
 
