@@ -8,7 +8,7 @@ from snappy.snap.polished_reps import MapToFreeAbelianization
 
 from sage.all import RealField, ComplexField, ZZ, log, pi, vector, matrix, xgcd
 from snappy.snap.nsagetools import hyperbolic_torsion
-
+from time import time
 
 def in_SL2R(H, f, s):
     shape = H.T_fibers[f].shapes[s]
@@ -22,17 +22,29 @@ def in_SL2R(H, f, s):
     return True
 
 class SL2RLifter:
-    def __init__(self, V):
+    def __init__(self, V, silent=False):
+        start = time()
         self.elevation = H = V.elevation
         self.degree = H.degree
         self.order = H.order
         self.manifold = V.manifold
         self.set_peripheral_info()
+        if not silent:
+            print 'polishing shapes ... ',
         self.find_shapes()
-        print 'lifting reps'
+        if not silent:
+            now = time()
+            print '(%.2f secs)\n'%(now - start), 'lifting reps ... ',
+            start = now
         self.find_reps()
-        print 'computing translations'
+        if not silent:
+            now = time()
+            print '(%.2f secs)\n'%(now - start), 'computing translations ... ',
+            start = now
         self.find_translation_arcs()
+        if not silent:
+            now = time()
+            print '(%.2f secs)\n'%(now - start),
 
     def set_peripheral_info(self):
         G = self.manifold.fundamental_group()
@@ -59,9 +71,6 @@ class SL2RLifter:
         self.hom_l = hom_l
         self.hom_m_abelian = abs(self.m_abelian*hom_m[0] + self.l_abelian*hom_m[1])
         self.change_trans_to_hom_framing = matrix([hom_m, hom_l])
-        
-        
-        
 
     def find_shapes(self):
         self.SL2R_arcs = []
@@ -176,8 +185,8 @@ class SL2RLifter:
             for sn,  S in arc:
                 M.set_tetrahedra_shapes(S, S, [(0,0)])
                 Hm, Hl = M.cusp_info('holonomies')[0]
-                if Hm.imag != 0:
-                    slopes.append(float(-Hl.imag/Hm.imag))
+                if Hm.imag() != 0:
+                    slopes.append(float(-Hl.imag()/Hm.imag()))
                 elif len(slopes) > 1:
                     slopes.append(None)
             plotlist.append(slopes)
