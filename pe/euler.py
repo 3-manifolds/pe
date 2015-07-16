@@ -20,9 +20,7 @@ that the RHS being cbar(g1, g2)
 """
 from .sage_helper import _within_sage, get_pi
 if _within_sage:
-    # Switching to the below causes crashes elsewhere. Weird.
-    # from sage.all import matrix, vector, sqrt, arccos, floor, cos, sin
-    from sage.all import *
+    from sage.all import ZZ, matrix, vector, sqrt, floor
     Id2 = matrix(ZZ, [[1,0],[0,1]])
 else:
     from snappy.snap.utilities import Matrix2x2 as matrix, Vector2 as vector
@@ -35,13 +33,15 @@ def orientation(a, b, c):
     return cmp( wedge(a,b) * wedge(b,c) * wedge(c, a), 0)
 
 class PointInP1R():
-    """
-    A point in P^1(R), stored as a point on S^1 in R^2
-    where the angle satisfies 0 <= theta < pi.
+    """A point in P^1(R), modeled as a point on S^1 in R^2 whose polar angle
+    satisfies 0 <= theta < pi.  We view R as the universal cover of
+    P^1(R) with the covering map that sends t to the point [x : y] where
+    x = 1-2*floor(t) and y=sqrt(1-x^2).
 
-    Instantiate either with a point v in R^2 - 0 or a real number t
-    which is a pseudo-angle that determines the x coordinate of the
-    point.
+    Instantiate a PointInP1R either by providing a vector v in R^2 - 0
+    or a real number t.  In the latter case, the PointInP1R will be
+    the image of t under our universal covering map.
+
     """
     def __init__(self, v=None, t=None):
         if t != None:
@@ -65,11 +65,12 @@ class PointInP1R():
             a, b = -a, -b
         return (a, b)
 
-    def pseudo_angle(self):
+    def lift(self):
+        """The "standard" lift of this point, which lies in [0,1)"""
         return (1-self.v[0])/2
     
     def __repr__(self):
-        return "<%.5f in P^1(R)>" % self.pseudo_angle()
+        return "<[%.5f:%.5f] in P^1(R)>" % self.v
 
     def __rmul__(self, mat):
         a, b = self.v
@@ -79,52 +80,59 @@ class PointInP1R():
         return self.v[i]
 
 def sigma_action(A, x):
-    """
-    For the projective tranformation given by the matrix
-    A, there is a unique lift sigma(A) to Homeo(R) where
-    sigma(A)(0) is in [0, 1)
+    """The projective tranformation given by the matrix A has a unique
+    "standard" lift sigma_A in Homeo(R), determined by the property
+    that sigma_A(0) lies in [0, 1).
+
+    Return sigma_A(x)
+
     """
     R = x.parent()
     p0, p1 = A*PointInP1R( (R(1), R(0)) ), A*PointInP1R(t=x)
-    a1 = p1.pseudo_angle()
+    a1 = p1.lift()
     b1 = a1 if p0[0] >= p1[0] else a1 + 1
     return x.floor() + b1
 
+def eval_cocycle(A, B, AB, x):
+    """Evaluate the (theoretically constant) cocycle function at x.
 
-def univ_euler_cocycle(f1, f2, samples=2):
     """
-    Returns the value of the euler cocycle
-    on [f1 | f2] = (1, f1, f1*f2).
-    To catch potential numerical issues
-    related to cutting S^1 into [0, 1),
-    it samples the homeomorphism at several points
-    and requires that the results all agree. 
+    value = sigma_action(A, sigma_action(B, x)) - sigma_action(AB, x)
+    rounded = value.round()
+    return value, rounded
+    
+def univ_euler_cocycle(A, B, samples=3):
+    """Evaluate the euler cocycle on [A | B], the class of (1, A, A*B).
+
     """
-
-    if samples > 1:
-        data = [univ_euler_cocycle(f1, f2, samples=1) for i in range(samples)]
-        assert len(set(data)) == 1
-        return data[0]
-
-    R = f1.base_ring()
-    if is_almost_identity(f1) or is_almost_identity(f2):
-        return 0
+    R = A.base_ring()
+    AB = A*B
+    # Not doing this produces lots of artifacts.
+    if is_almost_identity(A): A = Id2
+    if is_almost_identity(B): B = Id2
+    if is_almost_identity(AB): AB = Id2
     epsilon = R(2.0)**(-R.prec()//2)
-    x = R.random_element()
-    y = sigma_action(f1, sigma_action(f2, x))
-    if is_almost_identity(f1*f2):
-        z = x
-    else:
-        z = sigma_action(f1*f2, x)
-    s = y - z
-    ans = s.round()
-    assert (s - ans).abs() < epsilon
-    return ans
+    value, rounded = eval_cocycle(A, B, AB, R(0.5))
+    if abs(value - rounded) < epsilon:
+        return rounded
+    # Uh-oh. Apparently we have run into some sort of numerical issue.
+    # We'll try sampling our "constant" function at several random points.
+    # And let's print something here to see if this ever happens:
+    print 'Trying random samples!'
+    data = set()
+    for n in xrange(samples):
+        x = R.random_element()
+        ans, rounded = eval_cocycle(A, B, AB, x)
+        if abs(ans - rounded) < epsilon:
+            data.add(rounded)
+    assert len(data) == 1
+    for ans in data:
+        return ans
 
 def my_matrix_norm(A):
-    """
-    Sage converts entries to CDF which can lead to a
-    huge loss of precision here. 
+    """Sage converts entries to doubles, which can lead to a huge loss of
+    precision here.
+
     """
     return max( abs(e) for e in A.list() )
     
@@ -139,6 +147,10 @@ def is_almost_identity(A, tol=0.8):
     return error <= epsilon
 
 class PSL2RtildeElement:
+    """An element of the central extension of SL(2,R) with center Z which
+    is determined by the universal euler cocycle.
+
+    """
     def __init__(self, A, s):
         self.A, self.s = A, s
 
@@ -164,10 +176,6 @@ class PSL2RtildeElement:
     def is_central(self):
         return is_almost_identity(self.A)
 
-
-def thurston_cocycle_of_homs(f1, f2, b, samples=2):
-    return orientation(b, f1*b, (f1*f2)*b)
-
 class LiftedFreeGroupRep:
     def __init__(self, group, images=None):
         gens = group.generators()
@@ -187,9 +195,7 @@ class LiftedFreeGroupRep:
         return ans
     
 def euler_cocycle_of_relation(rho, rel):
-    """
-    Not sure where the sign comes from, but hey. 
-    """
+    # Not sure where the sign comes from, but hey. 
     if isinstance(rho, LiftedFreeGroupRep):
         rho_til = rho
     else:
@@ -197,15 +203,18 @@ def euler_cocycle_of_relation(rho, rel):
     R_til = rho_til(rel)
     assert R_til.is_central()
     return -R_til.s
-    
+
+def eval_thurston_cocycle(A, B, p, samples=None):
+    return orientation(p, A*p, (A*B)*p)
+
 def thurston_cocycle_of_relation(rho, rel):
     assert len(rel) > 2
     ans, g = [], rho(rel[0])
     R = rho('').base_ring()
-    b = PointInP1R(t=R(0))
+    p = PointInP1R(t=R(0))
     for w in rel[1:-1]:
         h = rho(w)
-        ans.append(thurston_cocycle_of_homs(g, h, b))
+        ans.append(eval_thurston_cocycle(g, h, p))
         g = g*h
     return sum(ans)
 
