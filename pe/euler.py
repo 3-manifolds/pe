@@ -33,7 +33,8 @@ def orientation(a, b, c):
     return cmp( wedge(a,b) * wedge(b,c) * wedge(c, a), 0)
 
 class PointInP1R():
-    """A point in P^1(R), modeled as a point on S^1 in R^2 whose polar angle
+    """
+    A point in P^1(R), modeled as a point on S^1 in R^2 whose polar angle
     satisfies 0 <= theta < pi.  We view R as the universal cover of
     P^1(R) with the covering map that sends t to the point [x : y] where
     x = 1-2*floor(t) and y=sqrt(1-x^2).
@@ -80,7 +81,8 @@ class PointInP1R():
         return self.v[i]
 
 def sigma_action(A, x):
-    """The projective tranformation given by the matrix A has a unique
+    """
+    The projective tranformation given by the matrix A has a unique
     "standard" lift sigma_A in Homeo(R), determined by the property
     that sigma_A(0) lies in [0, 1).
 
@@ -94,7 +96,8 @@ def sigma_action(A, x):
     return x.floor() + b1
 
 def eval_cocycle(A, B, AB, x):
-    """Evaluate the (theoretically constant) cocycle function at x.
+    """
+    Evaluate the (theoretically constant) cocycle function at x.
 
     """
     value = sigma_action(A, sigma_action(B, x)) - sigma_action(AB, x)
@@ -102,7 +105,15 @@ def eval_cocycle(A, B, AB, x):
     return value, rounded
     
 def univ_euler_cocycle(A, B, samples=3):
-    """Evaluate the euler cocycle on [A | B], the class of (1, A, A*B).
+    """
+    Evaluate the universal euler cocycle on [A | B], the class of (1, A, A*B).
+
+    The universal euler cocycle represents the class in H^2(PSL(2,R))
+    which corresponds to the central extension
+    Z -> ~PSL(2,R) -> PSL(2,R) .
+    
+    Here ~PSL(2,R) denotes the subgroup of Homeo+(R) consisting of all lifts
+    of elements of PSL(2,R), viewed as a subgroup of Homeo+(S^1)
 
     """
     R = A.base_ring()
@@ -130,7 +141,8 @@ def univ_euler_cocycle(A, B, samples=3):
         return ans
 
 def my_matrix_norm(A):
-    """Sage converts entries to doubles, which can lead to a huge loss of
+    """
+    Sage converts entries to doubles, which can lead to a huge loss of
     precision here.
 
     """
@@ -147,7 +159,8 @@ def is_almost_identity(A, tol=0.8):
     return error <= epsilon
 
 class PSL2RtildeElement:
-    """An element of the central extension of SL(2,R) with center Z which
+    """
+    An element of the central extension of SL(2,R) with center Z which
     is determined by the universal euler cocycle.
 
     """
@@ -177,6 +190,10 @@ class PSL2RtildeElement:
         return is_almost_identity(self.A)
 
 class LiftedFreeGroupRep:
+    """
+    A representation of a free group into ~PSL(2,R).
+
+    """
     def __init__(self, group, images=None):
         gens = group.generators()
         if images is None:
