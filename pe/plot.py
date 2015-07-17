@@ -86,7 +86,6 @@ class SagePlot(Plot):
         G.show()
 
 class MatplotPlot(Plot):
-         
     def start_plotter(self):
         self.figure = MF = MatplotFigure(add_subplot=False)
         MF.axis = axis = MF.figure.add_axes( [0.07, 0.07, 0.8, 0.9] )
@@ -104,10 +103,10 @@ class MatplotPlot(Plot):
                 # we only assign a label to the first thing in each group
                 if len(arc) == 0:
                     arc += axis.plot(X, Y, color=self.color(color),
-                                     linewidth=self.linewidth, label='%d' % color)
+                                     linewidth=self.linewidth, label='%d' % color, picker=5)
                 else:
                     arc += axis.plot(X, Y, color=self.color(color),
-                                     linewidth=self.linewidth)
+                                     linewidth=self.linewidth, picker=5)
             if self.args.get('show_group', False):
                 point_dict = defaultdict(list)
                 for p in component:
@@ -163,6 +162,15 @@ class MatplotPlot(Plot):
             button.grid(column=0, row=i, sticky=(Tk.N, Tk.W))
         func_selector_frame.grid(column=1, row=0, sticky=(Tk.N))
         window.columnconfigure(1, weight=0)
+
+        # Action to do when points are clicked.
+        def on_pick(event):
+            thisline = event.artist
+            xdata = thisline.get_xdata()
+            ydata = thisline.get_ydata()
+            ind = event.ind
+            print 'onpick points:', zip(xdata[ind], ydata[ind])
+        self.figure.canvas.mpl_connect('pick_event', on_pick)
 
     def arc_button_callback(self, var_name, *args):
         var = self.arc_vars[var_name]
