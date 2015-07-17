@@ -1,8 +1,8 @@
 from .plot import MatplotPlot as Plot
 from .real_reps import (PSL2RRepOf3ManifoldGroup, translation_amount,
-                        CouldNotConjugateIntoPSL2R)
+                        CouldNotConjugateIntoPSL2R, euler_cocycle_of_relation)
 from .shape import U1Q
-from .euler import euler_cocycle_of_relation, PSL2RtildeElement, LiftedFreeGroupRep
+from .euler import PSL2RtildeElement, LiftedFreeGroupRep
 from snappy import CensusKnots
 from snappy.snap.polished_reps import MapToFreeAbelianization
 

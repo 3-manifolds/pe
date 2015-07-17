@@ -1,6 +1,6 @@
 """
-For a representation G -> PSL(2, R) compute the
-Euler class of the action on P^1(R).
+For a representation G -> PSL(2, R) compute the Euler class of the
+action on P^1(R).
 
 Initially, tried to follows pages 363-367 of
 
@@ -15,8 +15,6 @@ be defined in terms of the bar notation as
 
 That is cbar([g1|g2]) = s(g1 g2)^-1 s(g1) s(g2) rather
 that the RHS being cbar(g1, g2)
-
-
 """
 from .sage_helper import _within_sage, get_pi
 if _within_sage:
@@ -34,15 +32,14 @@ def orientation(a, b, c):
 
 class PointInP1R():
     """
-    A point in P^1(R), modeled as a point on S^1 in R^2 whose polar angle
-    satisfies 0 <= theta < pi.  We view R as the universal cover of
-    P^1(R) with the covering map that sends t to the point [x : y] where
-    x = 1-2*floor(t) and y=sqrt(1-x^2).
+    A point in P^1(R), modeled as a point on S^1 in R^2 whose polar
+    angle satisfies 0 <= theta < pi.  We view R as the universal cover
+    of P^1(R) with the covering map that sends t to the point [x : y]
+    where x = 1-2*floor(t) and y=sqrt(1-x^2).
 
     Instantiate a PointInP1R either by providing a vector v in R^2 - 0
     or a real number t.  In the latter case, the PointInP1R will be
     the image of t under our universal covering map.
-
     """
     def __init__(self, v=None, t=None):
         if t != None:
@@ -87,7 +84,6 @@ def sigma_action(A, x):
     that sigma_A(0) lies in [0, 1).
 
     Return sigma_A(x)
-
     """
     R = x.parent()
     p0, p1 = A*PointInP1R( (R(1), R(0)) ), A*PointInP1R(t=x)
@@ -98,7 +94,6 @@ def sigma_action(A, x):
 def eval_cocycle(A, B, AB, x):
     """
     Evaluate the (theoretically constant) cocycle function at x.
-
     """
     value = sigma_action(A, sigma_action(B, x)) - sigma_action(AB, x)
     rounded = value.round()
@@ -106,7 +101,8 @@ def eval_cocycle(A, B, AB, x):
     
 def univ_euler_cocycle(A, B, samples=3):
     """
-    Evaluate the universal euler cocycle on [A | B], the class of (1, A, A*B).
+    Evaluate the universal euler cocycle on [A | B], the class of (1,
+    A, A*B).
 
     The universal euler cocycle represents the class in H^2(PSL(2,R))
     which corresponds to the central extension
@@ -114,14 +110,14 @@ def univ_euler_cocycle(A, B, samples=3):
     
     Here ~PSL(2,R) denotes the subgroup of Homeo+(R) consisting of all lifts
     of elements of PSL(2,R), viewed as a subgroup of Homeo+(S^1)
-
     """
     R = A.base_ring()
     AB = A*B
     # Not doing this produces lots of artifacts.
-    if is_almost_identity(A): A = Id2
-    if is_almost_identity(B): B = Id2
-    if is_almost_identity(AB): AB = Id2
+    if is_almost_identity(A) or is_almost_identity(B):
+        return 0
+    if is_almost_identity(AB):
+        AB = Id2
     epsilon = R(2.0)**(-R.prec()//2)
     value, rounded = eval_cocycle(A, B, AB, R(0.5))
     if abs(value - rounded) < epsilon:
@@ -144,7 +140,6 @@ def my_matrix_norm(A):
     """
     Sage converts entries to doubles, which can lead to a huge loss of
     precision here.
-
     """
     return max( abs(e) for e in A.list() )
     
@@ -162,7 +157,6 @@ class PSL2RtildeElement:
     """
     An element of the central extension of SL(2,R) with center Z which
     is determined by the universal euler cocycle.
-
     """
     def __init__(self, A, s):
         self.A, self.s = A, s
@@ -192,7 +186,6 @@ class PSL2RtildeElement:
 class LiftedFreeGroupRep:
     """
     A representation of a free group into ~PSL(2,R).
-
     """
     def __init__(self, group, images=None):
         gens = group.generators()
@@ -210,17 +203,8 @@ class LiftedFreeGroupRep:
         for w in word[1: ]:
             ans = ans * ims[w]
         return ans
-    
-def euler_cocycle_of_relation(rho, rel):
-    # Not sure where the sign comes from, but hey. 
-    if isinstance(rho, LiftedFreeGroupRep):
-        rho_til = rho
-    else:
-        rho_til = LiftedFreeGroupRep(rho)
-    R_til = rho_til(rel)
-    assert R_til.is_central()
-    return -R_til.s
 
+# This is not currently used.
 def eval_thurston_cocycle(A, B, p, samples=None):
     return orientation(p, A*p, (A*B)*p)
 
