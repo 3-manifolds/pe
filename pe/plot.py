@@ -189,7 +189,6 @@ class MatplotPlot(Plot):
         edge of the pillowcase.
         This method splits the data at the None entries, and builds
         the x and y lists for the plotter.
-
         """
         result = []
         x_list, y_list = [], []
@@ -260,7 +259,6 @@ class MatplotPlot(Plot):
     
 
 if __name__ == "__main__":
-    MyPlot = MatplotPlot
-    #float_data = numpy.random.random( (10,) )
-    #MyPlot(float_data)
-    P = MyPlot([[ a+b*1j for a, b in numpy.random.random( (10,2) )] for i in range(15)])
+    P = MatplotPlot(
+        [[ complex(a,b) for a, b in numpy.random.random((10, 2))] for i in range(5)])
+    Tk.mainloop()
