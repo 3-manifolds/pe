@@ -2,27 +2,21 @@
 
 import time, sys, os
 from random import randint
-from numpy import arange, argmin, array, dot, float64, matrix, log, exp, pi, sqrt, ceil, zeros
+from numpy import arange, array, dot, float64, matrix, log, exp, pi, sqrt, zeros
 import snappy
 snappy.SnapPy.matrix = matrix
 snappy.SnapPyHP.matrix = matrix
-from snappy import *
+from snappy import Manifold, ManifoldHP
 from snappy.SnapPy import Info
 from spherogram.graphs import Graph
-from .gluing import Glunomial, GluingSystem
+from .gluing import Glunomial
 from .fiber import Fiber
 from .fibrator import Fibrator
 from .point import PEPoint
-from .shape import Shapes, PolishedShapes, U1Q
+from .shape import PolishedShapes, U1Q
 from .plot import MatplotPlot as Plot
-from .complex_reps import PSL2CRepOf3ManifoldGroup
-from .real_reps import PSL2RRepOf3ManifoldGroup
-from .sage_helper import _within_sage
 
-if _within_sage:
-    from SL2R_lifting import SL2RLifter
-
-class CircleElevation:
+class CircleElevation(object):
     """
     A family of fibers for the meridian holonomy map, lying above the
     points Rξ^m where ξ = e^(2πi/N). The value of N is specified by
@@ -52,7 +46,8 @@ class CircleElevation:
         self.hp_manifold = self.manifold.high_precision()
         self.betti2 = [c % 2 for c in manifold.homology().coefficients].count(0)
         Darg = 2*pi/order
-        # The minus sign is for consistency with the sign convention of numpy.fft
+        # The minus sign is for consistency with the sign convention
+        # used by numpy.fft
         self.R_circle = [radius*exp(-n*Darg*1j) for n in range(self.order)]
         if base_fiber_file and os.path.exists(base_fiber_file):
             target = None
@@ -63,12 +58,13 @@ class CircleElevation:
                 base_index = randint(0, order-1)
                 print 'Choosing random base index: %d'%base_index
                 target = radius*exp(-2*pi*1j*base_index/self.order)
-        self.fibrator = Fibrator(manifold, target=target, fiber_file=base_fiber_file)
+        self.fibrator = Fibrator(manifold, target=target,
+                                 fiber_file=base_fiber_file)
         self.base_fiber = base_fiber = self.fibrator()
         arg = log(base_fiber.H_meridian).imag%(2*pi)
         self.base_index = (self.order - int(arg*self.order/(2*pi)))%self.order
         if not base_fiber.is_finite():
-            raise RuntimeError, 'The starting fiber contains Tillmann points.'
+            raise RuntimeError('The starting fiber contains Tillmann points.')
         self.degree = len(base_fiber)
         print 'Degree is %s.'%self.degree
         # pre-initialize by just inserting an integer for each fiber
@@ -81,12 +77,11 @@ class CircleElevation:
         eqns = manifold.gluing_equations('rect')
         self.glunomials = [Glunomial(A, B, c) for A, B, c in eqns[:-3]]
         self.rhs = [1.0]*(len(eqns) - 3)
-        self.M_holo, self.L_holo = [Glunomial(A,B,c) for A,B,c in eqns[-2:]]
+        self.M_holo, self.L_holo = [Glunomial(A, B, c) for A, B, c in eqns[-2:]]
         self.glunomials.append(self.M_holo)
         self.track_satellite()
-        self.R_longitude_holos, self.R_longitude_evs = self.longidata(
-            self.R_fibers)
-            
+        self.R_longitude_holos, self.R_longitude_evs = self.longidata(self.R_fibers)
+
     def __call__(self, Z):
         return array([F(Z) for F in self.glunomials])
 
@@ -96,15 +91,13 @@ class CircleElevation:
         """
         print 'Tracking the satellite at radius %s ...'%self.radius
         start = time.time()
-        arg = log(self.base_fiber.H_meridian).imag%(2*pi)
-        R = self.radius
         circle = self.R_circle
-        base_index = self.base_index
-        print 'Base index is %s'%base_index
-        print ' %-5s\r'%base_index,
+        base = self.base_index
+        print 'Base index is %s'%base
+        print ' %-5s\r'%base,
         # Move to the R-circle, if necessary.
-        self.R_fibers[base_index] = self.base_fiber.transport(circle[base_index])
-        for n in xrange(base_index+1, self.order):
+        self.R_fibers[base] = self.base_fiber.transport(circle[base])
+        for n in xrange(base+1, self.order):
             print ' %-5s\r'%n,
             sys.stdout.flush()
             try:
@@ -115,7 +108,7 @@ class CircleElevation:
             # self.R_fibers[n].polish()
             if not F.is_finite():
                 print '**',
-        for n in xrange(base_index-1, -1, -1):
+        for n in xrange(base-1, -1, -1):
             print ' %-5s\r'%n,
             sys.stdout.flush()
             try:
@@ -159,10 +152,12 @@ class CircleElevation:
                     print 'Tillmann points %s found in fiber %s.'%(t, n)
             except AttributeError: # If the fiber was not computed.
                 print ' Skipping %s'%n
-        self.T_longitude_holos, self.T_longitude_evs = self.longidata(self.T_fibers)
+        self.T_longitude_holos, self.T_longitude_evs = self.longidata(
+            self.T_fibers)
 
     def longidata(self, fiber_list):
-        """Compute the longitude holonomies and eigenvalues at each point in
+        """
+        Compute the longitude holonomies and eigenvalues at each point in
         each fiber in the argument.  We allow the list to contain
         placeholders for failed computations.  A placeholder is any
         object which is not an instance of Fiber.  The fibers must all
@@ -180,14 +175,15 @@ class CircleElevation:
         print 'Computing longitude holonomies and eigenvalues.'
         # This crashes if there are bad fibers.
         longitude_holonomies = [
-            [( n, self.L_holo(f.shapes[m].array) ) for n, f in enumerate(fiber_list)
+            [(n, self.L_holo(f.shapes[m].array))
+             for n, f in enumerate(fiber_list)
              if isinstance(f, Fiber)]
             for m in xrange(self.degree)]
         if isinstance(fiber_list[0], Fiber):
-            index = 0;
+            index = 0
         else:
-            index = randint(0,self.order - 1)
-            print 'Using %d as the starting index.'%index 
+            index = randint(0, self.order - 1)
+            print 'Using %d as the starting index.'%index
         longitude_traces = self.find_longitude_traces(fiber_list[index])
         longitude_eigenvalues = []
         for m, L in enumerate(longitude_holonomies):
@@ -195,61 +191,53 @@ class CircleElevation:
             n, holo = L[index]
             e = sqrt(holo)
             # Choose the sign for the eigenvalue at the starting fiber
-            E = [ (n,e) if abs(e + 1/e - tr) < abs(e + 1/e + tr) else (n,-e) ]
+            E = [(n, e) if abs(e + 1/e - tr) < abs(e + 1/e + tr) else (n, -e)]
             # Avoid discontinuities caused by the branch cut used by sqrt
             for n, holo in L[index+1:]:
                 e = sqrt(holo)
-                E.append( (n,e) if abs(e - E[-1][1]) < abs(e + E[-1][1]) else (n,-e) )
+                E.append((n, e) if abs(e - E[-1][1]) < abs(e + E[-1][1]) else (n, -e))
             if index > 0:
                 for n, holo in L[index-1::-1]:
                     e = sqrt(holo)
-                    E.insert(0,(n,e) if abs(e - E[0][1]) < abs(e + E[0][1]) else (n,-e) )
+                    E.insert(0, (n, e) if abs(e - E[0][1]) < abs(e + E[0][1]) else (n, -e))
             longitude_eigenvalues.append(E)
         return longitude_holonomies, longitude_eigenvalues
 
-    def permutation(self, fiber_list):
-        result = Permutation()
-        start, end = fiber_list[0].shapes, fiber_list[-1].shapes
-        for n, shape in enumerate(start):
-            distances = array([shape.dist(end_shape) for end_shape in end])
-            result[n] = argmin(distances)
-        return result
-
     def compute_volumes(self, fiber_list):
-        volumes = [ [] for n in range(self.degree) ]
+        volumes = [[] for n in range(self.degree)]
         for fiber in fiber_list:
             for n, shape in enumerate(fiber.shapes):
-                self.manifold.set_tetrahedra_shapes(shape(), fillings=[(0,0)])
+                self.manifold.set_tetrahedra_shapes(shape(), fillings=[(0, 0)])
                 volumes[n].append(self.manifold.volume())
         return volumes
-        
+
     def find_longitude_traces(self, fiber):
         # Sage complex numbers do not support attributes .real and .imag :^(((
-        trace = lambda rep : complex(rep[0,0] + rep[1,1])
+        trace = lambda rep: complex(rep[0, 0] + rep[1, 1])
         traces = []
         for shape in fiber.shapes:
             a = shape.array
-            self.hp_manifold.set_tetrahedra_shapes(a, a, [(0,0)])
+            self.hp_manifold.set_tetrahedra_shapes(a, a, [(0, 0)])
             G = self.hp_manifold.fundamental_group()
             longitude = G.peripheral_curves()[0][1]
             relators = G.relators()
             generators = G.generators()
             M, N = len(relators), G.num_generators()
-            A = matrix(zeros((M,N),'i'))
-            L = zeros(N,'i')
-            rhs = zeros(M,'i')
+            A = matrix(zeros((M, N), 'i'))
+            L = zeros(N, 'i')
+            rhs = zeros(M, 'i')
             for i in range(M):
                 for j in range(N):
-                    A[i,j] = (relators[i].count(generators[j]) +
+                    A[i, j] = (relators[i].count(generators[j]) +
                                relators[i].count(generators[j].upper()))%2
                     L[j] = (longitude.count(generators[j]) +
                                longitude.count(generators[j].upper()))%2
                 rhs[i] = trace(G.SL2C(relators[i])).real < 0
-            S = matrix(solve_mod2_system(A,rhs)).transpose()
+            S = matrix(solve_mod2_system(A, rhs)).transpose()
             # Paranoia
             if max((A*S - matrix(rhs).transpose())%2) > 0:
                 if self.betti2 == 1:
-                    raise RuntimeError, "Mod 2 solver failed!"
+                    raise RuntimeError("Mod 2 solver failed!")
             tr = trace(G.SL2C(longitude))
             if (L*S)%2 != 0:
                 tr = -tr
@@ -257,13 +245,14 @@ class CircleElevation:
         return traces
 
     def show_R_longitude_evs(self):
-        R_plot = Plot([[complex(x) for n,x in track] for track in self.R_longitude_evs])
+        Plot([[complex(x) for n, x in track] for track in self.R_longitude_evs])
 
     def show_T_longitude_evs(self):
-        T_plot = Plot([[complex(x) for n,x in track] for track in self.T_longitude_evs])
+        Plot([[complex(x) for n, x in track] for track in self.T_longitude_evs])
 
     def holo_permutation(self):
-        return [self.R_fibers[0].shapes.index(p) for p in self.last_R_fiber.shapes]
+        return [self.R_fibers[0].shapes.index(p)
+                for p in self.last_R_fiber.shapes]
 
     def holo_orbits(self):
         P = self.holo_permutation()
@@ -282,12 +271,12 @@ class CircleElevation:
             orbits.append(orbit)
         return orbits
 
-def solve_mod2_system(the_matrix,rhs):
-    M,N = the_matrix.shape
-    A = zeros((M,N+1),'i')
-    A[:,:-1] = the_matrix
-    A[:,-1] = rhs
-    S = zeros(N,'i')
+def solve_mod2_system(the_matrix, rhs):
+    M, N = the_matrix.shape
+    A = zeros((M, N+1), 'i')
+    A[:, :-1] = the_matrix
+    A[:, -1] = rhs
+    S = zeros(N, 'i')
     P = []
     R = range(M)
     r = 0
@@ -301,12 +290,12 @@ def solve_mod2_system(the_matrix,rhs):
             continue
         if i > r:
             R[r], R[i] = R[i], R[r]
-        P.insert(0,j)
-        for i in range(r+1,M):
+        P.insert(0, j)
+        for i in range(r+1, M):
             if A[R[i]][j] == 1:
                 A[R[i]] = A[R[i]]^A[R[r]]
         r += 1
-    i = len(P)-1 
+    i = len(P) - 1
     for j in P:
         S[j] = (A[R[i]][N] - dot(A[R[i]][j+1:-1], S[j+1:]))%2
         i -= 1
@@ -319,7 +308,7 @@ class PEArc(list):
     Subclassed here to allow additional attributes.
     """
 
-class PECharVariety:
+class PECharVariety(object):
     def __init__(self, manifold, order=128, radius=1.02,
                  elevation=None, base_dir='PE_base_fibers', hint_dir='hints'):
         if isinstance(manifold, (Manifold, ManifoldHP)):
@@ -330,7 +319,7 @@ class PECharVariety:
         self.order = order
         self.hint_dir = hint_dir
         if elevation is None:
-            self.check_dir(base_dir, 'I need a directory for storing base fibers.')
+            self._check_dir(base_dir, 'I need a directory for storing base fibers.')
             self.elevation = CircleElevation(
                 self.manifold,
                 order=order,
@@ -342,10 +331,11 @@ class PECharVariety:
         else:
             self.elevation = elevation
 
-    def check_dir(self, dir, message=''):
-        if not os.path.exists(dir):
+    @staticmethod
+    def _check_dir(directory, message=''):
+        if not os.path.exists(directory):
             cwd = os.path.abspath(os.path.curdir)
-            newdir = os.path.join(cwd,dir)
+            newdir = os.path.join(cwd, directory)
             print '\n'+ message
             response = raw_input("May I create a directory %s?(Y/n)"%newdir)
             if response and response.lower()[0] != 'y':
@@ -353,14 +343,14 @@ class PECharVariety:
             print
             os.mkdir(newdir)
 
-    def save_hint(self, basename=None, dir=None):
-        if dir == None:
-            dir = self.hint_dir
-        self.check_dir(dir, 'I need a directory for storing hint files.')
+    def save_hint(self, basename=None, directory=None):
+        if directory == None:
+            directory = self.hint_dir
+        self._check_dir(directory, 'I need a directory for storing hint files.')
         if basename == None:
             basename = self.manifold.name()
-        hintfile_name = os.path.join(dir, basename + '.hint')
-        hintfile = open(hintfile_name,'w')
+        hintfile_name = os.path.join(directory, basename + '.hint')
+        hintfile = open(hintfile_name, 'w')
         hintfile.write('hint={\n')
         hintfile.write('"manifold" : %s,\n'%self.manifold)
         hintfile.write('"radius" : %f,\n'%self.radius)
@@ -373,40 +363,36 @@ class PECharVariety:
         self.arc_info = []
         H = self.elevation
         delta_M = -1.0/self.order
-        M_args = 0.5 * ( arange(self.order, dtype=float64)*delta_M % 1.0 )
+        M_args = 0.5 * (arange(self.order, dtype=float64)*delta_M % 1.0)
         for m, track in enumerate(self.elevation.T_longitude_evs):
             arc, info = PEArc(), []
             marker = ''
             for n, ev in track:
-                if (0.99999 < abs(ev) < 1.00001):
+                if 0.99999 < abs(ev) < 1.00001:
                     if show_group:
                         shape = H.T_fibers[n].shapes[m]
-                        try:
-                            if shape.in_SU2():
-                                marker = '.'
-                            elif shape.has_real_traces():
-                                marker = 'D'
-                            else:
-                                marker = 'x'
-                        except:
-                            print 'Exception in group test.'
+                        if shape.in_SU2():
+                            marker = '.'
+                        elif shape.has_real_traces():
+                            marker = 'D'
+                        else:
                             marker = 'x'
                     L = (log(ev).imag/(2*pi))%1.0
-                    if len(arc)>2:  # don't do this near the corners.
+                    if len(arc) > 2:  # don't do this near the corners.
                         last_L = arc[-1].real
                         if last_L > 0.8 and L < 0.2:   # L became > 1
-                            length = 1.0 - last_L + L 
+                            length = 1.0 - last_L + L
                             interp = ((1.0-last_L)*M_args[n] + L*M_args[n-1])/length
                             arc.append(PEPoint(1.0, interp, leave_gap=True,
-                                               marker=marker)) 
+                                               marker=marker))
                             arc.append(PEPoint(0.0, interp))
                         elif last_L < 0.2 and L > 0.8: # L became < 0
-                            length = last_L + 1.0 - L 
+                            length = last_L + 1.0 - L
                             interp = (last_L*M_args[n] + (1.0 - L)*M_args[n-1])/length
                             arc.append(PEPoint(0.0, interp, leave_gap=True))
                             arc.append(PEPoint(1.0, interp))
-                    arc.append(PEPoint(L,M_args[n], marker=marker))
-                    info.append( (m,n) )
+                    arc.append(PEPoint(L, M_args[n], marker=marker))
+                    info.append((m, n))
                 else:
                     if len(arc) > 1:
                         m, n = arc.first_info = info[0]
@@ -436,7 +422,7 @@ class PECharVariety:
         for arc in self.arcs:
             try:
                 if abs(arc[1] - arc[0]) > 0.25:
-                    if arc[0].imag > 0.45 and arc[1].imag  < 0.05 :
+                    if arc[0].imag > 0.45 and arc[1].imag < 0.05:
                         arc[0] = arc[0] - 0.5j
                     elif arc[0].imag < 0.05 and arc[1].imag > 0.45:
                         arc[0] = arc[0]+ 0.5j
@@ -459,17 +445,17 @@ class PECharVariety:
     def add_extrema(self):
         arcs = list(self.arcs)
         # caps
-        arcs.sort(key=lambda x : x[0].imag, reverse=True)
+        arcs.sort(key=lambda x: x[0].imag, reverse=True)
         while arcs:
             arc = arcs.pop(0)
             level = [arc]
             while arcs and arc[0].imag == arcs[0][0].imag:
-                    level.append(arcs.pop(0))
+                level.append(arcs.pop(0))
             while len(level) > 1:
                 distances = array([level[0].first_shape.dist(a.first_shape)
                              for a in level[1:]])
                 cap = [level.pop(0), level.pop(distances.argmin())]
-                cap.sort(key=lambda a : a[0].real)
+                cap.sort(key=lambda a: a[0].real)
                 left, right = cap
                 if .05 < right[0].imag < .45:
                     join = True
@@ -486,17 +472,17 @@ class PECharVariety:
                             self.arcs.index(right))
         # cups
         arcs = list(self.arcs)
-        arcs.sort(key=lambda x : x[-1].imag)
+        arcs.sort(key=lambda x: x[-1].imag)
         while arcs:
             arc = arcs.pop(0)
             level = [arc]
             while arcs and arc[-1].imag == arcs[0][-1].imag:
-                    level.append(arcs.pop(0))
+                level.append(arcs.pop(0))
             while len(level) > 1:
                 distances = array([level[0].last_shape.dist(a.last_shape)
                              for a in level[1:]])
                 cup = [level.pop(0), level.pop(distances.argmin())]
-                cup.sort(key=lambda a : a[-1].real)
+                cup.sort(key=lambda a: a[-1].real)
                 left, right = cup
                 if 0.05 < right[-1].imag < 0.45:
                     join = True
@@ -510,19 +496,18 @@ class PECharVariety:
                     if join:
                         self.curve_graph.add_edge(
                             self.arcs.index(left),
-                            self.arcs.index(right))                 
+                            self.arcs.index(right))
         return
- 
+
     def show(self, show_group=False):
         self.build_arcs(show_group)
-        term = 'aqua' if sys.platform == 'darwin' else 'wxt'
         Plot(self.arcs,
              limits=((0.0, 1.0), (0.0, 0.5)),
-             margins=(0,0),
+             margins=(0, 0),
              aspect='equal',
              title=self.manifold.name(),
-             colors = self.colors,
-             extra_lines=[((0.5,0.5),(0.0,1.0))],
+             colors=self.colors,
+             extra_lines=[((0.5, 0.5), (0.0, 1.0))],
              extra_line_args={'color':'black', 'linewidth':0.75},
              show_group=show_group,
              )
@@ -544,7 +529,7 @@ class PECharVariety:
         info['polished_shapes'] = polished = PolishedShapes(shapes, target, precision)
         info['rep_type'] = polished.rep_type()
         return Info(**info)
-    
+
 class Permutation(dict):
     def orbits(self):
         points = set(self.keys())
