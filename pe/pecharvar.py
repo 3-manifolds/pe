@@ -7,6 +7,7 @@ import snappy
 snappy.SnapPy.matrix = matrix
 snappy.SnapPyHP.matrix = matrix
 from snappy import *
+from snappy.SnapPy import Info
 from spherogram.graphs import Graph
 from .gluing import Glunomial, GluingSystem
 from .fiber import Fiber
@@ -22,7 +23,8 @@ if _within_sage:
     from SL2R_lifting import SL2RLifter
 
 class CircleElevation:
-    """A family of fibers for the meridian holonomy map, lying above the
+    """
+    A family of fibers for the meridian holonomy map, lying above the
     points Rξ^m where ξ = e^(2πi/N). The value of N is specified by
     the keyword argument *order* (default 128) and the value of R is
     specified by the keyword argument *radius* (default 1.02).
@@ -38,11 +40,9 @@ class CircleElevation:
 
     A CircleElevation can be tightened, which means radially
     transporting each fiber lying over a point on the R-circle to one
-    lying over a point on the circle of radius T. (T = 1.0 by
-    default.) Singularities are common on the unit circle, and may
-    prevent the transport. Such failures are reported on the console
-    and then ignored.
-
+    lying over a point on the unit circle. Singularities are common on
+    the unit circle, and may prevent the transport. Such failures are
+    reported on the console and then ignored.
     """
     def __init__(self, manifold, order=128, radius=1.02, target_arg=None,
                  base_fiber_file=None):
@@ -139,7 +139,8 @@ class CircleElevation:
             print 'OK'
         print 'Tracked in %s seconds.'%(time.time() - start)
 
-    def tighten(self, T=1.0):
+    def tighten(self):
+        T = 1.0
         print 'Tightening the circle to radius %s ...'%T
         Darg = 2*pi/self.order
         self.T_circle = circle = [T*exp(-n*Darg*1j) for n in range(self.order)]
@@ -526,6 +527,24 @@ class PECharVariety:
              show_group=show_group,
              )
 
+    def inspect_rep(self, fiber_index, shape_index, precision=1000, tight=True):
+        """
+        Return a dict containing information about the rep associated to a
+        solution to the gluing equations in a fiber over a point on the
+        T circle. If the optional keyname argument *tight* is set to
+        False, the R circle is used instead.
+        """
+        if tight:
+            target = U1Q(-fiber_index, self.order, precision=precision)
+        else:
+            target = self.elevation.R_circle[fiber_index]
+        fibers = self.elevation.T_fibers if tight else self.elevation.R_fibers
+        info = {}
+        info['rough_shapes'] = shapes = fibers[fiber_index].shapes[shape_index]
+        info['polished_shapes'] = polished = PolishedShapes(shapes, target, precision)
+        info['rep_type'] = polished.rep_type()
+        return Info(**info)
+    
 class Permutation(dict):
     def orbits(self):
         points = set(self.keys())

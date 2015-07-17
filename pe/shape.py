@@ -44,7 +44,10 @@ class Shapes(object):
     Many methods are available: ...
     Instantiate with a sequence of complex numbers.
     """
-    def __init__(self, manifold, values=None, tolerance=1.0E-6):
+    SU2_tolerance = 1.0E-5
+    reality_tolerance = 1.0E-10
+    
+    def __init__(self, manifold, values=None):
         self.manifold = manifold
         # if isinstance(manifold, snappy.ManifoldHP):
         #     self.hp_manifold = manifold
@@ -90,7 +93,7 @@ class Shapes(object):
         return G.O31(word)
 
     def has_real_traces(self):
-        tolerance = 1.0E-10
+        tolerance = self.reality_tolerance
         gens = self.manifold.fundamental_group().generators()
         gen_mats = [self.SL2C(g) for g in gens]
         for A in gen_mats:
@@ -110,9 +113,9 @@ class Shapes(object):
         return True
         
     def in_SU2(self):
-        tolerance = 1.0E-5
         gens = self.manifold.fundamental_group().generators()
-        # Check that all generators have real trace in [-2,2]
+        tolerance = self.SU2_tolerance
+        # First check that all generators have real trace in [-2,2]
         for X in [self.SL2C(g) for g in gens]:
             tr = complex(X[0,0] + X[1,1])
             if abs(tr.imag) > tolerance:
@@ -178,8 +181,10 @@ class PolishedShapes(object):
     1.7806839263153037270854777557735393746612852691604941278274
 
     """
-    def __init__(self, rough_shape, target_holonomy, tolerance=1.0E-6,
-                 dec_prec=None, precision=212, ignore_solution_type=False):
+    def __init__(self, rough_shapes, target_holonomy, precision=212,
+                 dec_prec=None, ignore_solution_type=False):
+        self.rough_shapes = rough_shapes
+        self.target_holonomy = target_holonomy
         if dec_prec is None:
             dec_prec = prec_bits_to_dec(precision)
         else:
@@ -188,8 +193,8 @@ class PolishedShapes(object):
         target_espilon = pari_set_precision(10.0, working_prec)**-dec_prec
         det_epsilon = pari_set_precision(10.0, working_prec)**-(dec_prec//10)
         init_shapes = pari_column_vector(
-            [complex_to_pari(z, working_prec) for z in rough_shape.array])
-        self.manifold = manifold = rough_shape.manifold.copy()
+            [complex_to_pari(z, working_prec) for z in rough_shapes.array])
+        self.manifold = manifold = rough_shapes.manifold.copy()
         manifold.dehn_fill( (1, 0) ) 
         init_equations = manifold.gluing_equations('rect')
         target = pari_complex(target_holonomy, dec_prec)
@@ -240,7 +245,21 @@ class PolishedShapes(object):
     def _gluing_equation_error(self, eqns, shapes, RHS_of_last_eqn):
         return infinity_norm(self._gluing_equation_errors(
             eqns, shapes, RHS_of_last_eqn))
-    
+
+    def rep_type(self):
+        """
+        Return the type of the holonomy representation determined by these
+        shapes.
+        """
+        if self.rough_shapes.in_SU2():
+            return 'SU(2) rep'
+        elif self.rough_shapes.has_real_traces():
+            return 'SL(2,R) rep'
+        elif (self.target_holonomy.abs() -1).abs() < 2**(0.8*self.precision):
+            info['type'] = type = 'Non-real PE rep'
+        else:
+            info['type'] = type = 'generic rep'
+
 if __name__ == '__main__':
     import doctest
     doctest.testmod()
