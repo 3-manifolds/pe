@@ -2,8 +2,8 @@ from .sage_helper import _within_sage, get_pi
 from .complex_reps import (PSL2CRepOf3ManifoldGroup, polished_holonomy,
                          apply_representation, GL2C_inverse, SL2C_inverse,
                          CheckRepresentationFailed, conjugacy_classes_in_Fn)
-from . import euler
-from euler import wedge, orientation
+from euler import wedge, orientation, PSL2RtildeElement, LiftedFreeGroupRep
+
 if _within_sage:
     from sage.all import RealField, ComplexField, MatrixSpace, ZZ, vector, matrix, pari, arg
     eigenvalues =  lambda A: A.charpoly().roots(A.base_ring(), False)
@@ -188,7 +188,7 @@ def translation_amount(A_til):
 def rot(R, t, s):
     t = get_pi(R)*R(t)
     A = matrix(R, [[cos(t), -sin(t)], [sin(t), cos(t)]])
-    return euler.PSL2RtildeElement(A, s)
+    return PSL2RtildeElement(A, s)
 
 def shift_of_central(A_til):
     assert A_til.is_central(), "Central element isn't really central."
@@ -210,6 +210,16 @@ def normalizer_wrt_target_meridian_holonomy(meridian_matrix, target):
         C = matrix(CC, [[1, 0], [0, 1]])
     return C * matrix(CC, [[1, 1], [1, 2]])
     
+def euler_cocycle_of_relation(rho, rel):
+    # Not sure where the sign comes from, but hey. 
+    if isinstance(rho, LiftedFreeGroupRep):
+        rho_til = rho
+    else:
+        rho_til = LiftedFreeGroupRep(rho)
+    R_til = rho_til(rel)
+    assert R_til.is_central()
+    return -R_til.s
+
 class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
     """
     >>> import snappy
@@ -293,7 +303,7 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
 
     def euler_class(self, double=False):
         rels = self.relators()
-        e = [euler.euler_cocycle_of_relation(self, R) for R in rels]
+        e = [euler_cocycle_of_relation(self, R) for R in rels]
         if double:
             e = [2*x for x in e]
         return self.class_in_H2(e)
