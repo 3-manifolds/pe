@@ -141,18 +141,16 @@ class SL2RLifter(object):
                         P = (P[0] + self.m_abelian, P[1] + self.l_abelian)
                     while P[0] > self.m_abelian:
                         P = (P[0] - self.m_abelian, P[1] - self.l_abelian)
+                    P = PEPoint(complex(*P), index = sn)
                     translations.append(P)
                     self.translation_dict[sn] = P
-                    self.translation_dict_inverse[P] = sn
                     rho.translations = P
                 except AssertionError:
                     print "Warning: assertion failing somewhere"
             self.translation_arcs.append(translations)
 
     def show(self, add_lines=False):
-        plotlist = [[PEPoint(complex(x, y), index=self.translation_dict_inverse[(x, y)])
-                     for x, y in arc] for arc in self.translation_arcs]
-        self.plot = Plot(plotlist, title=self.manifold.name())
+        self.plot = Plot(self.translation_arcs, title=self.manifold.name())
         if add_lines:
             self.draw_line(self.manifold.homological_longitude(), color='green')
             for edge in self.l_space_edges():
@@ -165,7 +163,7 @@ class SL2RLifter(object):
         for arc in self.translation_arcs:
             reframed_arc = []
             for t in arc:
-                x, y = A*vector(t)
+                x, y = A*vector((t.real, t.imag))
                 while x < 0:
                     x += m
                 while x > m:
@@ -174,7 +172,7 @@ class SL2RLifter(object):
                 if reframed_arc and abs(reframed_arc[-1].real - x) > 0.5:
                     plotlist.append(reframed_arc)
                     reframed_arc = []
-                reframed_arc.append(complex(x, y))
+                reframed_arc.append(PEPoint(complex(x, y), index=t.index))
             plotlist.append(reframed_arc)
         self.plot = Plot(plotlist, title=self.manifold.name() + ' reframed')
         # Draw longitude
