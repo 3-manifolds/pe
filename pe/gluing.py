@@ -1,4 +1,3 @@
-import numpy
 from numpy import dtype, array, matrix, prod, ones
 from numpy.linalg import svd, norm, solve, lstsq
 # The numpy type for our complex arrays
@@ -7,7 +6,7 @@ DTYPE = dtype('c16')
 RESIDUAL_BOUND = 1.0E-14
 STEPSIZE_BOUND = 1.0E-14
 
-class Glunomial:
+class Glunomial(object):
     """
     A product of powers of linear terms z_i or (1-z_i), as appears on
     the left side of a gluing equation.  These are Laurent monomials;
@@ -18,8 +17,8 @@ class Glunomial:
         self.A, self.B, self.sign = array(A), array(B), float(c)
 
     def __repr__(self):
-        apower = lambda n, p: 'z%d^%s'%(n,p) if p != 1 else 'z%s'%n
-        bpower = lambda n, p: '(1-z%d)^%s'%(n,p) if p != 1 else '(1-z%s)'%n
+        apower = lambda n, p: 'z%d^%s'%(n, p) if p != 1 else 'z%s'%n
+        bpower = lambda n, p: '(1-z%d)^%s'%(n, p) if p != 1 else '(1-z%s)'%n
         Apowers = [apower(n, a) for n, a in enumerate(self.A) if a != 0]
         Bpowers = [bpower(n, b) for n, b in enumerate(self.B) if b != 0]
         sign = '' if self.sign == 1.0 else '-'
@@ -41,7 +40,7 @@ class Glunomial:
         W = 1 - Z
         return self.sign*prod(Z**self.A)*prod(W**self.B)*(self.A/Z - self.B/W)
 
-class GluingSystem:
+class GluingSystem(object):
     """
     The system of gluing equations for a manifold, with specified
     meridian holonomy.  If the manifold has n tetrahedra, we use the
@@ -57,7 +56,7 @@ class GluingSystem:
         eqns = manifold.gluing_equations('rect')
         # drop the last edge equation
         self.glunomials = [Glunomial(A, B, c) for A, B, c in eqns[:-3]]
-        self.M_nomial, self.L_nomial = [Glunomial(A, B, c) for A,B,c in eqns[-2:]]
+        self.M_nomial, self.L_nomial = [Glunomial(A, B, c) for A, B, c in eqns[-2:]]
         self.glunomials.append(self.M_nomial)
 
     def __repr__(self):
@@ -68,7 +67,7 @@ class GluingSystem:
 
     def __len__(self):
         return len(self.glunomials)
-    
+
     def jacobian(self, Z):
         return matrix([G.gradient(Z) for G in self.glunomials])
 
@@ -84,17 +83,17 @@ class GluingSystem:
         equations of the gluing curve and of the entire system
         at the point Z.
         """
-        U, D, V = svd(self.jacobian(Z)[:-1])
+        D = svd(self.jacobian(Z)[:-1])[1]
         curve = D[0]/D[-1]
-        U, D, V = svd(self.jacobian(Z))
+        D = svd(self.jacobian(Z))[1]
         system = D[0]/D[-1]
         return curve, system
-    
+
     def newton_step(self, Z, M_target):
         """
         Do one iteration of Newton's method, starting at Z and aiming
         to solve G(z) = (1,1,...,M_target).  Returns a triple:
-        Z', step_size, residual.  Solves the linear system by 
+        Z', step_size, residual.  Solves the linear system by
         LU factorization (not great for nearly singular systems).
         """
         J = self.jacobian(Z)
@@ -104,7 +103,7 @@ class GluingSystem:
         step_size = norm(dZ)
         Zn = Z + dZ
         return Zn, step_size, max(abs(target - self(Zn)))
-    
+
     def newton_step_ls(self, Z, M_target):
         """
         Do one iteration of Newton's method, starting at Z and aiming
@@ -117,7 +116,7 @@ class GluingSystem:
         target = ones(len(self), dtype=DTYPE)
         target[-1] = M_target
         error = target - self(Z)
-        dZ, residues, rank, sing = lstsq(J, error)
+        dZ = lstsq(J, error)[0]
         return dZ, target
 
     def newton1(self, Z, M_target, debug=False):
@@ -133,12 +132,11 @@ class GluingSystem:
         prev_Z, count = Z, 1
         while True:
             Zn, step_size, residual = self.newton_step(prev_Z, M_target)
-            if debug: print count, residual, step_size
+            if debug:
+                print count, residual, step_size
             if residual > prev_residual:
                 return prev_Z, prev_residual
-            if (step_size < STEPSIZE_BOUND or
-                residual < RESIDUAL_BOUND or
-                count > 10):
+            if step_size < STEPSIZE_BOUND or residual < RESIDUAL_BOUND or count > 10:
                 return Zn, residual
             prev_Z, prev_residual = Zn, residual
             count += 1
@@ -159,21 +157,21 @@ class GluingSystem:
         while True:
             dZ, target = self.newton_step_ls(prev_Z, M_target)
             t = 1.0
-            for k in range(5):
+            for _ in range(5):
                 Zn = prev_Z + t*dZ
                 residual = max(abs(target - self(Zn)))
                 if residual < prev_residual:
                     break
                 else:
                     t *= 0.5
-            if debug: print 'scaled dZ by %s; residual: %s'%(t, residual)
+            if debug:
+                print 'scaled dZ by %s; residual: %s'%(t, residual)
             if residual > prev_residual:
-                if debug: print 'Armijo failed with t=%s'%t
+                if debug:
+                    print 'Armijo failed with t=%s'%t
                 return prev_Z, prev_residual
             step_size = norm(t*dZ)
-            if (step_size < STEPSIZE_BOUND or
-                residual < RESIDUAL_BOUND or
-                count > 10):
+            if step_size < STEPSIZE_BOUND or residual < RESIDUAL_BOUND or count > 10:
                 return Zn, residual
             prev_Z, prev_residual = Zn, residual
             count += 1
@@ -190,8 +188,8 @@ class GluingSystem:
         delta = (M_target - M_start)
         T = 0.0
         Zn = Z
-        if debug: print 'Z = %s; condition=%s'%(
-                Z, [self.condition(x) for x in Z]) 
+        if debug:
+            print 'Z = %s; condition=%s'%(Z, [self.condition(x) for x in Z])
         # First we try the cheap and easy method
         while T < 1.0:
             T = T+dT
@@ -200,13 +198,15 @@ class GluingSystem:
         if residual < 1.0E-14: # What is a good threshold here?
             return Zn
         # If that fails, try taking baby steps.
-        if debug: print 'Taking baby steps ...'
+        if debug:
+            print 'Taking baby steps ...'
         success = 0
         T, dT = 0.0, 0.5*dT
         prev_Z = Z
         while T < 1.0:
             Tn = min(T+dT, 1.0)
-            if debug: print 'trying T = %.17f'%Tn
+            if debug:
+                print 'trying T = %.17f'%Tn
             baby_target = M_start + Tn*delta
             Zn, residual = self.newton2(prev_Z, baby_target, debug=debug)
             if residual < 1.0E-12:
@@ -214,16 +214,16 @@ class GluingSystem:
                 if success > 3:
                     success = 0
                     dT *= 2
-                    if debug: print 'Track step increased to %.17f'%dT
+                    if debug:
+                        print 'Track step increased to %.17f'%dT
                 else:
                     success += 1
                 T = Tn
             else:
                 success = 0
                 dT /= 2
-                if debug: print 'Track step reduced to %.17f; condition = %s'%(
-                        dT,
-                        self.condition(prev_Z))
+                if debug:
+                    print 'Track step reduced to %.17f; condition = %s'%(dT, self.condition(prev_Z))
                 if dT < 2.0**(-16):
                     raise ValueError('Track failed: step size limit reached.')
         return Zn

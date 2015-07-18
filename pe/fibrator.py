@@ -1,13 +1,12 @@
 import os, time
-from .gluing import GluingSystem
 try:
-    from phc import PolyRing, PHCPoly, PHCSystem, ParametrizedSystem
+    from phc import PolyRing, PHCPoly, ParametrizedSystem
 except ImportError:
-    print('No phc module, so will only work with precomputed fibers')
+    print 'No phc module, so will only work with precomputed fibers'
 from .fiber import Fiber
 from snappy import Manifold, ManifoldHP
 
-class Fibrator:
+class Fibrator(object):
     """
     A factory for Fibers, used to construct an initial Fiber.  Either loads
     a pre-computed Fiber from a file, or uses PHC to construct one.
@@ -21,7 +20,7 @@ class Fibrator:
         self.manifold_name = manifold.name()
         self.target = target
         self.fiber_file = fiber_file
-        self.tolerance=tolerance
+        self.tolerance = tolerance
 
     def __call__(self):
         """Construct a Fiber, or read in a precomputed Fiber, and return it."""
@@ -37,34 +36,27 @@ class Fibrator:
             print 'Computing the starting fiber ... ',
             begin = time.time()
             N = self.manifold.num_tetrahedra()
-            variables = ( ['X%s'%n for n in range(N)] +
-                      ['Y%s'%n for n in range(N)] )
+            variables = (['X%s'%n for n in range(N)] + ['Y%s'%n for n in range(N)])
             self.ring = PolyRing(variables + ['t'])
             self.equations = self.build_equations()
-            self.equations += ['X%s + Y%s - 1'%(n,n) for n in range(N)] 
+            self.equations += ['X%s + Y%s - 1'%(n, n) for n in range(N)]
             self.parametrized_system = ParametrizedSystem(
-                self.ring,
-                't',
-                [PHCPoly(self.ring, e) for e in self.equations]
-            )
-            self.base_system = self.parametrized_system.start(
-                self.target, self.tolerance)
-            result = Fiber(self.manifold, self.target,
-                           PHCsystem=self.base_system)
+                self.ring, 't', [PHCPoly(self.ring, e) for e in self.equations])
+            self.base_system = self.parametrized_system.start(self.target, self.tolerance)
+            result = Fiber(self.manifold, self.target, PHCsystem=self.base_system)
             print 'done. (%.3f seconds)'%(time.time() - begin)
             if fiber_file:
                 with open(fiber_file, 'w') as datafile:
-                    datafile.write("{\n'fiber': %s,\n'signature': %s\n}"%(
-                        repr(result),
-                        repr(signature))
-                    )
+                    datafile.write("{\n'fiber': %s, \n'signature': %s\n}"%(
+                        repr(result), repr(signature)))
                 print 'Saved base fiber as %s'%fiber_file
             return result
-                
+
     def __len__(self):
         return len(self.base_fiber.solutions)
-    
-    def rect_to_PHC(self, eqn, rhs=None):
+
+    @staticmethod
+    def rect_to_PHC(eqn, rhs=None):
         A, B, c = eqn
         left = []
         if rhs is None:
@@ -72,7 +64,7 @@ class Fibrator:
         elif isinstance(rhs, str):
             right = [rhs]
         else:
-            right = [str(complex(rhs)).replace('j','*i')]
+            right = [str(complex(rhs)).replace('j', '*i')]
         for n, a in enumerate(A):
             if a > 0:
                 left += ['X%s'%n]*a
@@ -91,8 +83,7 @@ class Fibrator:
         return '*'.join(left) + op + '*'.join(right)
 
     def build_equations(self):
-        if (self.manifold.num_cusps() != 1 or
-            not self.manifold.is_orientable()):
+        if self.manifold.num_cusps() != 1 or not self.manifold.is_orientable():
             raise ValueError('Manifold must be orientable with one cusp.')
         eqns = self.manifold.gluing_equations('rect')
         meridian = eqns[-2]
@@ -102,14 +93,12 @@ class Fibrator:
         result.append(self.rect_to_PHC(meridian, rhs='t'))
         return result
 
-    def PHC_to_complex(self, line):
-       var, colon, real, imag = line.split()
-       index=int(var[1:])
-       if imag[0] == '-':
-	   op = ''
-       else:
-	   op = '+'
-       try:
-	   return var[0], index, complex('%s%s%sj'%(real,op,imag))
-       except ValueError:
-	   print 'PHC parse error on %s+%sj'%(real,imag)
+    @staticmethod
+    def PHC_to_complex(line):
+        var, _, real, imag = line.split()
+        index = int(var[1:])
+        op = '' if imag[0] == '-' else '+'
+        try:
+            return var[0], index, complex('%s%s%sj'%(real, op, imag))
+        except ValueError:
+            print 'PHC parse error on %s+%sj'%(real, imag)

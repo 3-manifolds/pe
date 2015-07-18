@@ -10,7 +10,7 @@ than the usual ">>>".
 try:
     import sage.all
     _within_sage = True
-except:
+except ImportError:
     _within_sage = False
     import decorator
 
@@ -26,7 +26,7 @@ if _within_sage:
 else:
     def _sage_method(function, *args, **kw):
         raise SageNotAvailable('Sorry, this feature requires using SnapPy inside Sage.')
-        
+
     def sage_method(function):
         return decorator.decorator(_sage_method, function)
 
@@ -36,8 +36,8 @@ else:
 if _within_sage:
     from sage.misc.cachefunc import cached_function, cached_method
 else:
-    cached_function = lambda x : x
-    cached_method = lambda x : x
+    cached_function = lambda x: x
+    cached_method = lambda x: x
 
 # Stop recomputing Pi constantly
 @cached_function
@@ -85,13 +85,13 @@ else:
         def parse(self, string, name='<string>'):
             string = re.subn('#doctest: \+CYOPENGL', cyopengl_replacement(), string)[0]
             return doctest.DocTestParser.parse(self, string, name)
-        
+
     globs = dict()
 
 def print_results(module, results):
-    print(module.__name__ + ':')
-    print('   %s failures out of %s tests.' %  (results.failed, results.attempted))
-    
+    print  module.__name__ + ':'
+    print '   %s failures out of %s tests.' %  (results.failed, results.attempted)
+
 def doctest_modules(modules, verbose=False, print_info=True, extraglobs=dict()):
     finder = doctest.DocTestFinder(parser=DocTestParser())
     full_extraglobals = dict(globs.items() + extraglobs.items())
@@ -110,10 +110,7 @@ def doctest_modules(modules, verbose=False, print_info=True, extraglobs=dict()):
             print_results(module, result)
 
     if print_info:
-        print('\nAll doctests:\n   %s failures out of %s tests.' % (failed, attempted))
+        print '\nAll doctests:\n   %s failures out of %s tests.' % (failed, attempted)
     return doctest.TestResults(failed, attempted)
-    
 
-        
-    
 

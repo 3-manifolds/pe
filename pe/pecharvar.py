@@ -223,7 +223,7 @@ class CircleElevation(object):
                     A[i, j] = (relators[i].count(generators[j]) +
                                relators[i].count(generators[j].upper()))%2
                     L[j] = (longitude.count(generators[j]) +
-                               longitude.count(generators[j].upper()))%2
+                            longitude.count(generators[j].upper()))%2
                 rhs[i] = trace(G.SL2C(relators[i])).real < 0
             S = matrix(solve_mod2_system(A, rhs)).transpose()
             # Paranoia
@@ -237,10 +237,10 @@ class CircleElevation(object):
         return traces
 
     def show_R_longitude_evs(self):
-        Plot([[complex(x) for n, x in track] for track in self.R_longitude_evs])
+        Plot([[complex(x) for _, x in track] for track in self.R_longitude_evs])
 
     def show_T_longitude_evs(self):
-        Plot([[complex(x) for n, x in track] for track in self.T_longitude_evs])
+        Plot([[complex(x) for _, x in track] for track in self.T_longitude_evs])
 
     def holo_permutation(self):
         return [self.R_fibers[0].shapes.index(p)
@@ -445,7 +445,7 @@ class PECharVariety(object):
                 level.append(arcs.pop(0))
             while len(level) > 1:
                 distances = array([level[0].first_shape.dist(a.first_shape)
-                             for a in level[1:]])
+                                   for a in level[1:]])
                 cap = [level.pop(0), level.pop(distances.argmin())]
                 cap.sort(key=lambda a: a[0].real)
                 left, right = cap
@@ -472,7 +472,7 @@ class PECharVariety(object):
                 level.append(arcs.pop(0))
             while len(level) > 1:
                 distances = array([level[0].last_shape.dist(a.last_shape)
-                             for a in level[1:]])
+                                   for a in level[1:]])
                 cup = [level.pop(0), level.pop(distances.argmin())]
                 cup.sort(key=lambda a: a[-1].real)
                 left, right = cup
@@ -501,8 +501,7 @@ class PECharVariety(object):
              colors=self.colors,
              extra_lines=[((0.5, 0.5), (0.0, 1.0))],
              extra_line_args={'color':'black', 'linewidth':0.75},
-             show_group=show_group,
-             )
+             show_group=show_group)
 
     def inspect_rep(self, fiber_index, shape_index, precision=1000, tight=True):
         """
