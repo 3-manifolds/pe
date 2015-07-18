@@ -1,40 +1,54 @@
-import time, sys, os, Tkinter, numpy, math, collections
-from subprocess import Popen, PIPE
 try:
     from .tkplot import MatplotFigure, Tk, ttk
 except ImportError:
     pass
 from .point import PEPoint
-from collections import defaultdict
+import collections
+import numpy as np
+import time
 
-class Plot:
+def attribute_map(listlike, attribute):
+    return np.asarray([getattr(x, attribute, None) for x in listlike])
+
+def expand_leave_gaps_to_nones(points):
+    ans = []
+    for p in points:
+        ans.append(p)
+        if p.leave_gap:
+            ans.append(None)
+    return ans
+
+class Plot(object):
     """
-    Plot a vector or list of vectors. Assumes that all vectors in the list
-    are the same type (Float or Complex) Prompts for which ones to show.
+    Plot a vector or list of vectors. Assumes that all vectors in the
+    list are the same type (float, complex, or PEPoint). Prompts for
+    which ones to show.
     """
     def __init__(self, data, **kwargs):
         self.quiet = kwargs.get('quiet', True)
-        self.linewidth=kwargs.get('linewidth', 1.0)
+        self.linewidth = kwargs.get('linewidth', 1.0)
         self.style = kwargs.get('style', 'lines')
         self.color_dict = kwargs.get('colors', {})
         self.args = kwargs
         if isinstance(data, list) and len(data) == 0:
-            self.data = data
             self.type = None
         else:
-            if isinstance(data[0], list) or isinstance(data[0], numpy.ndarray):
-                self.data = data
-            else:
-                self.data = [data]
-            duck = self.data[0][0]
+            if not (isinstance(data[0], list) or isinstance(data[0], np.ndarray)):
+                data = [data]
+            duck = data[0][0]
             self.type = type(duck)
+        if self.type == PEPoint:
+            data = [expand_leave_gaps_to_nones(d) for d in data]
+        elif self.type != complex:
+            data = [[complex(*z) for z in enumerate(d)] for d in data]
+        self.data = data
         self.start_plotter()
         if len(self.data) > 0:
             self.show_plots()
         else:
             self.create_plot([0])
             time.sleep(1)
-        
+
     def __repr__(self):
         return ''
 
@@ -43,7 +57,7 @@ class Plot:
             print 'There are %d functions.'%len(self.data)
             print 'Which ones do you want to see?'
         else:
-            self.create_plot( range(len(self.data)) )
+            self.create_plot(range(len(self.data)))
         while 1:
             try:
                 stuff = raw_input('plot> ')
@@ -61,73 +75,44 @@ class Plot:
         return
 
     def start_plotter(self):
-        """
-        Stub for starting up the plotting window. 
-        """
+        """Stub for starting up the plotting window."""
 
     def create_plot(self, funcs):
-        """
-        Stub for drawing the plot itself.
-        """
-
-class SagePlot(Plot):
-    def create_plot(self, funcs):
-        from sage.all import Graphics, line, colormaps, floor
-        cm = colormaps['gnuplot2']
-
-        G = Graphics()
-        for f in funcs:
-            if self.type == complex:
-                points = [(d.real, d.imag) for d in self.data[f]]
-            else:
-                points = [ (i,d) for i, d in enumerate(self.data[f])]
-            G += line(points, color=cm( f/8.0 - floor(f/8.0) )[:3],
-                      thickness=self.linewidth, legend_label='%d' % f)
-        G.show()
+        """Stub for drawing the plot itself."""
 
 class MatplotPlot(Plot):
     def start_plotter(self):
         self.figure = MF = MatplotFigure(add_subplot=False)
-        MF.axis = axis = MF.figure.add_axes( [0.07, 0.07, 0.8, 0.9] )
+        MF.axis = axis = MF.figure.add_axes([0.07, 0.07, 0.8, 0.9])
         self.arcs = []
         self.arc_vars = collections.OrderedDict()
-        groups = dict()
+        self.scatter_point_to_raw_data = collections.OrderedDict()
         for i, component in enumerate(self.data):
-            color = self.color_dict.get(i, i)
-            if color not in groups:
-                groups[color] = []
-            arc = groups[color]
-            segments = self.split_data(component)
-            for X, Y in segments:
-                # axis.plot returns a list of line2D objects.
-                # we only assign a label to the first thing in each group
-                if len(arc) == 0:
-                    arc += axis.plot(X, Y, color=self.color(color),
-                                     linewidth=self.linewidth, label='%d' % color, picker=5)
-                else:
-                    arc += axis.plot(X, Y, color=self.color(color),
-                                     linewidth=self.linewidth, picker=5)
-            if self.args.get('show_group', False):
-                point_dict = defaultdict(list)
-                for p in component:
-                    if p.marker:
-                        point_dict[p.marker].append(p)
-                for marker in point_dict:
-                    arc.append(axis.scatter([p.real for p in point_dict[marker]],
-                                            [p.imag for p in point_dict[marker]],
-                                            c=self.color(color), marker=marker))
-                                    
-        for color in groups:
+            color = self.color(self.color_dict.get(i, i))
+            X = attribute_map(component, 'real')
+            Y = attribute_map(component, 'imag')
+            arc = axis.plot(X, Y, color=color, linewidth=self.linewidth, label='%d' % i)
+            self.arcs.append(arc)
+            verts = axis.scatter(X, Y, s=0.01, color=color, marker='.', picker=2)
+            self.scatter_point_to_raw_data[verts] = component
             var = Tk.BooleanVar(MF.window, value=True)
             var.trace('w', self.arc_button_callback)
-            var.arc = groups[color]
+            var.arc = arc + [verts]
             self.arc_vars[var._name] = var
+
+            if self.args.get('show_group', False):
+                markers = attribute_map(component, 'marker')
+                for marker in set(markers):
+                    if marker is not None:
+                        mask = markers != marker
+                        marks = axis.scatter(np.ma.masked_where(mask, X),
+                                             np.ma.masked_where(mask, Y),
+                                             marker=marker, color=color)
+                        var.arc.append(marks)
         self.configure()
-                    
+
     def configure(self):
-        """
-        Configure the plot based on keyword arguments.
-        """
+        """Configure the plot based on keyword arguments."""
         figure = self.figure
         axis = figure.axis
         window = figure.window
@@ -135,7 +120,7 @@ class MatplotPlot(Plot):
         xlim, ylim = limits if limits else (axis.get_xlim(), axis.get_ylim())
 
         margin_x, margin_y = self.args.get('margins', (0.1, 0.1))
-        sx = ( xlim[1] - xlim[0])*margin_x
+        sx = (xlim[1] - xlim[0])*margin_x
         xlim = (xlim[0] - sx, xlim[1] + sx)
         sy = (ylim[1] - ylim[0])*margin_y
         ylim = (ylim[0] - sy, ylim[1] + sy)
@@ -143,18 +128,15 @@ class MatplotPlot(Plot):
         axis.set_ylim(*ylim)
 
         axis.set_aspect(self.args.get('aspect', 'auto'))
-        legend = axis.legend(loc='upper left', bbox_to_anchor = (1.0, 1.0))
+        axis.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
 
         title = self.args.get('title', None)
         if title:
             figure.window.title(title)
-            axis.text(0.02, 0.98, title, 
+            axis.text(0.02, 0.98, title,
                       horizontalalignment='left', verticalalignment='top',
                       transform=axis.transAxes, fontsize=15)
-            
 
-
-        n = len(self.data)
         func_selector_frame = ttk.Frame(window)
         for i, var in enumerate(self.arc_vars):
             button = ttk.Checkbutton(func_selector_frame,
@@ -165,11 +147,9 @@ class MatplotPlot(Plot):
 
         # Action to do when points are clicked.
         def on_pick(event):
-            thisline = event.artist
-            xdata = thisline.get_xdata()
-            ydata = thisline.get_ydata()
-            ind = event.ind
-            print 'onpick points:', zip(xdata[ind], ydata[ind])
+            for i in event.ind:
+                print self.scatter_point_to_raw_data[event.artist][i]
+
         self.figure.canvas.mpl_connect('pick_event', on_pick)
 
     def arc_button_callback(self, var_name, *args):
@@ -182,50 +162,10 @@ class MatplotPlot(Plot):
                 subarc.remove()
         self.figure.draw()
 
-    def test(self):
-        return [v.get() for v in self.funcs_to_show]
-
     def color(self, i):
         from matplotlib.cm import gnuplot2
-        return gnuplot2(i/8.0 - math.floor(i/8.0))
+        return gnuplot2(i/8.0 - np.floor(i/8.0))
 
-    def split_data(self, data):
-        """
-        The data has None entries between points which should not
-        be connected by arcs in the picture.  For example, in the case of a curve
-        on a pillowcase the breaks are inserted when the curve wraps over an
-        edge of the pillowcase.
-        This method splits the data at the None entries, and builds
-        the x and y lists for the plotter.
-        """
-        result = []
-        x_list, y_list = [], []
-        if self.type == PEPoint:
-            for d in data:
-                x_list.append(d.real)
-                y_list.append(d.imag)
-                if d.leave_gap and len(x_list) > 1:
-                    result.append( (x_list, y_list) )
-                    x_list, y_list = [], []
-        elif self.type == complex:
-            for d in data:
-                if d is None and len(x_list) > 1:
-                    result.append( (x_list, y_list) )
-                    x_list, y_list =[], []
-                else:
-                    x_list.append(d.real)
-                    y_list.append(d.imag)
-        else:
-            for n, d in enumerate(data):
-                if d is None and len(x_list) > 1:
-                    result.append( (x_list, y_list) )
-                    x_list, y_list =[], []
-                else:
-                    x_list.append(n)
-                    y_list.append(d)
-        result.append( (x_list, y_list) )
-        return result
-                    
     def create_plot(self, dummy_arg=None):
         axis = self.figure.axis
 
@@ -233,7 +173,7 @@ class MatplotPlot(Plot):
         margin_x, margin_y = self.args.get('margins', (0.1, 0.1))
         limits = self.args.get('limits', None)
         xlim, ylim = limits if limits else (axis.get_xlim(), axis.get_ylim())
-        sx = ( xlim[1] - xlim[0])*margin_x
+        sx = (xlim[1] - xlim[0])*margin_x
         sy = (ylim[1] - ylim[0])*margin_y
         xlim = (xlim[0] - sx, xlim[1] + sx)
         ylim = (ylim[0] - sy, ylim[1] + sy)
@@ -241,7 +181,7 @@ class MatplotPlot(Plot):
         axis.set_ylim(*ylim)
 
         axis.set_aspect(self.args.get('aspect', 'auto'))
-        legend = axis.legend(loc='upper left', bbox_to_anchor = (1.0, 1.0))
+        axis.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
 
         title = self.args.get('title', None)
         if title:
@@ -252,21 +192,27 @@ class MatplotPlot(Plot):
             extra_line_args = self.args.get('extra_line_args', {})
             for xx, yy in extra_lines:
                 self.draw_line(xx, yy, **extra_line_args)
-            
+
         self.figure.draw()
 
-    def draw_line(self, xx, yy,  **kwargs):
+    def draw_line(self, xx, yy, **kwargs):
         ax = self.figure.axis
         if 'color' not in kwargs:
             kwargs['color'] = 'black'
-        ax.plot( xx, yy, **kwargs)
-        ax.plot( xx, yy, **kwargs)
+        ax.plot(xx, yy, **kwargs)
+        ax.plot(xx, yy, **kwargs)
 
     def show_plots(self):
         self.create_plot()
-    
 
 if __name__ == "__main__":
-    P = MatplotPlot(
-        [[ complex(a,b) for a, b in numpy.random.random((10, 2))] for i in range(5)])
+    scattered = np.random.random((30, 2))
+    zs = [complex(a, b) for a, b in scattered]
+    P = MatplotPlot(zs[:10])
+    data0 = [PEPoint(z, marker='D') for z in zs[:10]]
+    data1 = [PEPoint(z, marker='x') for z in zs[10:]]
+    data1[5].leave_gap = True
+    data1[15].leave_gap = True
+    Q = MatplotPlot([data0, data1], show_group=True)
+    R = MatplotPlot(np.random.random(10))
     Tk.mainloop()
