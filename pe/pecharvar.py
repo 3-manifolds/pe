@@ -144,14 +144,6 @@ class CircleElevation(object):
                 self.T_fibers[n] = self.R_fibers[n].transport(circle[n])
             except ValueError:
                 print 'Tighten failed at %s'%n
-        print '\nChecking for Tillmann points.'
-        for n in xrange(self.order):
-            try:
-                t = self.T_fibers[n].Tillmann_points()
-                if t:
-                    print 'Tillmann points %s found in fiber %s.'%(t, n)
-            except AttributeError: # If the fiber was not computed.
-                print ' Skipping %s'%n
         self.T_longitude_holos, self.T_longitude_evs = self.longidata(
             self.T_fibers)
 

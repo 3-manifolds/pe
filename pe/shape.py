@@ -75,6 +75,9 @@ class Shapes(object):
     def __repr__(self):
         return repr(list(self))
     
+    def update(self, values):
+        self.array = array(values)
+        
     def is_degenerate(self):
         moduli = abs(self.array)
         return ( (moduli < 1.0E-6).any() or

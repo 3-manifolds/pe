@@ -10,13 +10,12 @@ from snappy.snap.polished_reps import (initial_tet_ideal_vertices,
                                        prod)
 
 if _within_sage:
-    from sage.all import vector, matrix, MatrixSpace, ZZ, RR, CC, pari
+    from sage.all import matrix, MatrixSpace, ZZ, RR, CC, pari
     Id2 = MatrixSpace(ZZ, 2)(1)
     coboundary_matrix = matrix
     elementary_divisors = lambda M: M.elementary_divisors()
     smith_normal_form = lambda M: M.smith_form()
 else:
-    import snappy
     from snappy.number import Number
     from snappy.snap.utilities import Matrix2x2 as matrix
     from cypari.gen import pari
@@ -26,12 +25,12 @@ else:
         U, V, D = M.matsnf(flag=1)
         # Sage returns D, U, V and Pari returns U, V, D
         return D, U, V
-    Id2 = matrix(1,0,0,1)
+    Id2 = matrix(1, 0, 0, 1)
     RR = Number
 
 def random_word(letters, N):
-    return ''.join( [random.choice(letters) for i in range(N)] )
- 
+    return ''.join([random.choice(letters) for _ in range(N)])
+
 def inverse_word(word):
     return word.swapcase()[::-1]
 
@@ -76,14 +75,14 @@ def apply_representation(word, gen_images):
     gens = string.ascii_lowercase[:len(gen_images)]
     rho = dict([(g, gen_images[i]) for i, g in enumerate(gens)] +
                [(g.upper(), SL2C_inverse(gen_images[i])) for i, g in enumerate(gens)])
-    return prod( [rho[g] for g in word], Id2)
+    return prod([rho[g] for g in word], Id2)
 
 def polished_holonomy(M, target_meridian_holonomy,
-                         precision=100,
-                         fundamental_group_args=(True, False, True),
-                         lift_to_SL2 = True,
-                         ignore_solution_type=False,
-                         dec_prec=None):
+                      precision=100,
+                      fundamental_group_args=(True, False, True),
+                      lift_to_SL2=True,
+                      ignore_solution_type=False,
+                      dec_prec=None):
 
     if dec_prec:
         precision = None
@@ -92,11 +91,11 @@ def polished_holonomy(M, target_meridian_holonomy,
         error = pari(2.0)**(-precision*0.8)
 
     try:
-        shapes = PolishedShapes(Shapes(M), target_meridian_holonomy,
-                                precision=precision, dec_prec=dec_prec).shapelist
+        shapes = PolishedShapes(Shapes(M), target_meridian_holonomy, precision,
+                                dec_prec, ignore_solution_type).shapelist
     except GoodShapesNotFound:
         raise CheckRepresentationFailed
-    
+
     G = M.fundamental_group(*fundamental_group_args)
     N = generators.SnapPy_to_Mcomplex(M, shapes)
     init_tet_vertices = initial_tet_ideal_vertices(N)
@@ -127,8 +126,8 @@ def format_complex(z, digits=5):
     im = conv % float(abs(z.imag())) + 'I'
     conn = '-' if z.imag() < 0 else '+'
     return real + conn + im
-    
-class PSL2CRepOf3ManifoldGroup:
+
+class PSL2CRepOf3ManifoldGroup(object):
     """
     Throughout precision is in bits.
 
@@ -145,7 +144,7 @@ class PSL2CRepOf3ManifoldGroup:
                  target_meridian_holonomy=None,
                  rough_shapes=None,
                  precision=100,
-                 fundamental_group_args=tuple() ):
+                 fundamental_group_args=tuple()):
         self.precision = precision
         self.manifold = manifold.copy()
         if rough_shapes != None:
@@ -155,18 +154,19 @@ class PSL2CRepOf3ManifoldGroup:
         self.rough_shapes = rough_shapes
         if target_meridian_holonomy is None:
             Hm = manifold.cusp_info('holonomies')[0][0]
-            target_meridian_holonomy= (2*pari.pi()*pari('I')*Hm).exp()
+            target_meridian_holonomy = (2*pari.pi()*pari('I')*Hm).exp()
         self.target_meridian_holonomy = target_meridian_holonomy
         self.fundamental_group_args = fundamental_group_args
         self._cache = {}
 
     def __repr__(self):
-        return "<%s" % self.manifold + ": [" + ", ".join([format_complex(z) for z in self.rough_shapes]) + "]>"
+        return ("<%s" % self.manifold + ": [" +
+                ", ".join([format_complex(z) for z in self.rough_shapes]) + "]>")
 
     def _update_precision(self, precision):
         if precision != None:
             self.precision = precision
-        
+
     def polished_holonomy(self, precision=None):
         self._update_precision(precision)
         precision = self.precision
@@ -176,16 +176,16 @@ class PSL2CRepOf3ManifoldGroup:
                 G = self.manifold.fundamental_group(*self.fundamental_group_args)
             else:
                 G = polished_holonomy(self.manifold,
-                                self.target_meridian_holonomy,
-                                precision=precision,
-                                fundamental_group_args=self.fundamental_group_args,
-                                lift_to_SL2=False,
-                                ignore_solution_type=True)
+                                      self.target_meridian_holonomy,
+                                      precision=precision,
+                                      fundamental_group_args=self.fundamental_group_args,
+                                      lift_to_SL2=False,
+                                      ignore_solution_type=True)
                 if not G.check_representation() < RR(2.0)**(-0.8*precision):
                     raise CheckRepresentationFailed
 
             self._cache[mangled] = G
-                    
+
         return self._cache[mangled]
 
     def trace_field_generators(self, precision=None):
@@ -201,14 +201,14 @@ class PSL2CRepOf3ManifoldGroup:
     def has_real_traces(self, precision=None):
         self._update_precision(precision)
         real_precision = self.precision if self.precision else 15
-        max_imaginary_part = max([ abs(tr.imag()) for tr in self.trace_field_generators()] )
-        return  max_imaginary_part  <  RR(2.0)**(-0.5*real_precision)
+        max_imaginary_part = max([abs(tr.imag()) for tr in self.trace_field_generators()])
+        return  max_imaginary_part < RR(2.0)**(-0.5*real_precision)
 
-    def appears_to_be_SU2_rep(self, depth=5, trys=50, rand_length = 20):
+    def appears_to_be_SU2_rep(self, depth=5, trys=50, rand_length=20):
         G = self.polished_holonomy()
         gens = G.generators()
         words = conjugacy_classes_in_Fn(gens, depth)
-        words += [random_word(gens, rand_length) for i in range(trys)]
+        words += [random_word(gens, rand_length) for _ in range(trys)]
         for w in words:
             d = abs(self(w).trace())
             if d > 2.1:
@@ -238,7 +238,7 @@ class PSL2CRepOf3ManifoldGroup:
 
     def meridian(self):
         return self.peripheral_curves()[0][0]
-    
+
     def generators(self):
         return self.polished_holonomy().generators()
 
@@ -258,11 +258,11 @@ class PSL2CRepOf3ManifoldGroup:
     def H2(self):
         """
         Computes H^2(G; Z) *assuming* d_3 : C_3 -> C_2 is the
-        zero map. 
+        zero map.
         """
         if not 'smith_form' in self._cache:
             self._cache['smith_form'] = smith_normal_form(self.coboundary_1_matrix())
-        D, U, V = self._cache['smith_form'] # D = U*coP*V  
+        D = self._cache['smith_form'][0] # D = U*coP*V
         ed = elementary_divisors(D)
         ans = [d for d in ed if d != 1]
         return ans
@@ -273,7 +273,7 @@ class PSL2CRepOf3ManifoldGroup:
 
     def class_in_H2(self, cocycle):
         self.H2()
-        D, U, V = self._cache['smith_form']
+        D, U = self._cache['smith_form'][:2]
         # U rewrites relators in the smith basis
         ed = elementary_divisors(D)
         co = pari(cocycle).mattranspose()
@@ -294,4 +294,4 @@ class PSL2CRepOf3ManifoldGroup:
 if __name__ == '__main__':
     import doctest
     doctest.testmod()
-    
+
