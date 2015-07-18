@@ -5,9 +5,11 @@ class PEPoint(complex):
     def __new__(cls, *args, **kwargs):
         leave_gap = kwargs.pop('leave_gap', False)
         marker = kwargs.pop('marker', '')
+        index = kwargs.pop('index', None)
         obj = complex.__new__(cls, *args, **kwargs )
         obj.leave_gap = leave_gap
         obj.marker = marker
+        obj.index = index 
         return obj
 
     def __add__(self, other):
