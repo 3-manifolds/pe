@@ -1,8 +1,8 @@
-import numpy
+from numpy import complex128
 from .gluing import GluingSystem
-from .shape import Shapes
+from .shape import Shapes, PolishedShapes
 
-class Fiber:
+class Fiber(object):
     """A fiber for the rational function [holonomy of the meridian]
     restricted to the curve defined by the gluing system for a
     triangulated cusped manifold.  Can be initialized with a PHCSystem
@@ -21,30 +21,27 @@ class Fiber:
         if gluing_system is None:
             self.gluing_system = GluingSystem(manifold)
         else:
-            self.gluing_system=gluing_system
+            self.gluing_system = gluing_system
         self.system = PHCsystem
         if self.system:
-            self.extract_info()
-        
-    def extract_info(self):
-        N = self.system.num_variables()/2
-        self.solutions = self.system.solution_list(tolerance=self.tolerance)
-        # We only keep the "X" variables.
-        self.shapes = [Shapes(self.manifold, S.point[:N]) for S in self.solutions]
+            N = self.system.num_variables()/2
+            self.solutions = self.system.solution_list(tolerance=self.tolerance)
+            # We only keep the "X" variables.
+            self.shapes = [Shapes(self.manifold, S.point[:N]) for S in self.solutions]
 
     def __repr__(self):
         return "Fiber(ManifoldHP('%s'),\n%s,\nshapes=%s\n)"%(
             repr(self.manifold),
             repr(self.H_meridian),
-            repr([list(x) for x in self.shapes]).replace('],','],\n')
+            repr([list(x) for x in self.shapes]).replace('],', '],\n')
             )
-    
+
     def __len__(self):
         return len(self.shapes)
 
     def __getitem__(self, index):
         return self.shapes[index]
-    
+
     def __eq__(self, other):
         """
         This ignores multiplicities.
@@ -56,7 +53,7 @@ class Fiber:
             if p not in self.shapes:
                 return False
         return True
-    
+
     def collision(self):
         for n, p in enumerate(self.shapes):
             for q in self.shapes[n+1:]:
@@ -72,31 +69,30 @@ class Fiber:
             if p.is_degenerate():
                 return False
         return True
-            
-    def details(self):
+
+    def phc_details(self):
         # broken if not instantiated with a PHCsystem
         for n, s in enumerate(self.solutions):
             print 'solution #%s:'%n
             print s
 
-    def residuals(self):
+    def phc_residuals(self):
         # broken if not instantiated with a PHCsystem
         for n, s in enumerate(self.solutions):
-            print n, s.res 
+            print n, s.res
 
     def polish(self):
-        # broken if not instantiated with a PHCsystem
-        if self.system:
-            self.system.polish()
-            self.extract_info()
+        polished = self.polished_shapelist(precision=96)
+        for shapes, polished_shapes in zip(self, polished):
+            shapes.update([complex128(z) for z in polished_shapes])
 
-    def Tillmann_points(self):
+    def phc_Tillmann_points(self):
         # broken if not instantiated with a PHCsystem
         if self.system is None:
             return []
         result = []
         for n, s in enumerate(self.solutions):
-            if (s.t != 1.0 or self.shapes[n].is_degenerate()):
+            if s.t != 1.0 or self.shapes[n].is_degenerate():
                 result.append(n)
         return result
 
@@ -106,25 +102,16 @@ class Fiber:
         closest to other.shapes[n].
         """
         result = []
-        target = set(range(len(other.shapes)))
+        other_shapes = other.shapes
+        remaining = set(range(len(other_shapes)))
         for m, shape in enumerate(self.shapes):
-            dist, n = min([(shape.dist(other.shapes[k]), k) for k in target])
-            result.append( (m, n) )
-            target.remove(n)
+            dist_to_shape = lambda k, s=shape: s.dist(other_shapes[k])
+            n = min(remaining, key=dist_to_shape)
+            result.append((m, n))
+            remaining.remove(n)
         return result
 
-    def PHCtransport(self, target_holonomy, allow_collisions=False):
-        """
-        Use PHC to transport this fiber to a different target holonomy.
-        Can only be used if this fiber has a PHCSystem.
-        """
-        # Not used.
-        target_system = self.parametrized_system.transport(
-            self.system, target_holonomy, allow_collisions)
-        return Fiber(self.manifold, target_holonomy, PHCsystem=self.system,
-                     gluing_system=self.gluing_system)
-
-    def transport(self, target_holonomy, allow_collisions=False, debug=False):
+    def transport(self, target_holonomy, debug=False):
         """
         Transport this fiber to a different target holonomy.
         """
@@ -151,6 +138,10 @@ class Fiber:
     def polished_shape(self, n, target_holonomy=None, dec_prec=None, precision=200):
         if target_holonomy is None:
             target_holonomy = self.H_meridian
-        return PolishedShapes(self[n], target_holonomy,
-                             dec_prec=dec_prec, precision=precision)
+        return PolishedShapes(self[n], target_holonomy, dec_prec=dec_prec, precision=precision)
+
+    def polished_shapelist(self, target_holonomy=None, dec_prec=None, precision=200):
+        if target_holonomy is None:
+            target_holonomy = self.H_meridian
+        return [PolishedShapes(S, target_holonomy, dec_prec, precision) for S in self]
 
