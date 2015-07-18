@@ -1,4 +1,4 @@
-import re, getopt, sys
+import getopt, sys
 from . import sage_helper
 from . import complex_reps, real_reps, shape
 

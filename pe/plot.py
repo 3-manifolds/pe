@@ -98,7 +98,7 @@ class MatplotPlot(Plot):
             var = Tk.BooleanVar(MF.window, value=True)
             var.trace('w', self.arc_button_callback)
             var.arc = arc + [verts]
-            self.arc_vars[var._name] = var
+            self.arc_vars[str(var)] = var
 
             if self.args.get('show_group', False):
                 markers = attribute_map(component, 'marker')
@@ -162,7 +162,8 @@ class MatplotPlot(Plot):
                 subarc.remove()
         self.figure.draw()
 
-    def color(self, i):
+    @staticmethod
+    def color(i):
         from matplotlib.cm import gnuplot2
         return gnuplot2(i/8.0 - np.floor(i/8.0))
 

@@ -81,7 +81,6 @@ def polished_holonomy(M, target_meridian_holonomy,
                       precision=100,
                       fundamental_group_args=(True, False, True),
                       lift_to_SL2=True,
-                      ignore_solution_type=False,
                       dec_prec=None):
 
     if dec_prec:
@@ -92,7 +91,7 @@ def polished_holonomy(M, target_meridian_holonomy,
 
     try:
         shapes = PolishedShapes(Shapes(M), target_meridian_holonomy, precision,
-                                dec_prec, ignore_solution_type).shapelist
+                                dec_prec).shapelist
     except GoodShapesNotFound:
         raise CheckRepresentationFailed
 
@@ -179,8 +178,7 @@ class PSL2CRepOf3ManifoldGroup(object):
                                       self.target_meridian_holonomy,
                                       precision=precision,
                                       fundamental_group_args=self.fundamental_group_args,
-                                      lift_to_SL2=False,
-                                      ignore_solution_type=True)
+                                      lift_to_SL2=False)
                 if not G.check_representation() < RR(2.0)**(-0.8*precision):
                     raise CheckRepresentationFailed
 

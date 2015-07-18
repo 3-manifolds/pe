@@ -1,13 +1,14 @@
 from .plot import MatplotPlot as Plot
 from .real_reps import (PSL2RRepOf3ManifoldGroup, translation_amount,
                         CouldNotConjugateIntoPSL2R, euler_cocycle_of_relation)
+from .complex_reps import PSL2CRepOf3ManifoldGroup
 from .shape import U1Q
 from .euler import PSL2RtildeElement, LiftedFreeGroupRep
 from .point import PEPoint
 from snappy import CensusKnots
 from snappy.snap.polished_reps import MapToFreeAbelianization
 
-from sage.all import RealField, ComplexField, ZZ, log, pi, vector, matrix, xgcd
+from sage.all import RealField, ComplexField, ZZ, log, vector, matrix, xgcd
 from snappy.snap.nsagetools import hyperbolic_torsion
 from time import time
 
@@ -22,7 +23,7 @@ def in_SL2R(H, f, s):
         return False
     return True
 
-class SL2RLifter:
+class SL2RLifter(object):
     def __init__(self, V, silent=False):
         start = time()
         self.elevation = H = V.elevation
@@ -62,7 +63,7 @@ class SL2RLifter:
         if abs(hom_l[1]) == 1:
             hom_m = (1, 0)
         else:
-            g, a, b = xgcd(*hom_l)
+            a, b = xgcd(*hom_l)[1:]
             hom_m = (b, -a)
             M = self.manifold.copy()
             M.set_peripheral_curves([hom_m, hom_l])
@@ -85,9 +86,9 @@ class SL2RLifter:
                     point_is_good = False
                 if point_is_good:
                     if current_arc:
-                        current_arc.append( ((s,n), H.T_fibers[n].shapes[s]) )
+                        current_arc.append(((s, n), H.T_fibers[n].shapes[s]))
                     else:
-                        current_arc = [ ((s,n), H.T_fibers[n].shapes[s]) ]
+                        current_arc = [((s, n), H.T_fibers[n].shapes[s])]
                 else:
                     if current_arc:
                         if len(current_arc) > 1:
@@ -100,8 +101,8 @@ class SL2RLifter:
         self.SL2R_rep_arcs = []
         for arc in self.SL2R_arcs:
             reps = []
-            for sn,  S in arc:
-                s, n = sn
+            for sn, S in arc:
+                _, n = sn
                 # Skipping reps which send the meridian to a parabolic
                 # makes for more beautiful pictures, due to the ambiguity
                 # of the translation length.  (Is it 0 or 1?)
@@ -115,10 +116,10 @@ class SL2RLifter:
                         S,
                         precision=1000)
                     if rho.polished_holonomy().check_representation() < 1.0e-100:
-                        reps.append( (sn, rho) )
+                        reps.append((sn, rho))
                 except CouldNotConjugateIntoPSL2R:
                     print "Skipping rep probably misclassified as PSL(2,R)"
-            if len(reps) > 1: 
+            if len(reps) > 1:
                 self.SL2R_rep_arcs.append(reps)
 
     def find_translation_arcs(self):
@@ -128,14 +129,14 @@ class SL2RLifter:
         for arc in self.SL2R_rep_arcs:
             translations = []
             for sn, rho in arc:
-                rho.translations = None 
+                rho.translations = None
                 meridian, longitude = rho.polished_holonomy().peripheral_curves()[0]
                 rho_til = lift_on_cusped_manifold(rho)
                 if rho_til is None:
-                    continue 
+                    continue
                 try:
-                    P = ( float(translation_amount(rho_til(meridian))),
-                          float(translation_amount(rho_til(longitude))) )
+                    P = (float(translation_amount(rho_til(meridian))),
+                         float(translation_amount(rho_til(longitude))))
                     while P[0] < 0:
                         P = (P[0] + self.m_abelian, P[1] + self.l_abelian)
                     while P[0] > self.m_abelian:
@@ -149,8 +150,8 @@ class SL2RLifter:
             self.translation_arcs.append(translations)
 
     def show(self, add_lines=False):
-        plotlist = [[PEPoint(complex(x,y), index=self.translation_dict_inverse[(x,y)])
-                    for x, y in arc] for arc in self.translation_arcs]
+        plotlist = [[PEPoint(complex(x, y), index=self.translation_dict_inverse[(x, y)])
+                     for x, y in arc] for arc in self.translation_arcs]
         self.plot = Plot(plotlist, title=self.manifold.name())
         if add_lines:
             self.draw_line(self.manifold.homological_longitude(), color='green')
@@ -166,28 +167,28 @@ class SL2RLifter:
             for t in arc:
                 x, y = A*vector(t)
                 while x < 0:
-                    x += m 
+                    x += m
                 while x > m:
                     x -= m
                 # Primitive way of dealing with crossing fundamental domains
                 if reframed_arc and abs(reframed_arc[-1].real - x) > 0.5:
                     plotlist.append(reframed_arc)
                     reframed_arc = []
-                reframed_arc.append(complex(x,y))
+                reframed_arc.append(complex(x, y))
             plotlist.append(reframed_arc)
         self.plot = Plot(plotlist, title=self.manifold.name() + ' reframed')
         # Draw longitude
         ax = self.plot.figure.axis
-        ax.plot( (0,1), (0,0), color='green')
+        ax.plot((0, 1), (0, 0), color='green')
         self.plot.figure.draw()
-        
+
     def show_slopes(self):
         M = self.elevation.manifold.copy()
         plotlist = []
         for arc in self.SL2R_arcs:
             slopes = []
-            for sn,  S in arc:
-                M.set_tetrahedra_shapes(S, S, [(0,0)])
+            for _, S in arc:
+                M.set_tetrahedra_shapes(S, S, [(0, 0)])
                 Hm, Hl = M.cusp_info('holonomies')[0]
                 if Hm.imag() != 0:
                     slopes.append(float(-Hl.imag()/Hm.imag()))
@@ -199,12 +200,11 @@ class SL2RLifter:
     def draw_line(self, curve_on_torus, **kwargs):
         ax = self.plot.figure.axis
         x = ax.get_xlim()[1]
-        y = ax.get_ylim()[1]
         a, b = curve_on_torus
         if b != 0:
-            ax.plot( (0, x), (0, -a*x/b), **kwargs)
+            ax.plot((0, x), (0, -a*x/b), **kwargs)
         else:
-            ax.plot( (0, 0), (0, -a*5), **kwargs)
+            ax.plot((0, 0), (0, -a*5), **kwargs)
         self.plot.figure.draw()
 
     def l_space_edges(self):
@@ -213,18 +213,18 @@ class SL2RLifter:
         if not K:
             return []
         A = M.is_isometric_to(K, True)[0].cusp_maps()[0]
-        A = matrix(ZZ,  [[A[0,0], A[0,1]], [A[1,0], A[1,1]]])
+        A = matrix(ZZ, [[A[0, 0], A[0, 1]], [A[1, 0], A[1, 1]]])
         Ainv = A**(-1)
         X = hyperbolic_torsion(M, bits_prec=1000).degree()/2
-        l_space_edges = [vector(ZZ, (X, -1)), vector(ZZ, (X,1))]
+        l_space_edges = [vector(ZZ, (X, -1)), vector(ZZ, (X, 1))]
         return [Ainv*v for v in l_space_edges]
 
 class SL2RLifterHomological(SL2RLifter):
     def __init__(self, V):
-        SL2RLifter.__init__(self, V) 
-    
+        SL2RLifter.__init__(self, V)
 
-def lifted_slope(M,  target_meridian_holonomy_arg, shapes):
+
+def lifted_slope(M, target_meridian_holonomy_arg, shapes):
     RR = RealField()
     target = RR(target_meridian_holonomy_arg)
     rho = PSL2CRepOf3ManifoldGroup(M, target, rough_shapes=shapes, precision=1000)
@@ -232,8 +232,7 @@ def lifted_slope(M,  target_meridian_holonomy_arg, shapes):
     rho_real = PSL2RRepOf3ManifoldGroup(rho)
     meridian, longitude = rho.polished_holonomy().peripheral_curves()[0]
     rho_tilde = lift_on_cusped_manifold(rho_real)
-    return ( -translation_amount(rho_tilde(longitude)) /
-             translation_amount(rho_tilde(meridian)) )
+    return -translation_amount(rho_tilde(longitude)) / translation_amount(rho_tilde(meridian))
 
 def check_slope(H, n, s):
     F = H.T_fibers[n]
@@ -248,7 +247,7 @@ def bisection(H, low, high, s, target_slope, epsilon=1.0e-8):
     high_fiber = H.T_fibers[high]
     M = H.manifold
     F = H.fibrator
-    assert check_slope(H,low,s) < target_slope < check_slope(H,high,s)
+    assert check_slope(H, low, s) < target_slope < check_slope(H, high, s)
     print 'finding:', target_slope
     count = 0
     while count < 100:
@@ -273,7 +272,7 @@ def bisection(H, low, high, s, target_slope, epsilon=1.0e-8):
 
 def lift_on_cusped_manifold(rho):
     rel_cutoff = len(rho.generators()) - 1
-    rels = rho.relators()[:rel_cutoff ]
+    rels = rho.relators()[:rel_cutoff]
     euler_cocycle = [euler_cocycle_of_relation(rho, R) for R in rels]
     D = rho.coboundary_1_matrix()[:rel_cutoff]
     M = matrix([euler_cocycle] + D.columns())
@@ -285,11 +284,11 @@ def lift_on_cusped_manifold(rho):
         if D.elementary_divisors() == M.transpose().elementary_divisors():
             raise AssertionError('Need better implementation, Nathan')
         else:
-            return 
+            return
     shifts = (-k)[1:]
     good_lifts = [PSL2RtildeElement(rho(g), s)
                   for g, s in zip(rho.generators(), shifts)]
-    rho_til= LiftedFreeGroupRep(rho, good_lifts)
+    rho_til = LiftedFreeGroupRep(rho, good_lifts)
     return rho_til
 
 

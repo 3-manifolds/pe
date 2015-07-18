@@ -2,7 +2,7 @@ import collections
 
 keyword_defaults = collections.OrderedDict(
     [('index', None), ('marker', ''), ('leave_gap', False)])
-    
+
 
 class PEPoint(complex):
     """
@@ -12,7 +12,7 @@ class PEPoint(complex):
         attrs = dict()
         for kw, default in keyword_defaults.items():
             attrs[kw] = kwargs.pop(kw, default)
-        obj = complex.__new__(cls, *args, **kwargs )
+        obj = complex.__new__(cls, *args, **kwargs)
         for kw, val in attrs.items():
             setattr(obj, kw, val)
         return obj
