@@ -209,8 +209,8 @@ if __name__ == "__main__":
     scattered = np.random.random((30, 2))
     zs = [complex(a, b) for a, b in scattered]
     P = MatplotPlot(zs[:10])
-    data0 = [PEPoint(z, marker='D') for z in zs[:10]]
-    data1 = [PEPoint(z, marker='x') for z in zs[10:]]
+    data0 = [PEPoint(z, marker='D', index=i) for i, z in enumerate(zs[:10])]
+    data1 = [PEPoint(z, marker='x', index=i) for i, z in enumerate(zs[10:])]
     data1[5].leave_gap = True
     data1[15].leave_gap = True
     Q = MatplotPlot([data0, data1], show_group=True)

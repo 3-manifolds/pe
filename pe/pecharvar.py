@@ -391,7 +391,7 @@ class PECharVariety(object):
                             interp = (last_L*M_args[n] + (1.0 - L)*M_args[n-1])/length
                             arc.append(PEPoint(0.0, interp, leave_gap=True))
                             arc.append(PEPoint(1.0, interp))
-                    arc.append(PEPoint(L, M_args[n], marker=marker))
+                    arc.append(PEPoint(L, M_args[n], marker=marker, index=(m, n)))
                     info.append((m, n))
                 else:
                     if len(arc) > 1:

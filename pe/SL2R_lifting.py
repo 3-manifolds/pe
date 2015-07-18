@@ -3,6 +3,7 @@ from .real_reps import (PSL2RRepOf3ManifoldGroup, translation_amount,
                         CouldNotConjugateIntoPSL2R, euler_cocycle_of_relation)
 from .shape import U1Q
 from .euler import PSL2RtildeElement, LiftedFreeGroupRep
+from .point import PEPoint
 from snappy import CensusKnots
 from snappy.snap.polished_reps import MapToFreeAbelianization
 
@@ -123,6 +124,7 @@ class SL2RLifter:
     def find_translation_arcs(self):
         self.translation_arcs = []
         self.translation_dict = {}
+        self.translation_dict_inverse = {}
         for arc in self.SL2R_rep_arcs:
             translations = []
             for sn, rho in arc:
@@ -140,13 +142,15 @@ class SL2RLifter:
                         P = (P[0] - self.m_abelian, P[1] - self.l_abelian)
                     translations.append(P)
                     self.translation_dict[sn] = P
+                    self.translation_dict_inverse[P] = sn
                     rho.translations = P
                 except AssertionError:
                     print "Warning: assertion failing somewhere"
             self.translation_arcs.append(translations)
 
     def show(self, add_lines=False):
-        plotlist = [ [complex(x,y) for x, y in arc] for arc in self.translation_arcs ]
+        plotlist = [[PEPoint(complex(x,y), index=self.translation_dict_inverse[(x,y)])
+                    for x, y in arc] for arc in self.translation_arcs]
         self.plot = Plot(plotlist, title=self.manifold.name())
         if add_lines:
             self.draw_line(self.manifold.homological_longitude(), color='green')
