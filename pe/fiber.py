@@ -135,13 +135,13 @@ class Fiber(object):
                 break
         return result
 
-    def polished_shape(self, n, target_holonomy=None, dec_prec=None, precision=200):
+    def polished_shape(self, n, target_holonomy=None, precision=200):
         if target_holonomy is None:
             target_holonomy = self.H_meridian
-        return PolishedShapes(self[n], target_holonomy, dec_prec=dec_prec, precision=precision)
+        return PolishedShapes(self[n], target_holonomy, precision)
 
-    def polished_shapelist(self, target_holonomy=None, dec_prec=None, precision=200):
+    def polished_shapelist(self, target_holonomy=None, precision=200):
         if target_holonomy is None:
             target_holonomy = self.H_meridian
-        return [PolishedShapes(S, target_holonomy, dec_prec, precision) for S in self]
+        return [PolishedShapes(S, target_holonomy, precision) for S in self]
 
