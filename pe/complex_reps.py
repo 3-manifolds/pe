@@ -77,31 +77,20 @@ def apply_representation(word, gen_images):
                [(g.upper(), SL2C_inverse(gen_images[i])) for i, g in enumerate(gens)])
     return prod([rho[g] for g in word], Id2)
 
-def polished_holonomy(M, target_meridian_holonomy,
+def polished_holonomy(M, shapes, target_meridian_holonomy,
                       precision=100,
                       fundamental_group_args=(True, False, True),
-                      lift_to_SL2=True,
-                      dec_prec=None):
-
-    if dec_prec:
-        precision = None
-        error = pari(10.0)**(-dec_prec*0.8)
-    else:
-        error = pari(2.0)**(-precision*0.8)
-
-    try:
-        shapes = PolishedShapes(Shapes(M), target_meridian_holonomy, precision,
-                                dec_prec).shapelist
-    except GoodShapesNotFound:
-        raise CheckRepresentationFailed
-
+                      lift_to_SL2=True):
+    error = pari(2.0)**(-precision*0.8)
     G = M.fundamental_group(*fundamental_group_args)
     N = generators.SnapPy_to_Mcomplex(M, shapes)
     init_tet_vertices = initial_tet_ideal_vertices(N)
     generators.visit_tetrahedra(N, init_tet_vertices)
     mats = generators.compute_matrices(N)
-    gen_mats = [clean_matrix(A, error=error) for A in reconstruct_representation(G, mats)]
-    PG = ManifoldGroup(G.generators(), G.relators(), G.peripheral_curves(), gen_mats)
+    gen_mats = [clean_matrix(A, error=error)
+                for A in reconstruct_representation(G, mats)]
+    PG = ManifoldGroup(
+        G.generators(), G.relators(), G.peripheral_curves(), gen_mats)
     if lift_to_SL2:
         PG.lift_to_SL2C()
     else:
@@ -150,7 +139,7 @@ class PSL2CRepOf3ManifoldGroup(object):
             self.manifold.set_tetrahedra_shapes(rough_shapes, rough_shapes)
         else:
             rough_shapes = manifold.tetrahedra_shapes('rect')
-        self.rough_shapes = rough_shapes
+        self.rough_shapes = Shapes(self.manifold, rough_shapes)
         if target_meridian_holonomy is None:
             Hm = manifold.cusp_info('holonomies')[0][0]
             target_meridian_holonomy = (2*pari.pi()*pari('I')*Hm).exp()
@@ -166,22 +155,39 @@ class PSL2CRepOf3ManifoldGroup(object):
         if precision != None:
             self.precision = precision
 
+    def advance_holonomy(self, p, q):
+        """Change the target_holonomy by exp(2 pi i p/q)"""
+        shapes = self.polished_shapes()
+        shapes.advance_holonomy(p, q)
+        self.target_meridian_holonomy = shapes.target_holonomy
+        self.manifold.set_tetrahedra_shapes(shapes.shapelist)
+        self.rough_shapes = Shapes(self.manifold, shapes.shapelist)
+        self._cache = {}
+
+    def polished_shapes(self, precision=None):
+        self._update_precision(precision)
+        precision = self.precision
+        mangled = "polished_shapes_%s" % precision
+        if not self._cache.has_key(mangled):
+            S = PolishedShapes(self.rough_shapes,
+                               self.target_meridian_holonomy, precision)
+            self._cache[mangled] = S
+
+        return self._cache[mangled]
+
     def polished_holonomy(self, precision=None):
         self._update_precision(precision)
         precision = self.precision
         mangled = "polished_holonomy_%s" % precision
         if not self._cache.has_key(mangled):
-            if precision == None:
-                G = self.manifold.fundamental_group(*self.fundamental_group_args)
-            else:
-                G = polished_holonomy(self.manifold,
-                                      self.target_meridian_holonomy,
-                                      precision=precision,
-                                      fundamental_group_args=self.fundamental_group_args,
-                                      lift_to_SL2=False)
-                if not G.check_representation() < RR(2.0)**(-0.8*precision):
-                    raise CheckRepresentationFailed
-
+            G = polished_holonomy(self.manifold,
+                                  self.polished_shapes().shapelist, 
+                                  self.target_meridian_holonomy,
+                                  precision=precision,
+                                  fundamental_group_args=self.fundamental_group_args,
+                                  lift_to_SL2=False)
+            if not G.check_representation() < RR(2.0)**(-0.8*precision):
+                raise CheckRepresentationFailed
             self._cache[mangled] = G
 
         return self._cache[mangled]
