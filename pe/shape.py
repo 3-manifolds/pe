@@ -180,27 +180,31 @@ class PolishedShapes(object):
     1.7806839263153037270854777557735393746612852691604941278274
     >>> print '%.60s'%M.high_precision().tetrahedra_shapes('rect')[0].real()
     1.7806839263153037270854777557735393746612852691604941278274
-
+    >>> beta.advance_holonomy(1, 128)
+    >>> print '%.60s'%beta[0].real()
+    1.8594892443933700576759347698861791174458226666979385882887
     """
-    def __init__(self, rough_shapes, target_holonomy, precision=212, dec_prec=None):
+    def __init__(self, rough_shapes, target_holonomy, precision=212):
         self.rough_shapes = rough_shapes
         self.target_holonomy = target_holonomy
-        if dec_prec is None:
-            dec_prec = prec_bits_to_dec(precision)
-        else:
-            precision = prec_dec_to_bits(dec_prec)
         self._precision = precision
+        self.manifold = rough_shapes.manifold.copy()
+        self.manifold.dehn_fill((1,0))
+        self.polish(init_shapes = rough_shapes.array)
+
+    def polish(self, init_shapes, flag_initial_error=True):
+        precision = self._precision
+        manifold = self.manifold
+        dec_prec = prec_bits_to_dec(precision)
         working_prec = dec_prec + 10
         target_espilon = pari_set_precision(10.0, working_prec)**-dec_prec
         det_epsilon = pari_set_precision(10.0, working_prec)**-(dec_prec//10)
         init_shapes = pari_column_vector(
-            [complex_to_pari(z, working_prec) for z in rough_shapes.array])
-        self.manifold = manifold = rough_shapes.manifold.copy()
-        manifold.dehn_fill((1, 0))
+            [pari_complex(z, working_prec) for z in init_shapes])
         init_equations = manifold.gluing_equations('rect')
-        target = pari_complex(target_holonomy, dec_prec)
+        target = pari_complex(self.target_holonomy, dec_prec)
         error = self._gluing_equation_error(init_equations, init_shapes, target)
-        if error > pari(0.000001):
+        if flag_initial_error and error > pari(0.000001):
             raise GoodShapesNotFound('Initial solution not very good')
 
         # Now begin the actual computation
@@ -214,8 +218,8 @@ class PolishedShapes(object):
             if infinity_norm(errors) < target_espilon:
                 break
             shape_list = pari_vector_to_list(shapes)
-            derivative = [[eqn[0][i]/z  - eqn[1][i]/(1 - z) for i, z in enumerate(shape_list)]
-                          for eqn in eqns]
+            derivative = [[eqn[0][i]/z  - eqn[1][i]/(1 - z)
+                        for i, z in enumerate(shape_list)] for eqn in eqns]
             derivative[-1] = [target*x for x in derivative[-1]]
             derivative = pari_matrix(derivative)
 
@@ -228,8 +232,10 @@ class PolishedShapes(object):
         # Check to make sure things worked out ok.
         error = self._gluing_equation_error(init_equations, shapes, target)
         total_change = infinity_norm(init_shapes - shapes)
-        if error > 1000*target_espilon or total_change > pari(0.0000001):
+        if error > 1000*target_espilon:
             raise GoodShapesNotFound('Failed to find solution')
+        if flag_initial_error and total_change > pari(0.0000001):
+            raise GoodShapesNotFound('Moved to far finding a good solution')
         shapes = pari_vector_to_list(shapes)
         self.shapelist = [Number(z, precision=precision) for z in shapes]
 
@@ -262,6 +268,12 @@ class PolishedShapes(object):
             return 'Non-real PE rep'
         else:
             return 'generic rep'
+
+    def advance_holonomy(self, p, q):
+        """Change the target_holonomy by exp(2πip/q)"""
+        z = U1Q(p, q, self._precision)
+        self.target_holonomy = z*self.target_holonomy
+        self.polish(self.shapelist, False)
 
 if __name__ == '__main__':
     import doctest

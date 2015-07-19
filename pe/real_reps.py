@@ -247,6 +247,7 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
         if not self._cache.has_key(mangled):
             epsilon = 2.0**(-0.8*precision)
             G = polished_holonomy(self.manifold,
+                                  self.polished_shapes().shapelist, 
                                   self.target_meridian_holonomy,
                                   precision,
                                   fundamental_group_args=self.fundamental_group_args,
