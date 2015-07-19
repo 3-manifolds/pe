@@ -205,7 +205,7 @@ class PSL2CRepOf3ManifoldGroup(object):
     def appears_to_be_SU2_rep(self, depth=5, trys=50, rand_length=20):
         G = self.polished_holonomy()
         gens = G.generators()
-        words = conjugacy_classes_in_Fn(gens, depth)
+        words = conjugacy_classes_in_Fn(tuple(gens), depth)
         words += [random_word(gens, rand_length) for _ in range(trys)]
         for w in words:
             d = abs(self(w).trace())

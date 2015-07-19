@@ -262,7 +262,10 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
 
             def rho(word):
                 return apply_representation(word, new_mats)
-            G.SL2C = rho
+            for g in G.generators():
+                G._hom_dict[g] = rho(g)
+                G._hom_dict[g.upper()] = rho(g.upper())
+            G._id = Id2
             if not G.check_representation() < epsilon:
                 raise CheckRepresentationFailed
             self._cache[mangled] = G

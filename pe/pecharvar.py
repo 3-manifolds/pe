@@ -15,6 +15,8 @@ from .fibrator import Fibrator
 from .point import PEPoint
 from .shape import PolishedShapes, U1Q
 from .plot import MatplotPlot as Plot
+from .complex_reps import PSL2CRepOf3ManifoldGroup
+from .real_reps import PSL2RRepOf3ManifoldGroup
 
 class CircleElevation(object):
     """
@@ -503,7 +505,7 @@ class PECharVariety(object):
              extra_line_args={'color':'black', 'linewidth':0.75},
              show_group=show_group)
 
-    def inspect_rep(self, fiber_index, shape_index, precision=1000, tight=True):
+    def inspect_rep(self, shape_index, fiber_index, precision=1000, tight=True):
         """
         Return a dict containing information about the rep associated to a
         solution to the gluing equations in a fiber over a point on the
@@ -515,11 +517,15 @@ class PECharVariety(object):
         else:
             target = self.elevation.R_circle[fiber_index]
         fibers = self.elevation.T_fibers if tight else self.elevation.R_fibers
-        info = {}
-        info['rough_shapes'] = shapes = fibers[fiber_index].shapes[shape_index]
-        info['polished_shapes'] = polished = PolishedShapes(shapes, target, precision)
-        info['rep_type'] = polished.rep_type()
-        return Info(**info)
+        rough_shapes = fibers[fiber_index].shapes[shape_index]
+        polished_shapes = PolishedShapes(rough_shapes, target, precision)
+        rho = PSL2CRepOf3ManifoldGroup(self.manifold, target,
+                                       rough_shapes, precision)
+        if rho.is_PSL2R_rep():
+            rho = PSL2RRepOf3ManifoldGroup(rho)
+        rho.index = (shape_index, fiber_index)
+        rho.rep_type = polished_shapes.rep_type()
+        return rho
 
 class Permutation(dict):
     def orbits(self):
