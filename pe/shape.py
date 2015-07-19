@@ -4,11 +4,11 @@ from snappy.snap.shapes import (pari, complex_to_pari, pari_column_vector,
                                 infinity_norm, pari_matrix, pari_vector_to_list,
                                 enough_gluing_equations, eval_gluing_equation,
                                 prec_dec_to_bits, prec_bits_to_dec)
-from pe.sage_helper import _within_sage
 import numpy
 from numpy import array, matrix, complex128, zeros, eye, transpose
 from numpy.linalg import svd, norm
 real_array = numpy.vectorize(float)
+from .sage_helper import _within_sage
 
 if _within_sage:
     from sage.all import ComplexField, pari
