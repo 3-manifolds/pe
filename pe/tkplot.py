@@ -82,13 +82,17 @@ class MatplotFigure(object):
         self.draw()
 
     def set_cursor(self, cursor_name):
+        toolbar = self.canvas.toolbar
         tkagg.cursord[1] = cursor_name
-        self.canvas.toolbar.set_cursor(1)
+        if not toolbar._active:
+            toolbar.set_cursor(1)
 
     def unset_cursor(self):
+        toolbar = self.canvas.toolbar
         tkagg.cursord[1] = self.default_cursor
-        self.canvas.toolbar.set_cursor(1)
- 
+        if not toolbar._active:
+            toolbar.set_cursor(1)
+
 if __name__ == "__main__":
     from numpy import arange, sin, pi
     MF = MatplotFigure()
