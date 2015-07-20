@@ -1,6 +1,6 @@
 from numpy import complex128
 from .gluing import GluingSystem
-from .shape import Shapes, PolishedShapes
+from .shape import Shapes, PolishedShapes, GoodShapesNotFound
 
 class Fiber(object):
     """A fiber for the rational function [holonomy of the meridian]
@@ -82,7 +82,10 @@ class Fiber(object):
             print n, s.res
 
     def polish(self):
-        polished = self.polished_shapelist(precision=96)
+        try:
+            polished = self.polished_shapelist(precision=96)
+        except GoodShapesNotFound:
+            polished = self.polished_shapelist(precision=212)
         for shapes, polished_shapes in zip(self, polished):
             shapes.update([complex128(z) for z in polished_shapes])
 
