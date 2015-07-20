@@ -141,7 +141,7 @@ class SL2RLifter(object):
                         P = (P[0] + self.m_abelian, P[1] + self.l_abelian)
                     while P[0] > self.m_abelian:
                         P = (P[0] - self.m_abelian, P[1] - self.l_abelian)
-                    P = PEPoint(complex(*P), index = sn)
+                    P = PEPoint(complex(*P), index=sn)
                     translations.append(P)
                     self.translation_dict[sn] = P
                     rho.translations = P

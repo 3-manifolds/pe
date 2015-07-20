@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
-
-from snappy.snap.shapes import (pari, complex_to_pari, pari_column_vector,
-                                infinity_norm, pari_matrix, pari_vector_to_list,
-                                enough_gluing_equations, eval_gluing_equation,
-                                prec_dec_to_bits, prec_bits_to_dec)
+from snappy.snap.shapes import (pari, pari_column_vector, infinity_norm, pari_matrix,
+                                pari_vector_to_list, enough_gluing_equations,
+                                eval_gluing_equation, prec_bits_to_dec)
 import numpy
 from numpy import array, matrix, complex128, zeros, eye, transpose
 from numpy.linalg import svd, norm
@@ -191,8 +189,13 @@ class PolishedShapeSet(object):
         self.target_holonomy = target_holonomy
         self._precision = precision
         self.manifold = rough_shapes.manifold.copy()
-        self.manifold.dehn_fill((1,0))
-        self.polish(init_shapes = rough_shapes.array)
+        self.manifold.dehn_fill((1, 0))
+        self.polish(init_shapes=rough_shapes.array)
+
+    def __repr__(self):
+        return ('<ShapeSet for %s:\n  '%self.manifold +
+                '\n  '.join([repr(x) for x in self]) +
+                '>')
 
     def polish(self, init_shapes, flag_initial_error=True):
         precision = self._precision
@@ -221,7 +224,7 @@ class PolishedShapeSet(object):
                 break
             shape_list = pari_vector_to_list(shapes)
             derivative = [[eqn[0][i]/z  - eqn[1][i]/(1 - z)
-                        for i, z in enumerate(shape_list)] for eqn in eqns]
+                           for i, z in enumerate(shape_list)] for eqn in eqns]
             derivative[-1] = [target*x for x in derivative[-1]]
             derivative = pari_matrix(derivative)
 
