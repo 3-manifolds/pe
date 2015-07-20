@@ -1,6 +1,6 @@
 from numpy import complex128
 from .gluing import GluingSystem
-from .shape import Shapes, PolishedShapes
+from .shape import ShapeSet, PolishedShapeSet
 
 class Fiber(object):
     """A fiber for the rational function [holonomy of the meridian]
@@ -17,7 +17,7 @@ class Fiber(object):
         self.H_meridian = H_meridian
         self.tolerance = tolerance
         if shapes:
-            self.shapes = [Shapes(self.manifold, S) for S in shapes]
+            self.shapes = [ShapeSet(self.manifold, S) for S in shapes]
         if gluing_system is None:
             self.gluing_system = GluingSystem(manifold)
         else:
@@ -27,14 +27,17 @@ class Fiber(object):
             N = self.system.num_variables()/2
             self.solutions = self.system.solution_list(tolerance=self.tolerance)
             # We only keep the "X" variables.
-            self.shapes = [Shapes(self.manifold, S.point[:N]) for S in self.solutions]
+            self.shapes = [ShapeSet(self.manifold, S.point[:N]) for S in self.solutions]
 
-    def __repr__(self):
+    def __str__(self):
         return "Fiber(ManifoldHP('%s'),\n%s,\nshapes=%s\n)"%(
             repr(self.manifold),
             repr(self.H_meridian),
             repr([list(x) for x in self.shapes]).replace('],', '],\n')
             )
+
+    def __repr__(self):
+        return '<Fiber for %s over %s>'%(self.manifold, self.H_meridian)
 
     def __len__(self):
         return len(self.shapes)
@@ -138,10 +141,10 @@ class Fiber(object):
     def polished_shape(self, n, target_holonomy=None, precision=200):
         if target_holonomy is None:
             target_holonomy = self.H_meridian
-        return PolishedShapes(self[n], target_holonomy, precision)
+        return PolishedShapeSet(self[n], target_holonomy, precision)
 
     def polished_shapelist(self, target_holonomy=None, precision=200):
         if target_holonomy is None:
             target_holonomy = self.H_meridian
-        return [PolishedShapes(S, target_holonomy, precision) for S in self]
+        return [PolishedShapeSet(S, target_holonomy, precision) for S in self]
 

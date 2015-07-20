@@ -1,6 +1,6 @@
 import random, string
 from itertools import chain
-from .shape import Shapes, PolishedShapes, GoodShapesNotFound
+from .shape import ShapeSet, PolishedShapeSet, GoodShapesNotFound
 from .sage_helper import _within_sage, cached_function
 from snappy.snap import  generators
 from snappy.snap.polished_reps import (initial_tet_ideal_vertices,
@@ -139,7 +139,7 @@ class PSL2CRepOf3ManifoldGroup(object):
             self.manifold.set_tetrahedra_shapes(rough_shapes, rough_shapes)
         else:
             rough_shapes = manifold.tetrahedra_shapes('rect')
-        self.rough_shapes = Shapes(self.manifold, rough_shapes)
+        self.rough_shapes = ShapeSet(self.manifold, rough_shapes)
         if target_meridian_holonomy is None:
             Hm = manifold.cusp_info('holonomies')[0][0]
             target_meridian_holonomy = (2*pari.pi()*pari('I')*Hm).exp()
@@ -161,7 +161,7 @@ class PSL2CRepOf3ManifoldGroup(object):
         shapes.advance_holonomy(p, q)
         self.target_meridian_holonomy = shapes.target_holonomy
         self.manifold.set_tetrahedra_shapes(shapes.shapelist)
-        self.rough_shapes = Shapes(self.manifold, shapes.shapelist)
+        self.rough_shapes = ShapeSet(self.manifold, shapes.shapelist)
         self._cache = {}
 
     def polished_shapes(self, precision=None):
@@ -169,7 +169,7 @@ class PSL2CRepOf3ManifoldGroup(object):
         precision = self.precision
         mangled = "polished_shapes_%s" % precision
         if not self._cache.has_key(mangled):
-            S = PolishedShapes(self.rough_shapes,
+            S = PolishedShapeSet(self.rough_shapes,
                                self.target_meridian_holonomy, precision)
             self._cache[mangled] = S
 

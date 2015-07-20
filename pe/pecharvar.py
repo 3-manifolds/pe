@@ -13,7 +13,7 @@ from .gluing import Glunomial
 from .fiber import Fiber
 from .fibrator import Fibrator
 from .point import PEPoint
-from .shape import PolishedShapes, U1Q
+from .shape import PolishedShapeSet, U1Q
 from .plot import MatplotPlot as Plot
 from .complex_reps import PSL2CRepOf3ManifoldGroup
 from .real_reps import PSL2RRepOf3ManifoldGroup
@@ -87,6 +87,20 @@ class CircleElevation(object):
     def __call__(self, Z):
         return array([F(Z) for F in self.glunomials])
 
+    def __getitem__(self, index):
+        """If passed an int, return the T_fiber with that index.  If passed a tuple
+        (fiber_index, shape_index) return the associated ShapeSet.
+        """
+        try:
+            fiber_index = int(index)
+            return self.T_fibers[fiber_index]
+        except TypeError:
+            try:
+                fiber_index, shape_index = index
+                return self.T_fibers[fiber_index].shapes[shape_index]
+            except ValueError:
+                raise IndexError('Syntax: V[fiber_index, shape_index]')
+            
     def track_satellite(self):
         """
         Construct the fibers over the circle of radius R.
@@ -325,6 +339,12 @@ class PECharVariety(object):
         else:
             self.elevation = elevation
 
+    def __getitem__(self, index):
+        """
+        Return the indexed fiber or shape from this PECharVariety's elevation.
+        """
+        return self.elevation[index]
+    
     @staticmethod
     def _check_dir(directory, message=''):
         if not os.path.exists(directory):
@@ -505,12 +525,18 @@ class PECharVariety(object):
              extra_line_args={'color':'black', 'linewidth':0.75},
              show_group=show_group)
 
-    def inspect_rep(self, shape_index, fiber_index, precision=1000, tight=True):
+    def get_rep(self, fiber_index, shape_index, precision=1000, tight=True):
         """
-        Return a dict containing information about the rep associated to a
-        solution to the gluing equations in a fiber over a point on the
-        T circle. If the optional keyname argument *tight* is set to
+        Return a precise representation, computed to the specified binary
+        precision, determined by the shape set with index
+        *shape_index* in the fiber with index fiber_index over the
+        T_circle. If the optional keyname argument *tight* is set to
         False, the R circle is used instead.
+
+        If the repesentation is a PSL(2,R) rep, the return value from
+        this rep will be an object of type PSL2RRepOf3ManifoldGRoup
+        class.  Otherwise, the return value will be of type
+        PSL2CRepOF3ManifoldGRoup.
         """
         if tight:
             target = U1Q(-fiber_index, self.order, precision=precision)
@@ -518,7 +544,7 @@ class PECharVariety(object):
             target = self.elevation.R_circle[fiber_index]
         fibers = self.elevation.T_fibers if tight else self.elevation.R_fibers
         rough_shapes = fibers[fiber_index].shapes[shape_index]
-        polished_shapes = PolishedShapes(rough_shapes, target, precision)
+        polished_shapes = PolishedShapeSet(rough_shapes, target, precision)
         rho = PSL2CRepOf3ManifoldGroup(self.manifold, target,
                                        rough_shapes, precision)
         if rho.is_PSL2R_rep():

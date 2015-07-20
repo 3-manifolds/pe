@@ -48,7 +48,7 @@ class Fibrator(object):
             if fiber_file:
                 with open(fiber_file, 'w') as datafile:
                     datafile.write("{\n'fiber': %s, \n'signature': %s\n}"%(
-                        repr(result), repr(signature)))
+                        result, signature))
                 print 'Saved base fiber as %s'%fiber_file
             return result
 

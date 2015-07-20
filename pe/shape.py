@@ -36,7 +36,7 @@ def pari_complex(z, dec_prec):
 class GoodShapesNotFound(Exception):
     pass
 
-class Shapes(object):
+class ShapeSet(object):
     """
     A vector of shape parameters, stored as a numpy.array.
     Many methods are available: ...
@@ -71,7 +71,9 @@ class Shapes(object):
         return norm(self.array - other.array)
 
     def __repr__(self):
-        return repr(list(self))
+        return ('<ShapeSet for %s:\n  '%self.manifold +
+                '\n  '.join([repr(x) for x in self]) +
+                '>')
 
     def update(self, values):
         self.array = array(values)
@@ -159,23 +161,23 @@ class Shapes(object):
                 return False
         return True
 
-class PolishedShapes(object):
+class PolishedShapeSet(object):
     """An arbitrarily precise solution to the gluing equations with a
     specified target value for the meridian holonomy.  Initialize with
-    a rough Shapes object and a target_holonomy.
+    a rough ShapeSet object and a target_holonomy.
 
     >>> import snappy
     >>> M = snappy.Manifold('m071(0,0)')
-    >>> rough = Shapes(M)
+    >>> rough = ShapeSet(M)
     >>> rough[0]
     (0.94501569508040595+1.0738656547982881j)
-    >>> polished = PolishedShapes(rough, target_holonomy=1.0)
+    >>> polished = PolishedShapeSet(rough, target_holonomy=1.0)
     >>> print '%.60s'%polished[0].real()
     0.9450156950804044984439848107085525618005253081486674978149
     >>> print '%.60s'%M.high_precision().tetrahedra_shapes('rect')[0].real()
     0.9450156950804044984439848107085525618005253081486674978149
     >>> M = snappy.Manifold('m071(7,0)')
-    >>> beta = PolishedShapes(Shapes(M), U1Q(1,7, precision=256), precision=256)
+    >>> beta = PolishedShapeSet(ShapeSet(M), U1Q(1,7, precision=256), precision=256)
     >>> print '%.60s'%beta[0].real()
     1.7806839263153037270854777557735393746612852691604941278274
     >>> print '%.60s'%M.high_precision().tetrahedra_shapes('rect')[0].real()
