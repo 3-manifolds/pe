@@ -46,6 +46,8 @@ except ImportError:
 # Load MatplotLib
 import matplotlib
 matplotlib.use('TkAgg')
+from matplotlib.backend_bases import cursors
+import matplotlib.backends.backend_tkagg as tkagg
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.backends.backend_tkagg import NavigationToolbar2TkAgg
 
@@ -70,7 +72,8 @@ class MatplotFigure(object):
         window.rowconfigure(0, weight=1)
         self.window, self.canvas, self.toolbar = window, canvas, toolbar
         self.figure_frame = figure_frame
-
+        self.default_cursor = tkagg.cursord[1]
+        
     def draw(self):
         self.canvas.draw()
 
@@ -78,6 +81,14 @@ class MatplotFigure(object):
         self.axis.clear()
         self.draw()
 
+    def set_cursor(self, cursor_name):
+        tkagg.cursord[1] = cursor_name
+        self.canvas.toolbar.set_cursor(1)
+
+    def unset_cursor(self):
+        tkagg.cursord[1] = self.default_cursor
+        self.canvas.toolbar.set_cursor(1)
+ 
 if __name__ == "__main__":
     from numpy import arange, sin, pi
     MF = MatplotFigure()
