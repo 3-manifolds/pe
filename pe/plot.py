@@ -156,7 +156,7 @@ class MatplotPlot(Plot):
         print num_points, 'points; choosing',
         median = event.ind[num_points // 2]
         print self.scatter_point_to_raw_data[event.artist][median]
-        
+
     def on_hover(self, event):
         for verts in self.vertex_sets:
             if verts.hitlist(event):

@@ -170,7 +170,7 @@ class PSL2CRepOf3ManifoldGroup(object):
         mangled = "polished_shapes_%s" % precision
         if not self._cache.has_key(mangled):
             S = PolishedShapeSet(self.rough_shapes,
-                               self.target_meridian_holonomy, precision)
+                                 self.target_meridian_holonomy, precision)
             self._cache[mangled] = S
 
         return self._cache[mangled]
@@ -181,7 +181,7 @@ class PSL2CRepOf3ManifoldGroup(object):
         mangled = "polished_holonomy_%s" % precision
         if not self._cache.has_key(mangled):
             G = polished_holonomy(self.manifold,
-                                  self.polished_shapes().shapelist, 
+                                  self.polished_shapes().shapelist,
                                   self.target_meridian_holonomy,
                                   precision=precision,
                                   fundamental_group_args=self.fundamental_group_args,

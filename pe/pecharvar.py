@@ -100,7 +100,7 @@ class CircleElevation(object):
                 return self.T_fibers[fiber_index].shapes[shape_index]
             except ValueError:
                 raise IndexError('Syntax: V[fiber_index, shape_index]')
-            
+
     def track_satellite(self):
         """
         Construct the fibers over the circle of radius R.
@@ -344,7 +344,7 @@ class PECharVariety(object):
         Return the indexed fiber or shape from this PECharVariety's elevation.
         """
         return self.elevation[index]
-    
+
     @staticmethod
     def _check_dir(directory, message=''):
         if not os.path.exists(directory):

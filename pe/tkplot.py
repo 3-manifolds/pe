@@ -73,7 +73,7 @@ class MatplotFigure(object):
         self.window, self.canvas, self.toolbar = window, canvas, toolbar
         self.figure_frame = figure_frame
         self.default_cursor = tkagg.cursord[1]
-        
+
     def draw(self):
         self.canvas.draw()
 
