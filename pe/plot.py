@@ -1,7 +1,9 @@
+from .tkplot import MatplotFigure, Tk, ttk
 try:
     from .tkplot import MatplotFigure, Tk, ttk
 except ImportError:
     pass
+
 from .point import PEPoint
 import collections
 import numpy as np
@@ -85,6 +87,7 @@ class MatplotPlot(Plot):
         self.figure = MF = MatplotFigure(add_subplot=False)
         MF.axis = axis = MF.figure.add_axes([0.07, 0.07, 0.8, 0.9])
         self.arcs = []
+        self.vertex_sets = []
         self.arc_vars = collections.OrderedDict()
         self.scatter_point_to_raw_data = collections.OrderedDict()
         for i, component in enumerate(self.data):
@@ -92,8 +95,9 @@ class MatplotPlot(Plot):
             X = attribute_map(component, 'real')
             Y = attribute_map(component, 'imag')
             arc = axis.plot(X, Y, color=color, linewidth=self.linewidth, label='%d' % i)
-            self.arcs.append(arc)
-            verts = axis.scatter(X, Y, s=0.01, color=color, marker='.', picker=2)
+            self.arcs.append(arc[0])
+            verts = axis.scatter(X, Y, s=0.01, color=color, marker='.', picker=3)
+            self.vertex_sets.append(verts)
             self.scatter_point_to_raw_data[verts] = component
             var = Tk.BooleanVar(MF.window, value=True)
             var.trace('w', self.arc_button_callback)
@@ -144,13 +148,21 @@ class MatplotPlot(Plot):
             button.grid(column=0, row=i, sticky=(Tk.N, Tk.W))
         func_selector_frame.grid(column=1, row=0, sticky=(Tk.N))
         window.columnconfigure(1, weight=0)
+        self.figure.canvas.mpl_connect('pick_event', self.on_pick)
+        self.figure.canvas.mpl_connect('motion_notify_event', self.on_hover)
 
-        # Action to do when points are clicked.
-        def on_pick(event):
-            for i in event.ind:
-                print self.scatter_point_to_raw_data[event.artist][i]
-
-        self.figure.canvas.mpl_connect('pick_event', on_pick)
+    def on_pick(self, event):
+        num_points = len(event.ind)
+        print num_points, 'points; choosing',
+        median = event.ind[num_points // 2]
+        print self.scatter_point_to_raw_data[event.artist][median]
+        
+    def on_hover(self, event):
+        for verts in self.vertex_sets:
+            if verts.hitlist(event):
+                self.figure.set_cursor('hand1')
+                return
+        self.figure.unset_cursor()
 
     def arc_button_callback(self, var_name, *args):
         var = self.arc_vars[var_name]
