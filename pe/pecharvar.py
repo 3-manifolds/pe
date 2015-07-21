@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
-
+"""
+This module defines the main class PECharVariety, whose objects represent Peripherally
+Elliptic Character Varieties.  Each PECHarVariety oject manages two CircleElevation
+objects, which represent a family of fibers for the meridian holonomy map lying above
+a circle in the compex plane.
+"""
 import time, sys, os
 from random import randint
 from numpy import arange, array, dot, float64, matrix, log, exp, pi, sqrt, zeros
@@ -7,7 +12,6 @@ import snappy
 snappy.SnapPy.matrix = matrix
 snappy.SnapPyHP.matrix = matrix
 from snappy import Manifold, ManifoldHP
-from snappy.SnapPy import Info
 from spherogram.graphs import Graph
 from .gluing import Glunomial
 from .fiber import Fiber
@@ -149,6 +153,10 @@ class CircleElevation(object):
         print 'Tracked in %s seconds.'%(time.time() - start)
 
     def tighten(self):
+        """
+        Radially transport each fiber over a point on the R-circle to a
+        fiber over a point on the T-circle.
+        """
         T = 1.0
         print 'Tightening the circle to radius %s ...'%T
         Darg = 2*pi/self.order
@@ -212,6 +220,7 @@ class CircleElevation(object):
         return longitude_holonomies, longitude_eigenvalues
 
     def compute_volumes(self, fiber_list):
+        """Return a list of the volumes of all the characters in a list of fibers."""
         volumes = [[] for n in range(self.degree)]
         for fiber in fiber_list:
             for n, shape in enumerate(fiber.shapes):
@@ -220,6 +229,7 @@ class CircleElevation(object):
         return volumes
 
     def find_longitude_traces(self, fiber):
+        """Compute the longitude traces by lifting to SL(2,C)."""
         # Sage complex numbers do not support attributes .real and .imag :^(((
         trace = lambda rep: complex(rep[0, 0] + rep[1, 1])
         traces = []
@@ -253,33 +263,21 @@ class CircleElevation(object):
         return traces
 
     def show_R_longitude_evs(self):
+        """
+        Display a plot of the longitude eigenvalues on the meridian
+        preimage of the R-circle.
+        """
         Plot([[complex(x) for _, x in track] for track in self.R_longitude_evs])
 
     def show_T_longitude_evs(self):
+        """
+        Display a plot of the longitude eigenvalues on the meridian
+        preimage of the T-circle.
+        """
         Plot([[complex(x) for _, x in track] for track in self.T_longitude_evs])
 
-    def holo_permutation(self):
-        return [self.R_fibers[0].shapes.index(p)
-                for p in self.last_R_fiber.shapes]
-
-    def holo_orbits(self):
-        P = self.holo_permutation()
-        Q = list(P)
-        orbits = []
-        while Q:
-            first_one = this_one = Q.pop()
-            orbit = []
-            while True:
-                orbit.append(this_one)
-                this_one = P[this_one]
-                if this_one == first_one:
-                    break
-                else:
-                    Q.remove(this_one)
-            orbits.append(orbit)
-        return orbits
-
 def solve_mod2_system(the_matrix, rhs):
+    """Mod 2 linear algebra - used for lifting reps to SL2C"""
     M, N = the_matrix.shape
     A = zeros((M, N+1), 'i')
     A[:, :-1] = the_matrix
@@ -317,6 +315,7 @@ class PEArc(list):
     """
 
 class PECharVariety(object):
+    """Representation of the PE Character Variety of a 3-manifold."""
     def __init__(self, manifold, order=128, radius=1.02,
                  elevation=None, base_dir='PE_base_fibers', hint_dir='hints'):
         if isinstance(manifold, (Manifold, ManifoldHP)):
@@ -358,6 +357,7 @@ class PECharVariety(object):
             os.mkdir(newdir)
 
     def save_hint(self, basename=None, directory=None):
+        """Save the settings used to compute this variety."""
         if directory == None:
             directory = self.hint_dir
         self._check_dir(directory, 'I need a directory for storing hint files.')
@@ -373,6 +373,7 @@ class PECharVariety(object):
         hintfile.close()
 
     def build_arcs(self, show_group=False):
+        """Find the arcs in the pillowcase projection of this PE Character Variety."""
         self.arcs = []
         self.arc_info = []
         H = self.elevation
@@ -457,6 +458,14 @@ class PECharVariety(object):
                 pass
 
     def add_extrema(self):
+        """
+        The pillowcase arcs, as computed, are monotone decreasing in the
+        argument of the meridian.  The actual components of the
+        pillowcase picture are unions of these monotone arcs joined at
+        critical points of the argument of the meridian.  This method
+        attempts to compute which arcs should be joined at maxima or
+        minima.
+        """
         arcs = list(self.arcs)
         # caps
         arcs.sort(key=lambda x: x[0].imag, reverse=True)
@@ -514,6 +523,7 @@ class PECharVariety(object):
         return
 
     def show(self, show_group=False):
+        """Plot the pillowcase image of this PE Character Variety."""
         self.build_arcs(show_group)
         Plot(self.arcs,
              limits=((0.0, 1.0), (0.0, 0.5)),
@@ -552,20 +562,3 @@ class PECharVariety(object):
         rho.index = (shape_index, fiber_index)
         rho.rep_type = polished_shapes.rep_type()
         return rho
-
-class Permutation(dict):
-    def orbits(self):
-        points = set(self.keys())
-        orbits = []
-        while points:
-            first = n = points.pop()
-            orbit = [first]
-            while True:
-                n = self[n]
-                if n == first:
-                    orbits.append(orbit)
-                    break
-                else:
-                    points.remove(n)
-                    orbit.append(n)
-        return orbits

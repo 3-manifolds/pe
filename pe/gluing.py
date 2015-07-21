@@ -1,3 +1,9 @@
+"""
+This module defines the GluingSystem and Glunomial classes.
+
+A GluingSystem object represents a system of gluing equations.  The
+monomials in the equations are represented by Glunomial objects.
+"""
 from numpy import dtype, array, matrix, prod, ones
 from numpy.linalg import svd, norm, solve, lstsq
 # The numpy type for our complex arrays
@@ -37,6 +43,7 @@ class Glunomial(object):
             raise ValueError
 
     def gradient(self, Z):
+        """Return the gradient of this monomial."""
         W = 1 - Z
         return self.sign*prod(Z**self.A)*prod(W**self.B)*(self.A/Z - self.B/W)
 
@@ -69,12 +76,15 @@ class GluingSystem(object):
         return len(self.glunomials)
 
     def jacobian(self, Z):
+        """Return the Jacobian matrix for the system at a point Z in shape space."""
         return matrix([G.gradient(Z) for G in self.glunomials])
 
     def M_holonomy(self, Z):
+        """Evaluate the holonomy function of the meridian at a point Z in shape space."""
         return complex(self.M_nomial(Z))
 
     def L_holonomy(self, Z):
+        """Evaluate the holonomy function of the longitude at a point Z in shape space."""
         return complex(self.L_nomial(Z))
 
     def condition(self, Z):
