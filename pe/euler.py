@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 For a representation G -> PSL(2, R) compute the Euler class of the
 action on P^1(R).
@@ -25,9 +27,11 @@ else:
     Id2 = matrix(1, 0, 0, 1)
 
 def wedge(a, b):
+    """Return the wedge product of two 2-vectors."""
     return -a[0]*b[1] + a[1]*b[0]
 
 def orientation(a, b, c):
+    """Is the oriented triangle Δ(a,b,c) counterclockwise?"""
     return cmp(wedge(a, b) * wedge(b, c) * wedge(c, a), 0)
 
 class PointInP1R(object):
@@ -144,6 +148,7 @@ def my_matrix_norm(A):
     return max(abs(e) for e in A.list())
 
 def is_almost_identity(A, tol=0.8):
+    """Decide if a 2x2 matrix is the identity to within round-off error."""
     # First a quick check to rule out most inputs.
     if abs(A[0][1]) > 1e-10 or abs(A[1][0]) > 1e-10:
         return False
@@ -164,6 +169,7 @@ class PSL2RtildeElement(object):
         return sigma_action(self.A, x) + self.s
 
     def inverse(self):
+        """The inverse of an element of ~PSL2R,"""
         A = self.A
         Ainv = A.adjoint()
         return PSL2RtildeElement(Ainv, -self.s - univ_euler_cocycle(A, Ainv))
@@ -177,9 +183,11 @@ class PSL2RtildeElement(object):
         return "<PSL2tilde: A = [[%.5f,%.5f],[%.5f,%.5f]]; s = %s>" % (A_entries + (self.s,))
 
     def base_ring(self):
+        """Return the ring to which entries and shift belong."""
         return self.A.base_ring()
 
     def is_central(self):
+        """Is this element in the center of ~PSL2R?"""
         return is_almost_identity(self.A)
 
 class LiftedFreeGroupRep(object):
@@ -205,9 +213,14 @@ class LiftedFreeGroupRep(object):
 
 # These are not currently used.
 def eval_thurston_cocycle(A, B, p):
+    """Evaluate the Thurston cocycle."""
     return orientation(p, A*p, (A*B)*p)
 
 def thurston_cocycle_of_relation(rho, rel):
+    """
+    See Jekel, Solomon M. (1989). A simplicial formula and bound for
+    the Euler class. Israel J. Math. 66(1-3), 247–259.
+    """
     assert len(rel) > 2
     ans, g = [], rho(rel[0])
     R = rho('').base_ring()

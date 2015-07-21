@@ -1,10 +1,13 @@
+"""
+A Fibrator object uses PHC to construct an initial fiber, which
+can then be transported around a circle.
+"""
 import os, time
 try:
     from phc import PolyRing, PHCPoly, ParametrizedSystem
 except ImportError:
     print 'No phc module, so will only work with precomputed fibers'
 from .fiber import Fiber
-from snappy import Manifold, ManifoldHP
 
 class Fibrator(object):
     """
@@ -37,13 +40,13 @@ class Fibrator(object):
             begin = time.time()
             N = self.manifold.num_tetrahedra()
             variables = (['X%s'%n for n in range(N)] + ['Y%s'%n for n in range(N)])
-            self.ring = PolyRing(variables + ['t'])
-            self.equations = self.build_equations()
-            self.equations += ['X%s + Y%s - 1'%(n, n) for n in range(N)]
-            self.parametrized_system = ParametrizedSystem(
-                self.ring, 't', [PHCPoly(self.ring, e) for e in self.equations])
-            self.base_system = self.parametrized_system.start(self.target, self.tolerance)
-            result = Fiber(self.manifold, self.target, PHCsystem=self.base_system)
+            ring = PolyRing(variables + ['t'])
+            equations = self.build_equations()
+            equations += ['X%s + Y%s - 1'%(n, n) for n in range(N)]
+            parametrized_system = ParametrizedSystem(ring, 't',
+                                                     [PHCPoly(ring, e) for e in equations])
+            base_system = parametrized_system.start(self.target, self.tolerance)
+            result = Fiber(self.manifold, self.target, PHCsystem=base_system)
             print 'done. (%.3f seconds)'%(time.time() - begin)
             if fiber_file:
                 with open(fiber_file, 'w') as datafile:
@@ -52,11 +55,9 @@ class Fibrator(object):
                 print 'Saved base fiber as %s'%fiber_file
             return result
 
-    def __len__(self):
-        return len(self.base_fiber.solutions)
-
     @staticmethod
     def rect_to_PHC(eqn, rhs=None):
+        """Convert a system of gluing equations to PHC's format."""
         A, B, c = eqn
         left = []
         if rhs is None:
@@ -83,6 +84,7 @@ class Fibrator(object):
         return '*'.join(left) + op + '*'.join(right)
 
     def build_equations(self):
+        """Use SnapPy to construct a system of gluing equations."""
         if self.manifold.num_cusps() != 1 or not self.manifold.is_orientable():
             raise ValueError('Manifold must be orientable with one cusp.')
         eqns = self.manifold.gluing_equations('rect')
@@ -92,13 +94,3 @@ class Fibrator(object):
             result.append(self.rect_to_PHC(eqn))
         result.append(self.rect_to_PHC(meridian, rhs='t'))
         return result
-
-    @staticmethod
-    def PHC_to_complex(line):
-        var, _, real, imag = line.split()
-        index = int(var[1:])
-        op = '' if imag[0] == '-' else '+'
-        try:
-            return var[0], index, complex('%s%s%sj'%(real, op, imag))
-        except ValueError:
-            print 'PHC parse error on %s+%sj'%(real, imag)
