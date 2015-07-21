@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+
+"""
+The Fiber class represents the pre-image of a point under
+the meridian holonomy map on the gluing variety.
+"""
+
 from numpy import complex128
 from .gluing import GluingSystem
 from .shape import ShapeSet, PolishedShapeSet
@@ -58,6 +65,10 @@ class Fiber(object):
         return True
 
     def collision(self):
+        """
+        Are two points in this fiber which are so close together as to
+        suggest that the fiber is very close to a singuarity?
+        """
         for n, p in enumerate(self.shapes):
             for q in self.shapes[n+1:]:
                 if p.dist(q) < 1.0E-10:
@@ -74,22 +85,24 @@ class Fiber(object):
         return True
 
     def phc_details(self):
-        # broken if not instantiated with a PHCsystem
+        """Print all shapes.  Only works for fibers constructed with PHC."""
         for n, s in enumerate(self.solutions):
             print 'solution #%s:'%n
             print s
 
     def phc_residuals(self):
-        # broken if not instantiated with a PHCsystem
+        """Print the residuals for the PHC approximations."""
         for n, s in enumerate(self.solutions):
             print n, s.res
 
     def polish(self):
+        """Ensure that the shapes are accurate to full double precision."""
         polished = self.polished_shapelist(precision=96)
         for shapes, polished_shapes in zip(self, polished):
             shapes.update([complex128(z) for z in polished_shapes])
 
     def phc_Tillmann_points(self):
+        """Return the solutions which contains degenerate shapes."""
         # broken if not instantiated with a PHCsystem
         if self.system is None:
             return []
@@ -101,7 +114,7 @@ class Fiber(object):
 
     def permutation(self, other):
         """
-        return a list of pairs (m, n) where self.shapes[m] is
+        Return a list of pairs (m, n) where self.shapes[m] is
         closest to other.shapes[n].
         """
         result = []
@@ -138,12 +151,8 @@ class Fiber(object):
                 break
         return result
 
-    def polished_shape(self, n, target_holonomy=None, precision=200):
-        if target_holonomy is None:
-            target_holonomy = self.H_meridian
-        return PolishedShapeSet(self[n], target_holonomy, precision)
-
     def polished_shapelist(self, target_holonomy=None, precision=200):
+        """Compute all shapes to arbitrary binary precision (default 200)."""
         if target_holonomy is None:
             target_holonomy = self.H_meridian
         return [PolishedShapeSet(S, target_holonomy, precision) for S in self]
