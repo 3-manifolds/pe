@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 
 """
-The Fiber class represents the pre-image of a point under
-the meridian holonomy map on the gluing variety.
+This module defines the Fiber class.
+
+A Fiber object represents the pre-image of a point under the meridian
+holonomy map on the gluing variety.
 """
 
 from numpy import complex128
