@@ -21,15 +21,16 @@ def U1Q(p, q, precision=212):
     result = (2*pari.pi(precision=precision)*p*pari('I')/q).exp(precision=precision)
     return Number(result, precision=precision)
 
-def pari_set_precision(x, dec_prec):
-    return pari(0) if x == 0 else pari(x).precision(dec_prec)
+def pari_set_precision(x, precision):
+    return pari(0) if x == 0 else pari(x).precision(prec_bits_to_dec(precision))
 
-def pari_complex(z, dec_prec):
+def pari_complex(z, precision):
     try:
         real, imag = z.real(), z.imag()
     except TypeError:
         real, imag = z.real, z.imag
-    return pari.complex(pari_set_precision(real, dec_prec), pari_set_precision(imag, dec_prec))
+    return pari.complex(pari_set_precision(real, precision),
+                        pari_set_precision(imag, precision))
 
 class GoodShapesNotFound(Exception):
     pass
@@ -45,10 +46,6 @@ class ShapeSet(object):
 
     def __init__(self, manifold, values=None):
         self.manifold = manifold
-        # if isinstance(manifold, snappy.ManifoldHP):
-        #     self.hp_manifold = manifold
-        # else:
-        #     self.hp_manifold = manifold.high_precision()
         if values is None:
             values = [complex128(z) for z in manifold.tetrahedra_shapes('rect')]
         self.array = array(values)
@@ -200,14 +197,12 @@ class PolishedShapeSet(object):
     def polish(self, init_shapes, flag_initial_error=True):
         precision = self._precision
         manifold = self.manifold
-        dec_prec = prec_bits_to_dec(precision)
-        working_prec = dec_prec + 10
-        target_espilon = pari_set_precision(10.0, working_prec)**-dec_prec
-        det_epsilon = pari_set_precision(10.0, working_prec)**-(dec_prec//10)
-        init_shapes = pari_column_vector(
-            [pari_complex(z, working_prec) for z in init_shapes])
+        working_prec = precision + 32
+        target_epsilon = pari_set_precision(2.0, working_prec)**-precision
+        det_epsilon = pari_set_precision(2.0, working_prec)**-(10 + precision//32)
+        init_shapes = pari_column_vector([pari_complex(z, working_prec) for z in init_shapes])
         init_equations = manifold.gluing_equations('rect')
-        target = pari_complex(self.target_holonomy, dec_prec)
+        target = pari_complex(self.target_holonomy, precision)
         error = self._gluing_equation_error(init_equations, init_shapes, target)
         if flag_initial_error and error > pari(0.000001):
             raise GoodShapesNotFound('Initial solution not very good')
@@ -220,7 +215,7 @@ class PolishedShapeSet(object):
         shapes = init_shapes
         for i in range(100):
             errors = self._gluing_equation_errors(eqns, shapes, target)
-            if infinity_norm(errors) < target_espilon:
+            if infinity_norm(errors) < target_epsilon:
                 break
             shape_list = pari_vector_to_list(shapes)
             derivative = [[eqn[0][i]/z  - eqn[1][i]/(1 - z)
@@ -237,7 +232,7 @@ class PolishedShapeSet(object):
         # Check to make sure things worked out ok.
         error = self._gluing_equation_error(init_equations, shapes, target)
         total_change = infinity_norm(init_shapes - shapes)
-        if error > 1000*target_espilon:
+        if error > 1000*target_epsilon:
             raise GoodShapesNotFound('Failed to find solution')
         if flag_initial_error and total_change > pari(0.0000001):
             raise GoodShapesNotFound('Moved to far finding a good solution')

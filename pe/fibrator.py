@@ -1,5 +1,5 @@
 """
-This module defines the Fibrator class.
+Define the Fibrator class.
 
 A Fibrator object uses PHC to construct an initial fiber, which can
 then be transported around a circle.
