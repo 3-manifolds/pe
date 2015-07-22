@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This module defines the Fiber class.
+Define the Fiber class.
 
 A Fiber object represents the pre-image of a point under the meridian
 holonomy map on the gluing variety.

@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-This module defines the main class PECharVariety, whose objects represent Peripherally
-Elliptic Character Varieties.  Each PECHarVariety oject manages two CircleElevation
-objects, which represent a family of fibers for the meridian holonomy map lying above
-a circle in the compex plane.
+Define the main class PECharVariety and the helper CircleElevation.
+
+A PECharVariety object represents a Peripherally Elliptic Character
+Variety.  Each PECHarVariety oject manages two CircleElevation
+objects, which represent a family of fibers for the meridian holonomy
+map lying above a circle in the compex plane.
 """
 import time, sys, os
 from random import randint

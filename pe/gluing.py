@@ -1,5 +1,5 @@
 """
-This module defines the GluingSystem and Glunomial classes.
+Define the GluingSystem and Glunomial classes.
 
 A GluingSystem object represents a system of gluing equations.  The
 monomials in the equations are represented by Glunomial objects.
