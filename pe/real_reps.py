@@ -215,10 +215,8 @@ def normalizer_wrt_target_meridian_holonomy(meridian_matrix, target):
     RR = current.parent()
     CC = complex_field(current.parent())
     target = CC(target)
-    target_arg = arg(target)
-    target_arg *= 1/(2*get_pi(RR))
-    target_arg += -target_arg.floor()
-    target_arg = (target.arg()/2*get_pi(RR)).floor()
+    target_arg = target.arg()/(2*get_pi(RR))
+    target_arg -= target_arg.floor()
     other = 1 - current
     if abs(other - target_arg) < abs(current - target_arg):
         I = complex_I(CC)
