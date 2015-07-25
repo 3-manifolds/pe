@@ -1,3 +1,8 @@
+"""
+Define the class PSL2RRepOf3ManifoldGroup which represents an arbitrary precision
+holonomy representation with image in SL(2,R).
+"""
+
 from .sage_helper import _within_sage, get_pi
 from .complex_reps import (PSL2CRepOf3ManifoldGroup, polished_holonomy,
                            apply_representation, GL2C_inverse, SL2C_inverse,
@@ -21,20 +26,30 @@ else:
     complex_I = lambda R: R.I()
     complex_field = lambda R: R
     def arg(x):
+        """Use the object's arg method."""
         if isinstance(x, Number):
             return x.arg()
         else:
             return Number(x).arg()
 
 class CouldNotConjugateIntoPSL2R(Exception):
+    """Exception generated when a representation cannot be conjugated into PSL(2,R)."""
     pass
 
 def clean_real(r):
+    """Make essentially zero numbers really be zero."""
     RR = r.parent()
     epsilon = RR(2.0)**(-0.5*RR.precision())
     return RR(0) if abs(r) < epsilon else r
 
 def real_part_of_matrix_with_error(A):
+    """
+    Take the real part and return the size of the imaginary part.
+
+    This matrix is assumed to be representing an element of PSL(2,R) and
+    here we enforce the convention that elements of PSL(2,R) should be
+    represented by matrices with non-negative trace.
+    """
     RR = RealField(A.base_ring().precision())
     entries = A.list()
     real_parts = [clean_real(x.real()) for x in entries]
@@ -45,21 +60,25 @@ def real_part_of_matrix_with_error(A):
     return B, error
 
 def real_part_of_matrices_with_error(matrices):
+    """Return a list of real parts of matrices in a list."""
     real_with_errors = [real_part_of_matrix_with_error(A) for A in matrices]
     return [r for r, _ in real_with_errors], max(e for r, e in real_with_errors)
 
 def normalize_vector(v):
+    """Divide this non-zero vector by its L2 norm."""
     return v/v.norm()
 
 def apply_matrix(mat, v):
+    """Multiply the matrix times the vector and return the normalized result."""
     return normalize_vector(mat*v)
 
 def vector_dist(a, b):
+    """Return the L2 distance between two vectors."""
     return (a - b).norm()
 
 def right_kernel_two_by_two(A):
     """
-    For a 2x2 matrix A over an approximate field like RR or CC find an
+    For a 2x2 matrix A over an approximate field like RR or CC, find an
     element in the right kernel.
     """
     prec = A.base_ring().precision()
@@ -124,6 +143,11 @@ def conjugator_into_PSL2R(A, B):
 
 
 def conjugate_into_PSL2R(rho, max_error, depth=7):
+    """
+    Given a holonomy representation with generators near PSL(2,R),
+    return a list of generators for a conjugate representation with
+    image in PSL(2,R).
+    """
     gens = tuple(rho.generators())
     new_mats, error = real_part_of_matrices_with_error(rho(g) for g in gens)
     if error < max_error:
@@ -144,8 +168,11 @@ def conjugate_into_PSL2R(rho, max_error, depth=7):
                 return final_mats
     raise CouldNotConjugateIntoPSL2R
 
-def elliptic_fixed_point(A):
-    # In spite of the name of this function, we actually allow A to be parabolic.
+def fixed_point(A):
+    """
+    Return a complex number fixed by this matrix.  In the case of a
+    parabolic, the fixed point will be real.
+    """
     assert A.trace().abs() <= 2.0, 'Please make sure you have not changed the generators!'
     CC = complex_field(A.base_ring())
     x = pari('x')
@@ -157,7 +184,8 @@ def elliptic_fixed_point(A):
     return CC(fp)
 
 def elliptic_rotation_angle(A):
-    z = elliptic_fixed_point(A)
+    """Return the rotation angle of this element at its fixed point."""
+    z = fixed_point(A)
 
     c, d = A.list()[2:]
     derivative = 1/(c*z + d)**2
@@ -168,14 +196,17 @@ def elliptic_rotation_angle(A):
     return r/(2*pi)
 
 def translation_amount(A_til):
+    """Return the translation component of an elemeent of ~PSL(2,R)."""
     return elliptic_rotation_angle(A_til.A) + A_til.s
 
 def rot(R, t, s):
+    """Return an element of ~PSL(2,R) lifting a rotation in PSL(2,R)."""
     t = get_pi(R)*R(t)
     A = matrix(R, [[t.cos(), -t.sin()], [t.sin(), t.cos()]])
     return PSL2RtildeElement(A, s)
 
 def shift_of_central(A_til):
+    """Verify that this element is in the center and return its shift."""
     assert A_til.is_central(), "Central element isn't really central."
     return A_til.s
 
@@ -187,6 +218,7 @@ def normalizer_wrt_target_meridian_holonomy(meridian_matrix, target):
     target_arg = arg(target)
     target_arg *= 1/(2*get_pi(RR))
     target_arg += -target_arg.floor()
+    target_arg = (target.arg()/2*get_pi(RR)).floor()
     other = 1 - current
     if abs(other - target_arg) < abs(current - target_arg):
         I = complex_I(CC)
@@ -239,6 +271,7 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
         self._cache = {}
 
     def polished_holonomy(self, precision=None):
+        """Construct and return a polished holonomy with values in PSL2(R)."""
         self._update_precision(precision)
         precision = self.precision
         if precision == None:
@@ -286,12 +319,14 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
         return sum([orientation(b, points[i], points[i+1]) for i in range(n - 2)]), error
 
     def thurston_class(self, init_pt=(2, -3)):
+        """Return the Thurston class of this rep."""
         init_pt = vector(self.matrix_field(), init_pt)
         ans = [self.thurston_class_of_relation(R, init_pt) for R in self.relators()]
         thurston, error = [x[0] for x in ans], min([x[1] for x in ans])
         return self.class_in_H2(thurston), error
 
     def euler_class(self, double=False):
+        """Return the Euler class of this rep."""
         rels = self.relators()
         e = [euler_cocycle_of_relation(self, R) for R in rels]
         if double:
@@ -299,6 +334,7 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
         return self.class_in_H2(e)
 
     def representation_lifts(self, precision=None):
+        """Does this rep lift to ~PSL(2,R)?"""
         self._update_precision(precision)
         thurston, _ = self.thurston_class()
         if False in [x == 0 for x in thurston]:

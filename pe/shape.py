@@ -1,4 +1,10 @@
 # -*- coding: utf-8 -*-
+"""
+Define the classes ShapeSet and PolishedShapeSet, which represent a tuple of
+solutions to a gluing system.  The shapes in a ShapeSet are double precision
+complex numbers, while those in a PolishedShapeSet have arbitrary precision.
+"""
+
 from snappy.snap.shapes import (pari, pari_column_vector, infinity_norm, pari_matrix,
                                 pari_vector_to_list, enough_gluing_equations,
                                 eval_gluing_equation, prec_bits_to_dec)
@@ -11,6 +17,7 @@ from .sage_helper import _within_sage
 if _within_sage:
     from sage.all import ComplexField, pari
     def Number(z, precision=212):
+        """In sage we use Sage numbers."""
         R = ComplexField(precision)
         return R(z)
 else:
@@ -22,9 +29,17 @@ def U1Q(p, q, precision=212):
     return Number(result, precision=precision)
 
 def pari_set_precision(x, precision):
+    """
+    Promote a real number to an arbitrary precision Pari number with the same
+    value.  The precision should be given in bits.
+    """
     return pari(0) if x == 0 else pari(x).precision(prec_bits_to_dec(precision))
 
 def pari_complex(z, precision):
+    """
+    Promote a complex number to an arbitrary precision Pari number with the same
+    value.  The precision should be given in bits.
+    """
     try:
         real, imag = z.real(), z.imag()
     except TypeError:
@@ -33,6 +48,7 @@ def pari_complex(z, precision):
                         pari_set_precision(imag, precision))
 
 class GoodShapesNotFound(Exception):
+    """Exception generated when precise shapes cannot be found."""
     pass
 
 class ShapeSet(object):
@@ -62,37 +78,40 @@ class ShapeSet(object):
     def __eq__(self, other):
         return norm(self.array - other.array) < 1.0E-6
 
-    def dist(self, other):
-        return norm(self.array - other.array)
-
     def __repr__(self):
         return ('<ShapeSet for %s:\n  '%self.manifold +
                 '\n  '.join([repr(x) for x in self]) +
                 '>')
 
+    def dist(self, other):
+        return norm(self.array - other.array)
+
     def update(self, values):
+        """Replace the shape values with new ones."""
         self.array = array(values)
 
     def is_degenerate(self):
+        """True if any shape in this ShapeSet is degenerate."""
         moduli = abs(self.array)
         return ((moduli < 1.0E-6).any() or
                 (moduli < 1.0E-6).any() or
                 (moduli > 1.0E6).any())
-
-    def SL2C(self, word):
+    def _SL2C(self, word):
         self.manifold.set_tetrahedra_shapes(self.array, None, [(0, 0)])
         G = self.manifold.fundamental_group()
         return G.SL2C(word)
 
-    def O31(self, word):
+    def _O31(self, word):
         self.manifold.set_tetrahedra_shapes(self.array, None, [(0, 0)])
         G = self.manifold.fundamental_group()
         return G.O31(word)
 
+
     def has_real_traces(self):
+        """True if the holonomy rep associated to these shapes has a real character"""
         tolerance = self.reality_tolerance
         gens = self.manifold.fundamental_group().generators()
-        gen_mats = [self.SL2C(g) for g in gens]
+        gen_mats = [self._SL2C(g) for g in gens]
         for A in gen_mats:
             tr = complex(A[0, 0] + A[1, 1])
             if abs(tr.imag) > tolerance:
@@ -110,10 +129,11 @@ class ShapeSet(object):
         return True
 
     def in_SU2(self):
+        """True if the holonomy rep associated to these shapes has image in  SU(2)."""
         gens = self.manifold.fundamental_group().generators()
         tolerance = self.SU2_tolerance
         # First check that all generators have real trace in [-2,2]
-        for X in [self.SL2C(g) for g in gens]:
+        for X in [self._SL2C(g) for g in gens]:
             tr = complex(X[0, 0] + X[1, 1])
             if abs(tr.imag) > tolerance:
                 # print 'trace is not real'
@@ -122,7 +142,7 @@ class ShapeSet(object):
                 # print 'trace is not in [-2,2]'
                 return False
         # Get O31 matrix generators ...
-        o31matrices = [real_array(array(self.O31(g))) for g in gens]
+        o31matrices = [real_array(array(self._O31(g))) for g in gens]
         # take the first two, ...
         A, B = o31matrices[:2]
         # find their axes, ...
@@ -195,6 +215,7 @@ class PolishedShapeSet(object):
                 '>')
 
     def polish(self, init_shapes, flag_initial_error=True):
+        """Use Newton's method to compute precise shapes from rough ones."""
         precision = self._precision
         manifold = self.manifold
         working_prec = precision + 32
@@ -253,6 +274,7 @@ class PolishedShapeSet(object):
             eqns, shapes, RHS_of_last_eqn))
 
     def precision(self):
+        """Return the precision used for these polished shapes."""
         return self._precision
 
     def rep_type(self):

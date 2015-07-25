@@ -34,6 +34,7 @@ class Fibrator(object):
         if fiber_file and os.path.exists(fiber_file):
             print 'Loading the starting fiber from %s'%fiber_file
             with open(fiber_file) as datafile:
+                from snappy import Manifold, ManifoldHP
                 data = eval(datafile.read())
             assert data['signature'] == signature, 'Triangulations do not match!'
             return data['fiber']
@@ -52,7 +53,7 @@ class Fibrator(object):
             print 'done. (%.3f seconds)'%(time.time() - begin)
             if fiber_file:
                 with open(fiber_file, 'w') as datafile:
-                    datafile.write("{\n'fiber': %s, \n'signature': %s\n}"%(
+                    datafile.write("{\n'fiber': %s, \n'signature': '%s'\n}"%(
                         result, signature))
                 print 'Saved base fiber as %s'%fiber_file
             return result
