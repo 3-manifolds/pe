@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Define the class PSL2RRepOf3ManifoldGroup which represents an arbitrary precision
 holonomy representation with image in SL(2,R).
@@ -186,7 +187,6 @@ def fixed_point(A):
 def elliptic_rotation_angle(A):
     """Return the rotation angle of this element at its fixed point."""
     z = fixed_point(A)
-
     c, d = A.list()[2:]
     derivative = 1/(c*z + d)**2
     pi = get_pi(A.base_ring())
@@ -196,7 +196,7 @@ def elliptic_rotation_angle(A):
     return r/(2*pi)
 
 def translation_amount(A_til):
-    """Return the translation component of an elemeent of ~PSL(2,R)."""
+    """Return the translation component of an element of ~PSL(2,R)."""
     return elliptic_rotation_angle(A_til.A) + A_til.s
 
 def rot(R, t, s):
@@ -211,19 +211,48 @@ def shift_of_central(A_til):
     return A_til.s
 
 def normalizer_wrt_target_meridian_holonomy(meridian_matrix, target):
+    """
+    The subgroup PSL(2,R) < PSL(2,C) has index 2 in its normalizer
+    with the non-trivial coset being represented by the diagonal
+    matrix Δ with i and -i on the diagonal.  Conjugation by Δ maps the
+    invariant hyperbolic plane to itself by an orientation reversing
+    involution, which has the effect of changing the rotation number
+    of an elliptic element of PSL(2,R) to its negative.  The matrix
+    computed by *conjugate_into_PSL2R* may or may not conjugate each
+    element into the trivial coset.
+
+    In order for the translation numbers to have the correct sign, we
+    need to adjust the conjugator produced by *conjugate_into_PSL2R*.
+    This function implements an imperfect heuristic method of doing
+    this.  (See m276 for an example where it fails.)  It returns a
+    conjugator to be applied after the one provided by
+    conjugate_into_PSL2R.
+
+    As a first approximation, the returned conjugator matrix is either
+    Id or Δ, the latter being chosen when the rotation angle of the
+    meridian reduced mod 2π lies in the interval (π, 2*π).  (The
+    ambiguity for reduced angle π is responsible for the artifact in
+    m276.  The ambiguity for angle 2π causes artifacts when parabolics
+    are included).
+
+    For a completely independent reason, the actual return value is
+    either Id or Δ times the matrix of the inversion z -> -1/z.  The
+    purpose of this is to avoid failures in the function *fixed_point*
+    which arise when it is passed a parabolic matrix with fixed point
+    at infinity, i.e an upper triangular matrix.
+    """
     current = elliptic_rotation_angle(meridian_matrix)
     RR = current.parent()
-    CC = complex_field(current.parent())
-    target = CC(target)
-    target_arg = target.arg()/(2*get_pi(RR))
+    CC = complex_field(RR)
+    target_arg = CC(target).arg()/(2*get_pi(RR))
     target_arg -= target_arg.floor()
     other = 1 - current
     if abs(other - target_arg) < abs(current - target_arg):
         I = complex_I(CC)
-        C = matrix(CC, [[I, 0], [0, -I]])
+        C = matrix(CC, [[0, I], [I, 0]])
     else:
-        C = matrix(CC, [[1, 0], [0, 1]])
-    return C * matrix(CC, [[1, 1], [1, 2]])
+        C = matrix(CC, [[0, -1], [1, 0]])
+    return C
 
 def euler_cocycle_of_relation(rho, rel):
     # Not sure where the sign comes from, but hey.
@@ -291,18 +320,31 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
                                                             self.target_meridian_holonomy)
                 new_mats = real_part_of_matrices_with_error(
                     [SL2C_inverse(C)*M*C for M in new_mats])[0]
-
-            def rho(word):
-                return apply_representation(word, new_mats)
-            for g in G.generators():
-                G._hom_dict[g] = rho(g)
-                G._hom_dict[g.upper()] = rho(g.upper())
-            G._id = Id2
+                self._new_matrices(G, new_mats)
             if not G.check_representation() < epsilon:
                 raise CheckRepresentationFailed
             self._cache[mangled] = G
-
         return self._cache[mangled]
+            
+    def _new_matrices(self, G, new_mats):
+        for g in G.generators():
+            G._hom_dict[g] = apply_representation(g, new_mats)
+            G._hom_dict[g.upper()] = apply_representation(g.upper(), new_mats)
+        G._id = Id2
+
+    def flip(self):
+        """Conjugate this rep by Δ."""
+        G = self.polished_holonomy()
+        new_mats = [G(g) for g in G.generators()] 
+        meridian_word = self.meridian()
+        meridian_matrix = self(meridian_word)
+        CC = meridian_matrix.base_ring()
+        I = complex_I(CC)
+        D = matrix(CC, [[I, 0], [0, -I]])
+        new_mats = real_part_of_matrices_with_error([-D*M*D for M in new_mats])[0]
+        self._new_matrices(G, new_mats)
+        mangled = "polished_holonomy_%s" % self.precision
+        self._cache[mangled] = G
 
     def thurston_class_of_relation(self, word, init_pt):
         """
