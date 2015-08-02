@@ -106,8 +106,8 @@ class SL2RLifter(object):
                 # Skipping reps which send the meridian to a parabolic
                 # makes for more beautiful pictures, due to the ambiguity
                 # of the translation length.  (Is it 0 or 1?)
-                if n == 0:
-                    continue
+                #if n == 0:
+                #    continue
                 target = U1Q(-n, self.order, precision=1000)
                 try:
                     rho = PSL2RRepOf3ManifoldGroup(
@@ -128,25 +128,57 @@ class SL2RLifter(object):
         self.translation_dict_inverse = {}
         for arc in self.SL2R_rep_arcs:
             translations = []
+            previous_P, previous_sn, previous_rho = None, None, None
+            fix_parabolic, fix_traceless = False, False
             for sn, rho in arc:
                 rho.translations = None
                 meridian, longitude = rho.polished_holonomy().peripheral_curves()[0]
                 rho_til = lift_on_cusped_manifold(rho)
                 if rho_til is None:
+                    print 'No lift!'
                     continue
                 try:
                     P = (float(translation_amount(rho_til(meridian))),
                          float(translation_amount(rho_til(longitude))))
                     while P[0] < 0:
                         P = (P[0] + self.m_abelian, P[1] + self.l_abelian)
-                    while P[0] > self.m_abelian:
+                    while P[0] >= self.m_abelian:
                         P = (P[0] - self.m_abelian, P[1] - self.l_abelian)
-                    P = PEPoint(complex(*P), index=sn)
-                    translations.append(P)
-                    self.translation_dict[sn] = P
-                    rho.translations = P
                 except AssertionError:
                     print "Warning: assertion failing somewhere"
+                # Fix miscalculated translations for parabolic or traceless meridians.
+                if fix_parabolic or fix_traceless:
+                    #print 'fixing', previous_sn, previous_P, '->',
+                    if fix_parabolic:
+                        # Both translations will be (apparently random) integers.
+                        fixed = (round(P[0]), round(P[1]))
+                        fix_parabolic = False
+                    elif fix_traceless:
+                        # The translations may have the wrong sign.
+                        flip = (self.m_abelian - previous_P[0], self.l_abelian - previous_P[1])
+                        if abs(flip[0] - P[0]) < abs(previous_P[0] - P[0]):
+                            fixed = flip
+                        else:
+                            fixed = previous_P
+                        fix_traceless = False
+                    #print fixed, P
+                    fixed = PEPoint(complex(*fixed), index=previous_sn)
+                    translations[-1] = previous_rho.translations = fixed
+                    self.translation_dict[previous_sn] = fixed
+                # Save the translations
+                point = PEPoint(complex(*P), index=sn)
+                translations.append(point)
+                self.translation_dict[sn] = point
+                rho.translations = point
+                # Check for a parabolic or traceless meridian, to be fixed in the next iteration.
+                meridian_trace = float(rho(rho.meridian()).trace())
+                if meridian_trace == 2.0 or meridian_trace == -2.0:
+                    #print sn, 'parabolic meridian: ', P
+                    fix_parabolic = True
+                elif abs(meridian_trace) < 2.0**-100:
+                    #print sn, 'traceless meridian:', meridian_trace
+                    fix_traceless = True
+                previous_P, previous_sn, previous_rho = P, sn, rho
             self.translation_arcs.append(translations)
 
     def show(self, add_lines=False):
@@ -156,6 +188,7 @@ class SL2RLifter(object):
             for edge in self.l_space_edges():
                 self.draw_line(edge, color='red')
 
+# This puts too many buttons on the graph.
     def show_homological(self):
         A = self.change_trans_to_hom_framing
         m = self.hom_m_abelian
@@ -282,11 +315,10 @@ def lift_on_cusped_manifold(rho):
         if D.elementary_divisors() == M.transpose().elementary_divisors():
             raise AssertionError('Need better implementation, Nathan')
         else:
-            return
+            return None, None
     shifts = (-k)[1:]
     good_lifts = [PSL2RtildeElement(rho(g), s)
                   for g, s in zip(rho.generators(), shifts)]
-    rho_til = LiftedFreeGroupRep(rho, good_lifts)
-    return rho_til
+    return LiftedFreeGroupRep(rho, good_lifts)
 
 
