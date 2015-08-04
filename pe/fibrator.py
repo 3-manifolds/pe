@@ -30,7 +30,7 @@ class Fibrator(object):
     def __call__(self):
         """Construct a Fiber, or read in a precomputed Fiber, and return it."""
         fiber_file = self.fiber_file
-        signature = self.manifold._to_bytes()
+        signature = self.manifold.isometry_signature()
         if fiber_file and os.path.exists(fiber_file):
             print 'Loading the starting fiber from %s'%fiber_file
             with open(fiber_file) as datafile:

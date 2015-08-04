@@ -42,4 +42,5 @@ class PEPoint(complex):
                 parts.append(kw + '=' + repr(val))
         return 'PEPoint(' + ', '.join(parts) + ')'
 
-
+    def tuple(self):
+        return (self.real, self.imag)
