@@ -240,6 +240,12 @@ def normalizer_wrt_target_meridian_holonomy(meridian_matrix, target):
     purpose of this is to avoid failures in the function *fixed_point*
     which arise when it is passed a parabolic matrix with fixed point
     at infinity, i.e an upper triangular matrix.
+
+    NOTE: When the trace of the meridian is 0 equality holds in the
+    comparison used to decide whether to flip; the test is ambiguous
+    in this case.  This code arbitrarily chooses never to flip if the
+    trace is 0.  That choice can lead to discontinuous translations
+    arcs, and must be corrected when computing the translations.
     """
     current = elliptic_rotation_angle(meridian_matrix)
     RR = current.parent()

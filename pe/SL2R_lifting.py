@@ -23,6 +23,9 @@ def in_SL2R(H, f, s):
         return False
     return True
 
+def l1_dist(a,b):
+    return max(abs(a[0] - b[0]), abs(a[1] - b[1]))
+
 class SL2RLifter(object):
     def __init__(self, V, silent=False):
         start = time()
@@ -99,15 +102,11 @@ class SL2RLifter(object):
 
     def find_reps(self):
         self.SL2R_rep_arcs = []
+        self.rep_dict = {}
         for arc in self.SL2R_arcs:
             reps = []
             for sn, S in arc:
                 _, n = sn
-                # Skipping reps which send the meridian to a parabolic
-                # makes for more beautiful pictures, due to the ambiguity
-                # of the translation length.  (Is it 0 or 1?)
-                #if n == 0:
-                #    continue
                 target = U1Q(-n, self.order, precision=1000)
                 try:
                     rho = PSL2RRepOf3ManifoldGroup(
@@ -117,6 +116,7 @@ class SL2RLifter(object):
                         precision=1000)
                     if rho.polished_holonomy().check_representation() < 1.0e-100:
                         reps.append((sn, rho))
+                        self.rep_dict[sn] = rho
                 except CouldNotConjugateIntoPSL2R:
                     print "Skipping rep probably misclassified as PSL(2,R)"
             if len(reps) > 1:
@@ -125,11 +125,8 @@ class SL2RLifter(object):
     def find_translation_arcs(self):
         self.translation_arcs = []
         self.translation_dict = {}
-        self.translation_dict_inverse = {}
         for arc in self.SL2R_rep_arcs:
             translations = []
-            previous_P, previous_sn, previous_rho = None, None, None
-            fix_parabolic, fix_traceless = False, False
             for sn, rho in arc:
                 rho.translations = None
                 meridian, longitude = rho.polished_holonomy().peripheral_curves()[0]
@@ -145,42 +142,46 @@ class SL2RLifter(object):
                     while P[0] >= self.m_abelian:
                         P = (P[0] - self.m_abelian, P[1] - self.l_abelian)
                 except AssertionError:
-                    print "Warning: assertion failing somewhere"
-                # Fix miscalculated translations for parabolic or traceless meridians.
-                if fix_parabolic or fix_traceless:
-                    #print 'fixing', previous_sn, previous_P, '->',
-                    if fix_parabolic:
-                        # Both translations will be (apparently random) integers.
-                        fixed = (round(P[0]), round(P[1]))
-                        fix_parabolic = False
-                    elif fix_traceless:
-                        # The translations may have the wrong sign.
-                        flip = (self.m_abelian - previous_P[0], self.l_abelian - previous_P[1])
-                        if abs(flip[0] - P[0]) < abs(previous_P[0] - P[0]):
-                            fixed = flip
-                        else:
-                            fixed = previous_P
-                        fix_traceless = False
-                    #print fixed, P
-                    fixed = PEPoint(complex(*fixed), index=previous_sn)
-                    translations[-1] = previous_rho.translations = fixed
-                    self.translation_dict[previous_sn] = fixed
-                # Save the translations
-                point = PEPoint(complex(*P), index=sn)
-                translations.append(point)
-                self.translation_dict[sn] = point
-                rho.translations = point
-                # Check for a parabolic or traceless meridian, to be fixed in the next iteration.
-                meridian_trace = float(rho(rho.meridian()).trace())
-                if meridian_trace == 2.0 or meridian_trace == -2.0:
-                    #print sn, 'parabolic meridian: ', P
-                    fix_parabolic = True
-                elif abs(meridian_trace) < 2.0**-100:
-                    #print sn, 'traceless meridian:', meridian_trace
-                    fix_traceless = True
-                previous_P, previous_sn, previous_rho = P, sn, rho
+                    print "Warning: an assertion failed somewhere"
+                translations.append(self._saved_point(P, sn, rho))
+            self._fix_translations(translations)
             self.translation_arcs.append(translations)
+                       
+    def _fix_translations(self, translations):
+        """
+        Check for reps with parabolic or traceless meridians and adjust their
+        translations to make the translation arc continuous.
+        """
+        fix_list = []
+        neighbor = translations[1].tuple()
+        for n, P in enumerate(translations):
+            p, sn = P.tuple(), P.index
+            rho = self.rep_dict[sn]
+            meridian_trace = float(rho(rho.meridian()).trace())
+            if meridian_trace == 2.0 or meridian_trace == -2.0:
+                # Both translations will be (apparently random) integers.
+                #print 'fixing parabolic meridian', sn, p, '->',
+                fixed = (round(neighbor[0]), round(neighbor[1]))
+                #print fixed, neighbor
+                fix_list.append((n, self._saved_point(fixed, sn, rho)))
+            elif abs(meridian_trace) < 2.0**-100:
+                # The translations may have the wrong sign.
+                #print 'fixing traceless meridian', sn, p, '->',
+                fixed = p
+                flipped = (self.m_abelian - p[0], self.l_abelian - p[1])
+                if l1_dist(flipped, neighbor) < l1_dist(p, neighbor):
+                    fix_list.append((n, self._saved_point(flipped, sn, rho)))
+                    #fixed = flipped
+                #print fixed, neighbor
+            neighbor = p
+        for n, fixed in fix_list:
+            translations[n] = fixed
 
+    def _saved_point(self, P, sn, rho):
+        point = PEPoint(complex(*P), index=sn)
+        self.translation_dict[sn] = rho.translations = point
+        return point
+        
     def show(self, add_lines=False):
         self.plot = Plot(self.translation_arcs, title=self.manifold.name())
         if add_lines:
@@ -239,7 +240,8 @@ class SL2RLifter(object):
         self.plot.figure.draw()
 
     def l_space_edges(self):
-        M = self.manifold
+        # self.manifold will not have the expected shapes, so make a copy.
+        M = self.manifold.copy()
         K = CensusKnots.identify(M)
         if not K:
             return []

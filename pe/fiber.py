@@ -99,7 +99,7 @@ class Fiber(object):
 
     def polish(self):
         """Ensure that the shapes are accurate to full double precision."""
-        polished = self.polished_shapelist(precision=96)
+        polished = self.polished_shapelist(precision=160)
         for shapes, polished_shapes in zip(self, polished):
             shapes.update([complex128(z) for z in polished_shapes])
 
