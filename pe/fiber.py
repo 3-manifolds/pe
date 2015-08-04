@@ -9,7 +9,7 @@ holonomy map on the gluing variety.
 
 from numpy import complex128
 from .gluing import GluingSystem
-from .shape import ShapeSet, PolishedShapeSet
+from .shape import ShapeSet, PolishedShapeSet, GoodShapesNotFound
 
 class Fiber(object):
     """A fiber for the rational function [holonomy of the meridian]
@@ -99,7 +99,11 @@ class Fiber(object):
 
     def polish(self):
         """Ensure that the shapes are accurate to full double precision."""
-        polished = self.polished_shapelist(precision=160)
+        try:
+            polished = self.polished_shapelist(precision=128)
+        except GoodShapesNotFound:
+            print 'increasing polish precision to 256'
+            polished = self.polished_shapelist(precision=256)
         for shapes, polished_shapes in zip(self, polished):
             shapes.update([complex128(z) for z in polished_shapes])
 
