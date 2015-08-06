@@ -1,6 +1,6 @@
 import random, string
 from itertools import chain
-from .shape import ShapeSet, PolishedShapeSet, GoodShapesNotFound
+from .shape import ShapeSet, PolishedShapeSet
 from .sage_helper import _within_sage, cached_function
 from snappy.snap import  generators
 from snappy.snap.polished_reps import (initial_tet_ideal_vertices,
@@ -77,10 +77,8 @@ def apply_representation(word, gen_images):
                [(g.upper(), SL2C_inverse(gen_images[i])) for i, g in enumerate(gens)])
     return prod([rho[g] for g in word], Id2)
 
-def polished_holonomy(M, shapes, target_meridian_holonomy,
-                      precision=100,
-                      fundamental_group_args=(True, False, True),
-                      lift_to_SL2=True):
+def polished_group(M, shapes, precision=100, fundamental_group_args=(True, False, True),
+                   lift_to_SL2=True):
     error = pari(2.0)**(-precision*0.8)
     G = M.fundamental_group(*fundamental_group_args)
     N = generators.SnapPy_to_Mcomplex(M, shapes)
@@ -180,12 +178,11 @@ class PSL2CRepOf3ManifoldGroup(object):
         precision = self.precision
         mangled = "polished_holonomy_%s" % precision
         if not self._cache.has_key(mangled):
-            G = polished_holonomy(self.manifold,
-                                  self.polished_shapes().shapelist,
-                                  self.target_meridian_holonomy,
-                                  precision=precision,
-                                  fundamental_group_args=self.fundamental_group_args,
-                                  lift_to_SL2=False)
+            G = polished_group(self.manifold,
+                               self.polished_shapes().shapelist,
+                               precision=precision,
+                               fundamental_group_args=self.fundamental_group_args,
+                               lift_to_SL2=False)
             if not G.check_representation() < RR(2.0)**(-0.8*precision):
                 raise CheckRepresentationFailed
             self._cache[mangled] = G

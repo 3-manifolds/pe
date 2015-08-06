@@ -5,7 +5,7 @@ holonomy representation with image in SL(2,R).
 """
 
 from .sage_helper import _within_sage, get_pi
-from .complex_reps import (PSL2CRepOf3ManifoldGroup, polished_holonomy,
+from .complex_reps import (PSL2CRepOf3ManifoldGroup, polished_group,
                            apply_representation, GL2C_inverse, SL2C_inverse,
                            CheckRepresentationFailed, conjugacy_classes_in_Fn)
 from pe.euler import orientation, PSL2RtildeElement, LiftedFreeGroupRep
@@ -260,16 +260,6 @@ def normalizer_wrt_target_meridian_holonomy(meridian_matrix, target):
         C = matrix(CC, [[0, -1], [1, 0]])
     return C
 
-def euler_cocycle_of_relation(rho, rel):
-    # Not sure where the sign comes from, but hey.
-    if isinstance(rho, LiftedFreeGroupRep):
-        rho_til = rho
-    else:
-        rho_til = LiftedFreeGroupRep(rho)
-    R_til = rho_til(rel)
-    assert R_til.is_central()
-    return -R_til.s
-
 class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
     """
     >>> import snappy
@@ -312,12 +302,11 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
         mangled = "polished_holonomy_%s" % precision
         if not self._cache.has_key(mangled):
             epsilon = 2.0**(-0.8*precision)
-            G = polished_holonomy(self.manifold,
-                                  self.polished_shapes().shapelist,
-                                  self.target_meridian_holonomy,
-                                  precision,
-                                  fundamental_group_args=self.fundamental_group_args,
-                                  lift_to_SL2=False)
+            G = polished_group(self.manifold,
+                               self.polished_shapes().shapelist,
+                               precision,
+                               fundamental_group_args=self.fundamental_group_args,
+                               lift_to_SL2=False)
             new_mats = conjugate_into_PSL2R(G, epsilon)
             if self.target_meridian_holonomy:
                 meridian_word = self.meridian()
@@ -331,8 +320,9 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
                 raise CheckRepresentationFailed
             self._cache[mangled] = G
         return self._cache[mangled]
-            
-    def _new_matrices(self, G, new_mats):
+
+    @staticmethod
+    def _new_matrices(G, new_mats):
         for g in G.generators():
             G._hom_dict[g] = apply_representation(g, new_mats)
             G._hom_dict[g.upper()] = apply_representation(g.upper(), new_mats)
@@ -341,7 +331,7 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
     def flip(self):
         """Conjugate this rep by Δ."""
         G = self.polished_holonomy()
-        new_mats = [G(g) for g in G.generators()] 
+        new_mats = [G(g) for g in G.generators()]
         meridian_word = self.meridian()
         meridian_matrix = self(meridian_word)
         CC = meridian_matrix.base_ring()
@@ -371,10 +361,22 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
         thurston, error = [x[0] for x in ans], min([x[1] for x in ans])
         return self.class_in_H2(thurston), error
 
+    def euler_cocycle_on_relations(self):
+        """
+        Evaluate the euler cocycle on each relation and return the list of values.
+
+        Raise an assertion error if the lift of a relation is not central in the
+        lifted free group rep associated to this rep.
+        """
+        rho_til = LiftedFreeGroupRep(self)
+        lifts = [rho_til(R) for R in self.relators()]
+        assert False not in [R_til.is_central() for R_til in lifts]
+        # Not sure where the sign comes from, but hey.
+        return [-R_til.s for R_til in lifts]
+
     def euler_class(self, double=False):
         """Return the Euler class of this rep."""
-        rels = self.relators()
-        e = [euler_cocycle_of_relation(self, R) for R in rels]
+        e = self.euler_cocycle_on_relations()
         if double:
             e = [2*x for x in e]
         return self.class_in_H2(e)
