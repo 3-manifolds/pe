@@ -226,7 +226,7 @@ class PolishedShapeSet(object):
         target = pari_complex(self.target_holonomy, precision)
         error = self._gluing_equation_error(init_equations, init_shapes, target)
         if flag_initial_error and error > pari(0.000001):
-            raise GoodShapesNotFound('Initial solution not very good')
+            raise GoodShapesNotFound('Initial solution not very good: error=%s'%error)
 
         # Now begin the actual computation
 
