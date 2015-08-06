@@ -99,8 +99,8 @@ class Fiber(object):
 
     def polish(self):
         """Ensure that the shapes are accurate to full double precision."""
-        precision=128
-        for n in xrange(4):
+        precision = 128
+        for _ in xrange(4):
             try:
                 polished = self.polished_shapelist(precision=precision)
                 break

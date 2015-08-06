@@ -1,6 +1,5 @@
 from .plot import MatplotPlot as Plot
-from .real_reps import (PSL2RRepOf3ManifoldGroup, translation_amount,
-                        CouldNotConjugateIntoPSL2R, euler_cocycle_of_relation)
+from .real_reps import PSL2RRepOf3ManifoldGroup, translation_amount, CouldNotConjugateIntoPSL2R
 from .complex_reps import PSL2CRepOf3ManifoldGroup
 from .shape import U1Q
 from .euler import PSL2RtildeElement, LiftedFreeGroupRep
@@ -23,7 +22,7 @@ def in_SL2R(H, f, s):
         return False
     return True
 
-def l1_dist(a,b):
+def l1_dist(a, b):
     return max(abs(a[0] - b[0]), abs(a[1] - b[1]))
 
 class SL2RLifter(object):
@@ -306,7 +305,7 @@ def bisection(H, low, high, s, target_slope, epsilon=1.0e-8):
 def lift_on_cusped_manifold(rho):
     rel_cutoff = len(rho.generators()) - 1
     rels = rho.relators()[:rel_cutoff]
-    euler_cocycle = [euler_cocycle_of_relation(rho, R) for R in rels]
+    euler_cocycle = rho.euler_cocycle_on_relations()
     D = rho.coboundary_1_matrix()[:rel_cutoff]
     M = matrix([euler_cocycle] + D.columns())
     k = M.left_kernel().basis()[0]

@@ -1,3 +1,4 @@
+"""Construct and study PE Character Varieties."""
 from .pecharvar import PECharVariety
 from .complex_reps import PSL2CRepOf3ManifoldGroup
 from .real_reps import PSL2RRepOf3ManifoldGroup

@@ -46,7 +46,6 @@ except ImportError:
 # Load MatplotLib
 import matplotlib
 matplotlib.use('TkAgg')
-from matplotlib.backend_bases import cursors
 import matplotlib.backends.backend_tkagg as tkagg
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.backends.backend_tkagg import NavigationToolbar2TkAgg
