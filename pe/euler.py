@@ -169,7 +169,7 @@ class PSL2RtildeElement(object):
         return sigma_action(self.A, x) + self.s
 
     def inverse(self):
-        """The inverse of an element of ~PSL2R,"""
+        """The inverse of this element of ~PSL2R,"""
         A = self.A
         Ainv = A.adjoint()
         return PSL2RtildeElement(Ainv, -self.s - univ_euler_cocycle(A, Ainv))
