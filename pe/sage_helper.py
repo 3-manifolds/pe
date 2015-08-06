@@ -31,10 +31,10 @@ else:
         return decorator.decorator(_sage_method, function)
 
 
-# Sage has nice caching decorators which
+# Sage has nice caching decorators
 
 if _within_sage:
-    from sage.misc.cachefunc import cached_function, cached_method
+    from sage.misc.cachefunc import cached_function
 else:
     cached_function = lambda x: x
     cached_method = lambda x: x

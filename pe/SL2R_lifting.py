@@ -1,5 +1,6 @@
 from .plot import MatplotPlot as Plot
-from .real_reps import PSL2RRepOf3ManifoldGroup, translation_amount, CouldNotConjugateIntoPSL2R
+from .real_reps import (PSL2RRepOf3ManifoldGroup, CouldNotConjugateIntoPSL2R,
+                        translation_of_lifted_rotation)
 from .complex_reps import PSL2CRepOf3ManifoldGroup
 from .shape import U1Q
 from .euler import PSL2RtildeElement, LiftedFreeGroupRep
@@ -134,8 +135,8 @@ class SL2RLifter(object):
                     print 'No lift!'
                     continue
                 try:
-                    P = (float(translation_amount(rho_til(meridian))),
-                         float(translation_amount(rho_til(longitude))))
+                    P = (float(translation_of_lifted_rotation(rho_til(meridian))),
+                         float(translation_of_lifted_rotation(rho_til(longitude))))
                     while P[0] < 0:
                         P = (P[0] + self.m_abelian, P[1] + self.l_abelian)
                     while P[0] >= self.m_abelian:
@@ -145,7 +146,7 @@ class SL2RLifter(object):
                 translations.append(self._saved_point(P, sn, rho))
             self._fix_translations(translations)
             self.translation_arcs.append(translations)
-                       
+
     def _fix_translations(self, translations):
         """
         Check for reps with parabolic or traceless meridians and adjust their
@@ -180,7 +181,7 @@ class SL2RLifter(object):
         point = PEPoint(complex(*P), index=sn)
         self.translation_dict[sn] = rho.translations = point
         return point
-        
+
     def show(self, add_lines=False):
         self.plot = Plot(self.translation_arcs, title=self.manifold.name())
         if add_lines:
@@ -264,7 +265,8 @@ def lifted_slope(M, target_meridian_holonomy_arg, shapes):
     rho_real = PSL2RRepOf3ManifoldGroup(rho)
     meridian, longitude = rho.polished_holonomy().peripheral_curves()[0]
     rho_tilde = lift_on_cusped_manifold(rho_real)
-    return -translation_amount(rho_tilde(longitude)) / translation_amount(rho_tilde(meridian))
+    return (-translation_of_lifted_rotation(rho_tilde(longitude)) /
+            translation_of_lifted_rotation(rho_tilde(meridian)))
 
 def check_slope(H, n, s):
     F = H.T_fibers[n]

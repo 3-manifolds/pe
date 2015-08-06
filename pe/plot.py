@@ -1,4 +1,3 @@
-from .tkplot import MatplotFigure, Tk, ttk
 try:
     from .tkplot import MatplotFigure, Tk, ttk
 except ImportError:

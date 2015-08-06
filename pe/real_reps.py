@@ -171,8 +171,10 @@ def conjugate_into_PSL2R(rho, max_error, depth=7):
 
 def fixed_point(A):
     """
-    Return a complex number fixed by this matrix.  In the case of a
-    parabolic, the fixed point will be real.
+    Return a complex number fixed by the linear fractional
+    transformation given by a matrix A.  In the case of a parabolic,
+    the fixed point will be real, unless the parabolic fixed point is
+    aat infinity in which case all hell breaks loose.
     """
     assert A.trace().abs() <= 2.0, 'Please make sure you have not changed the generators!'
     CC = complex_field(A.base_ring())
@@ -185,7 +187,7 @@ def fixed_point(A):
     return CC(fp)
 
 def elliptic_rotation_angle(A):
-    """Return the rotation angle of this element at its fixed point."""
+    """Return the rotation angle of an element of PSL(2,R)at its fixed point."""
     z = fixed_point(A)
     c, d = A.list()[2:]
     derivative = 1/(c*z + d)**2
@@ -195,9 +197,14 @@ def elliptic_rotation_angle(A):
         r = r + 2*pi
     return r/(2*pi)
 
-def translation_amount(A_til):
-    """Return the translation component of an element of ~PSL(2,R)."""
-    return elliptic_rotation_angle(A_til.A) + A_til.s
+def translation_of_lifted_rotation(R_til):
+    """
+    Return the translation amount of this element of ~PSL2R.
+
+    NOTE: This method Assumes that this element lifts a rotation
+    matrix in SL2R!
+    """
+    return elliptic_rotation_angle(R_til.A) + R_til.s
 
 def rot(R, t, s):
     """Return an element of ~PSL(2,R) lifting a rotation in PSL(2,R)."""
