@@ -2,7 +2,8 @@ import random, string
 from itertools import chain
 from .shape import ShapeSet, PolishedShapeSet
 from .sage_helper import _within_sage, cached_function
-from snappy.snap import  generators
+from snappy.snap import generators
+from snappy.snap.t3mlite.simplex import V0, V1, V2, V3, E01
 from snappy.snap.polished_reps import (initial_tet_ideal_vertices,
                                        reconstruct_representation,
                                        clean_matrix,
@@ -34,6 +35,7 @@ def random_word(letters, N):
 def inverse_word(word):
     return word.swapcase()[::-1]
 
+@cached_function
 def words_in_Fn(gens, n):
     next_letter = dict()
     sym_gens = list(gens) + [g.swapcase() for g in gens]
@@ -77,11 +79,15 @@ def apply_representation(word, gen_images):
                [(g.upper(), SL2C_inverse(gen_images[i])) for i, g in enumerate(gens)])
     return prod([rho[g] for g in word], Id2)
 
-def polished_group(M, shapes, precision=100, fundamental_group_args=(True, False, True),
+def polished_group(M, shapes, precision=100,
+                   fundamental_group_args=(False, False, False),
                    lift_to_SL2=True):
     error = pari(2.0)**(-precision*0.8)
     G = M.fundamental_group(*fundamental_group_args)
     N = generators.SnapPy_to_Mcomplex(M, shapes)
+    #T = N.ChooseGenInitialTet
+    #z = T.ShapeParameters[E01]
+    #init_tet_vertices = {V0:0, V1:generators.Infinity, V2:z, V3:1}
     init_tet_vertices = initial_tet_ideal_vertices(N)
     generators.visit_tetrahedra(N, init_tet_vertices)
     mats = generators.compute_matrices(N)

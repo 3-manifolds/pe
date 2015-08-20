@@ -1,6 +1,8 @@
 from .plot import MatplotPlot as Plot
-from .real_reps import (PSL2RRepOf3ManifoldGroup, CouldNotConjugateIntoPSL2R,
-                        translation_of_lifted_rotation)
+from .real_reps import (PSL2RRepOf3ManifoldGroup,
+                        CouldNotConjugateIntoPSL2R,
+                        translation_of_lifted_rotation,
+                        meridians_fixing_infinity_and_zero)
 from .complex_reps import PSL2CRepOf3ManifoldGroup
 from .shape import U1Q
 from .euler import PSL2RtildeElement, LiftedFreeGroupRep
@@ -77,6 +79,11 @@ class SL2RLifter(object):
         self.hom_m_abelian = abs(self.m_abelian*hom_m[0] + self.l_abelian*hom_m[1])
         self.change_trans_to_hom_framing = matrix([hom_m, hom_l])
 
+        # Moreover, we store two special copies of the meridian for
+        # later use.
+
+        self.special_meridians = meridians_fixing_infinity_and_zero(self.manifold)
+
     def find_shapes(self):
         self.SL2R_arcs = []
         H = self.elevation
@@ -113,7 +120,9 @@ class SL2RLifter(object):
                         self.elevation.manifold,
                         target,
                         S,
-                        precision=1000)
+                        precision=1000,
+                        special_meridians=self.special_meridians
+                    )
                     if rho.polished_holonomy().check_representation() < 1.0e-100:
                         reps.append((sn, rho))
                         self.rep_dict[sn] = rho

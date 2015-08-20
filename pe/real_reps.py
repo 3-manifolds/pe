@@ -6,8 +6,8 @@ holonomy representation with image in SL(2,R).
 
 from .sage_helper import _within_sage, get_pi
 from .complex_reps import (PSL2CRepOf3ManifoldGroup, polished_group,
-                           apply_representation, GL2C_inverse, SL2C_inverse,
-                           CheckRepresentationFailed, conjugacy_classes_in_Fn)
+                           apply_representation, inverse_word, GL2C_inverse, SL2C_inverse,
+                           CheckRepresentationFailed, words_in_Fn)
 from pe.euler import orientation, PSL2RtildeElement, LiftedFreeGroupRep
 
 if _within_sage:
@@ -143,31 +143,93 @@ def conjugator_into_PSL2R(A, B):
     return C * matrix(A.base_ring(), [[e, 0], [0, f]])
 
 
-def conjugate_into_PSL2R(rho, max_error, depth=7):
-    """
-    Given a holonomy representation with generators near PSL(2,R),
-    return a list of generators for a conjugate representation with
-    image in PSL(2,R).
-    """
+def conjugate_into_PSL2R(rho, max_error, (m_inf, m_0)):
+    # If all shapes are flat, or equivalently if the peripheral holonomy is
+    # hyperbolic or parabolic, then there's nothing to do:
     gens = tuple(rho.generators())
-    new_mats, error = real_part_of_matrices_with_error(rho(g) for g in gens)
+    gen_mats = [rho(g) for g in gens]
+    new_mats, error = real_part_of_matrices_with_error(gen_mats)
     if error < max_error:
         return new_mats
 
-    # Search for two non-commuting conjugate loxodromics
-    for word in conjugacy_classes_in_Fn(gens, depth):
-        U = rho(word)
-        if abs(U.trace()) > 2.0001:
-            conjugates = [rho(g)*U*rho(g.upper()) for g in gens]
-            V = max(conjugates, key=lambda M, N=U: (N - M).norm())
-            comm = U*V*SL2C_inverse(U)*SL2C_inverse(V)
-            if abs(comm.trace() - 2) > 1e-10:
-                C = conjugator_into_PSL2R(U, V)
-                new_mats = [GL2C_inverse(C) * rho(g) * C for g in gens]
-                final_mats, error = real_part_of_matrices_with_error(new_mats)
-                assert error < max_error, 'Matrices do not seem to be real.'
-                return final_mats
-    raise CouldNotConjugateIntoPSL2R
+    # Now for the harder case of elliptic peripheral holonomy
+    A, B = rho(m_inf), rho(m_0)
+    assert abs(A[1, 0]) < max_error and abs(abs(A[0,0]) - 1) < max_error
+    assert abs(B[0, 1]) < max_error and abs(abs(B[0,0]) - 1) < max_error
+    A[1,0], B[0, 1] = 0, 0
+
+    # First conjugate so that A is diagonal
+    CC = A.base_ring()
+    a0, a1 = A[0]
+    C = matrix(CC, [[1, a0*a1/(1 - a0**2)], [0, 1]])
+    Cinv = SL2C_inverse(C)
+    curr_mats = [Cinv*M*C for M in [A, B] + gen_mats]
+    A, B = curr_mats[:2]
+    assert A[1,0] == 0 and abs(A[0,1]) < max_error
+    A[0, 1] = 0
+
+    # The hyperplane P preserved by rho must be orthogonal to the axis
+    # of A, which has endpoints 0 and infinity in S^2.  Thus P must
+    # correspond to some circle about the origin in the complex
+    # plane. The axis of B must also be orthogonal to P, which forces
+    # its endpoints to lie on a common ray from the origin in the
+    # complex plane.  We next rotate the complex plane so that B's
+    # fixed points are on the real axis and are symmetric with respect
+    # to inversion in the unit circle.  This will cause rho will
+    # preserve the hyperplane over the unit circle about the origin.
+
+    vec0, vec1 = eigenvectors(B)
+    pt0, pt1 = vec0[0]/vec0[1], vec1[0]/vec1[1]
+    s = abs(pt1/pt0).sqrt()
+    u = s*pt0
+    C = matrix(CC, [[u, 0], [0, 1]])
+    Cinv = matrix(CC, [[1/u, 0], [0, 1]])
+    curr_mats = [Cinv*M*C for M in curr_mats]
+    A, B = curr_mats[:2]
+
+    # Check we did everything correctly
+    vec0, vec1 = eigenvectors(B)
+    pt0, pt1 = vec0[0]/vec0[1], vec1[0]/vec1[1]
+    assert abs(pt0.imag()) < max_error and abs(pt1.imag()) < max_error
+    assert pt0.real() > 0 and pt1.real() > 0
+    assert abs(pt0*pt1 - 1) < max_error
+
+    # Now exchange the hyperplane over the unit circle with the one
+    # over the real line so that we end up in PSL(2, R).  The map we
+    # use sends (-1, 0, 1, infinity) -> (i, 1, -i, -1) 
+
+    i = complex_I(CC)
+    C = matrix(CC, [[1, -i], [-1, -i]])
+    Cinv = GL2C_inverse(C)
+    curr_mats = [Cinv*M*C for M in curr_mats]
+    A, B = curr_mats[:2]
+
+    # Check that A fixes i in the upper halfspace model and the
+    # ellptic fixed point of B is below it on the imaginary axis.
+    
+    curr_mats, error = real_part_of_matrices_with_error(curr_mats)
+    if error > max_error:
+        raise CouldNotConjugateIntoPSL2R
+    A, B = curr_mats[:2]
+    u, v = fixed_point(A), fixed_point(B)
+    assert abs(u.real()) < max_error and abs(v.real()) < max_error
+    assert abs(u.imag() - 1) < max_error and v.imag() > 0
+
+    # Do a real dilation so that the fixed points of A and B are on
+    # the imaginary axis and equidistant from i.  This is done so that
+    # the representations into PSL(2, R) are continous when you have a
+    # family with elliptic peripheral holonomy that limits on a
+    # representation with parabolic peripheral holonomy.
+
+    C = matrix([[abs(v).sqrt(), 0], [0, 1]])
+    Cinv = GL2C_inverse(C)
+    curr_mats = [Cinv*M*C for M in curr_mats]
+    A, B = curr_mats[:2]
+    u, v = fixed_point(A), fixed_point(B)
+    assert abs(u.real()) < max_error and abs(v.real()) < max_error
+    assert u.imag()  > 0 and v.imag() > 0
+    assert abs(u*v + 1) < max_error
+    return curr_mats[2:]
 
 def fixed_point(A):
     """
@@ -217,55 +279,29 @@ def shift_of_central(A_til):
     assert A_til.is_central(), "Central element isn't really central."
     return A_til.s
 
-def normalizer_wrt_target_meridian_holonomy(meridian_matrix, target):
-    """
-    The subgroup PSL(2,R) < PSL(2,C) has index 2 in its normalizer
-    with the non-trivial coset being represented by the diagonal
-    matrix Δ with i and -i on the diagonal.  Conjugation by Δ maps the
-    invariant hyperbolic plane to itself by an orientation reversing
-    involution, which has the effect of changing the rotation number
-    of an elliptic element of PSL(2,R) to its negative.  The matrix
-    computed by *conjugate_into_PSL2R* may or may not conjugate each
-    element into the trivial coset.
-
-    In order for the translation numbers to have the correct sign, we
-    need to adjust the conjugator produced by *conjugate_into_PSL2R*.
-    This function implements an imperfect heuristic method of doing
-    this.  (See m276 for an example where it fails.)  It returns a
-    conjugator to be applied after the one provided by
-    conjugate_into_PSL2R.
-
-    As a first approximation, the returned conjugator matrix is either
-    Id or Δ, the latter being chosen when the rotation angle of the
-    meridian reduced mod 2π lies in the interval (π, 2*π).  (The
-    ambiguity for reduced angle π is responsible for the artifact in
-    m276.  The ambiguity for angle 2π causes artifacts when parabolics
-    are included).
-
-    For a completely independent reason, the actual return value is
-    either Id or Δ times the matrix of the inversion z -> -1/z.  The
-    purpose of this is to avoid failures in the function *fixed_point*
-    which arise when it is passed a parabolic matrix with fixed point
-    at infinity, i.e an upper triangular matrix.
-
-    NOTE: When the trace of the meridian is 0 equality holds in the
-    comparison used to decide whether to flip; the test is ambiguous
-    in this case.  This code arbitrarily chooses never to flip if the
-    trace is 0.  That choice can lead to discontinuous translations
-    arcs, and must be corrected when computing the translations.
-    """
-    current = elliptic_rotation_angle(meridian_matrix)
-    RR = current.parent()
-    CC = complex_field(RR)
-    target_arg = CC(target).arg()/(2*get_pi(RR))
-    target_arg -= target_arg.floor()
-    other = 1 - current
-    if abs(other - target_arg) < abs(current - target_arg):
-        I = complex_I(CC)
-        C = matrix(CC, [[0, I], [I, 0]])
-    else:
-        C = matrix(CC, [[0, -1], [1, 0]])
-    return C
+def meridians_fixing_infinity_and_zero(manifold):
+    M = manifold.without_hyperbolic_structure()
+    M.dehn_fill((0,0))
+    M = M.with_hyperbolic_structure()
+    assert M.cusp_info('complete?') == [True]
+    G = M.fundamental_group(False, False, False)
+    m_inf, m_0 = None, None
+    m = G.meridian()
+    for n in range(7):
+        if n == 0:
+            words = ['']
+        else:
+            words = [w for w in words_in_Fn(''.join(G.generators()), n) if len(w) == n]
+        for w in words:
+            m_w = w + m + inverse_word(w)
+            A = G.SL2C(m_w)
+            if m_inf is None and abs(A[1,0]) < 1e-6:
+                m_inf = m_w
+            if m_0 is None and abs(A[0,1]) < 1e-6:
+                m_0 = m_w
+            if None not in [m_inf, m_0]:
+                return m_inf, m_0
+    raise ValueError('Could not find desired meridians')
 
 class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
     """
@@ -278,12 +314,24 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
     <m004(1,0): [0.48887, 0.25766]>
     >>> rho.representation_lifts()
     True
+
+    Now an example which is elliptic on the boundary. 
+
+    >>> N = snappy.Manifold('m016')
+    >>> shapes = [(0.56872407246562728+0.20375919309358881j), (1.8955789278288073-0.89557892782880721j), 0.62339350249879155]
+    >>> psi = PSL2RRepOf3ManifoldGroup(N, -1j, shapes, 250)
+    >>> psi
+    <m016(0,0): [0.56872+0.20376I, 1.8956-0.89558I, 0.62339]>
+    >>> psi.representation_lifts()
+    True
     """
+    
     def __init__(self, rep_or_manifold,
                  target_meridian_holonomy=None,
                  rough_shapes=None,
                  precision=None,
-                 fundamental_group_args=(True, False, True)):
+                 fundamental_group_args=(False, False, False),
+                 special_meridians = None):
         if isinstance(rep_or_manifold, PSL2CRepOf3ManifoldGroup):
             rep = rep_or_manifold
         else:
@@ -299,6 +347,9 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
         self.precision = rep.precision
         self.fundamental_group_args = rep.fundamental_group_args
         self._cache = {}
+        if special_meridians is None:
+            special_meridians = meridians_fixing_infinity_and_zero(self.manifold)
+        self.meridians = special_meridians
 
     def polished_holonomy(self, precision=None):
         """Construct and return a polished holonomy with values in PSL2(R)."""
@@ -314,15 +365,8 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
                                precision,
                                fundamental_group_args=self.fundamental_group_args,
                                lift_to_SL2=False)
-            new_mats = conjugate_into_PSL2R(G, epsilon)
-            if self.target_meridian_holonomy:
-                meridian_word = self.meridian()
-                meridian_matrix = apply_representation(meridian_word, new_mats)
-                C = normalizer_wrt_target_meridian_holonomy(meridian_matrix,
-                                                            self.target_meridian_holonomy)
-                new_mats = real_part_of_matrices_with_error(
-                    [SL2C_inverse(C)*M*C for M in new_mats])[0]
-                self._new_matrices(G, new_mats)
+            new_mats = conjugate_into_PSL2R(G, epsilon, self.meridians)
+            self._new_matrices(G, new_mats)
             if not G.check_representation() < epsilon:
                 raise CheckRepresentationFailed
             self._cache[mangled] = G
