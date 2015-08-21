@@ -5,7 +5,7 @@ arbitrary precision holonomy representation with image in SL(2,R).
 """
 
 from .sage_helper import (get_pi, matrix, vector, RealField, Id2,
-                          complex_I, complex_field, pari, arg)
+                          complex_I, pari, arg)
 
 from .complex_reps import (PSL2CRepOf3ManifoldGroup, polished_group,
                            apply_representation, inverse_word,
@@ -13,7 +13,7 @@ from .complex_reps import (PSL2CRepOf3ManifoldGroup, polished_group,
                            CheckRepresentationFailed, words_in_Fn)
 from .euler import orientation, PSL2RtildeElement, LiftedFreeGroupRep
 from .matrix_helper import (eigenvectors, apply_matrix, vector_dist,
-                            normalize_vector)
+                            normalize_vector, fixed_point)
 
 
 class CouldNotConjugateIntoPSL2R(Exception):
@@ -135,43 +135,6 @@ def conjugate_into_PSL2R(rho, max_error, (m_inf, m_0)):
     assert u.imag()  > 0 and v.imag() > 0
     assert abs(u*v + 1) < max_error
     return curr_mats[2:]
-
-def fixed_point(A):
-    """
-    Return a complex number fixed by the linear fractional
-    transformation given by a matrix A.  In the case of a parabolic,
-    the fixed point will be real, unless the parabolic fixed point is
-    at infinity in which case all hell breaks loose.
-    """
-    assert A.trace().abs() <= 2.0, 'Please make sure you have not changed the generators!'
-    CC = complex_field(A.base_ring())
-    x = pari('x')
-    a, b, c, d = [pari(z) for z in A.list()]
-    p = c*x*x + (d - a)*x - b
-    if p == 0:
-        return complex_I(CC)
-    fp = max(p.polroots(precision=CC.precision()), key=lambda z: z.imag())
-    return CC(fp)
-
-def elliptic_rotation_angle(A):
-    """Return the rotation angle of an element of PSL(2,R) at its fixed point."""
-    z = fixed_point(A)
-    c, d = A.list()[2:]
-    derivative = 1/(c*z + d)**2
-    pi = get_pi(A.base_ring())
-    r = -arg(derivative)
-    if r < 0:
-        r = r + 2*pi
-    return r/(2*pi)
-
-def translation_of_lifted_rotation(R_til):
-    """
-    Return the translation amount of this element of ~PSL2R.
-
-    NOTE: This method Assumes that this element lifts a rotation
-    matrix in SL2R!
-    """
-    return elliptic_rotation_angle(R_til.A) + R_til.s
 
 def rot(R, t, s):
     """Return an element of ~PSL(2,R) lifting a rotation in PSL(2,R)."""

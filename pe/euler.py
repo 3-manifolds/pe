@@ -19,6 +19,7 @@ That is cbar([g1|g2]) = s(g1 g2)^-1 s(g1) s(g2) rather
 that the RHS being cbar(g1, g2)
 """
 from .sage_helper import matrix, Id2, sqrt
+from .matrix_helper import elliptic_rotation_angle
 
 def wedge(a, b):
     """Return the wedge product of two 2-vectors."""
@@ -27,6 +28,15 @@ def wedge(a, b):
 def orientation(a, b, c):
     """Is the oriented triangle Δ(a,b,c) counterclockwise?"""
     return cmp(wedge(a, b) * wedge(b, c) * wedge(c, a), 0)
+
+def translation_of_lifted_rotation(R_til):
+    """
+    Return the translation amount of this element of ~PSL2R.
+
+    NOTE: This method Assumes that this element lifts a rotation
+    matrix in SL2R!
+    """
+    return elliptic_rotation_angle(R_til.A) + R_til.s
 
 class PointInP1R(object):
     """
@@ -207,7 +217,10 @@ class LiftedFreeGroupRep(object):
         return ans
 
     def peripheral_translations(self):
-        pass
+        meridian, longitude = self.group.peripheral_curves()[0]
+        trans_M = translation_of_lifted_rotation(self(meridian))
+        trans_L = translation_of_lifted_rotation(self(longitude))
+        return trans_M, trans_L
         
 
 # These are not currently used.

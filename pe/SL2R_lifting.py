@@ -1,11 +1,11 @@
 from .plot import MatplotPlot as Plot
 from .real_reps import (PSL2RRepOf3ManifoldGroup,
                         CouldNotConjugateIntoPSL2R,
-                        translation_of_lifted_rotation,
                         meridians_fixing_infinity_and_zero)
 from .complex_reps import PSL2CRepOf3ManifoldGroup
 from .shape import U1Q
 from .point import PEPoint
+from .euler import translation_of_lifted_rotation
 from snappy import CensusKnots
 from snappy.snap.polished_reps import MapToFreeAbelianization
 
@@ -151,14 +151,13 @@ class SL2RLifter(object):
             translations = []
             for sn, rho in arc:
                 rho.translations = None
-                meridian, longitude = rho.polished_holonomy().peripheral_curves()[0]
                 rho_til = rho.lift_on_cusped_manifold()
                 if rho_til is None:
                     print 'No lift!'
                     continue
                 try:
-                    P = (float(translation_of_lifted_rotation(rho_til(meridian))),
-                         float(translation_of_lifted_rotation(rho_til(longitude))))
+                    m, l = rho_til.peripheral_translations()
+                    P = (float(m), float(l))
                     while P[0] < 0:
                         P = (P[0] + self.m_abelian, P[1] + self.l_abelian)
                     while P[0] >= self.m_abelian:
