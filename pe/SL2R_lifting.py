@@ -5,7 +5,6 @@ from .real_reps import (PSL2RRepOf3ManifoldGroup,
                         meridians_fixing_infinity_and_zero)
 from .complex_reps import PSL2CRepOf3ManifoldGroup
 from .shape import U1Q
-from .euler import PSL2RtildeElement, LiftedFreeGroupRep
 from .point import PEPoint
 from snappy import CensusKnots
 from snappy.snap.polished_reps import MapToFreeAbelianization
@@ -153,7 +152,7 @@ class SL2RLifter(object):
             for sn, rho in arc:
                 rho.translations = None
                 meridian, longitude = rho.polished_holonomy().peripheral_curves()[0]
-                rho_til = lift_on_cusped_manifold(rho)
+                rho_til = rho.lift_on_cusped_manifold()
                 if rho_til is None:
                     print 'No lift!'
                     continue
@@ -167,7 +166,7 @@ class SL2RLifter(object):
                 except AssertionError:
                     print "Warning: an assertion failed somewhere"
                 translations.append(self._saved_point(P, sn, rho))
-            self._fix_translations(translations)
+            #self._fix_translations(translations)
             self.translation_arcs.append(translations)
 
     def _fix_translations(self, translations):
@@ -287,7 +286,7 @@ def lifted_slope(M, target_meridian_holonomy_arg, shapes):
     assert rho.polished_holonomy().check_representation() < 1.0e-100
     rho_real = PSL2RRepOf3ManifoldGroup(rho)
     meridian, longitude = rho.polished_holonomy().peripheral_curves()[0]
-    rho_tilde = lift_on_cusped_manifold(rho_real)
+    rho_tilde = rho_real.lift_on_cusped_manifold()
     return (-translation_of_lifted_rotation(rho_tilde(longitude)) /
             translation_of_lifted_rotation(rho_tilde(meridian)))
 
@@ -326,25 +325,3 @@ def bisection(H, low, high, s, target_slope, epsilon=1.0e-8):
         print count
     print 'limit exceeded'
     return new_fiber.shapes[s]
-
-def lift_on_cusped_manifold(rho):
-    rel_cutoff = len(rho.generators()) - 1
-    rels = rho.relators()[:rel_cutoff]
-    euler_cocycle = rho.euler_cocycle_on_relations()
-    D = rho.coboundary_1_matrix()[:rel_cutoff]
-    M = matrix([euler_cocycle] + D.columns())
-    k = M.left_kernel().basis()[0]
-    if k[0] != 1:
-        # Two reasons we could be here: the euler class isn't zero or
-        # the implicit assumption about how left_kernel works is violated.
-        # Only the latter is actually worrysome.
-        if D.elementary_divisors() == M.transpose().elementary_divisors():
-            raise AssertionError('Need better implementation, Nathan')
-        else:
-            return None, None
-    shifts = (-k)[1:]
-    good_lifts = [PSL2RtildeElement(rho(g), s)
-                  for g, s in zip(rho.generators(), shifts)]
-    return LiftedFreeGroupRep(rho, good_lifts)
-
-

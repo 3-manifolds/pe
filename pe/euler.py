@@ -18,13 +18,7 @@ be defined in terms of the bar notation as
 That is cbar([g1|g2]) = s(g1 g2)^-1 s(g1) s(g2) rather
 that the RHS being cbar(g1, g2)
 """
-from .sage_helper import _within_sage
-if _within_sage:
-    from sage.all import ZZ, matrix, sqrt
-    Id2 = matrix(ZZ, [[1, 0], [0, 1]])
-else:
-    from snappy.snap.utilities import Matrix2x2 as matrix
-    Id2 = matrix(1, 0, 0, 1)
+from .sage_helper import matrix, Id2, sqrt
 
 def wedge(a, b):
     """Return the wedge product of two 2-vectors."""
@@ -195,6 +189,7 @@ class LiftedFreeGroupRep(object):
     A representation of a free group into ~PSL(2,R).
     """
     def __init__(self, group, images=None):
+        self.group = group
         gens = group.generators()
         if images is None:
             images = [PSL2RtildeElement(group(g), 0) for g in gens]
@@ -210,6 +205,10 @@ class LiftedFreeGroupRep(object):
         for w in word[1: ]:
             ans = ans * ims[w]
         return ans
+
+    def peripheral_translations(self):
+        pass
+        
 
 # These are not currently used.
 def eval_thurston_cocycle(A, B, p):

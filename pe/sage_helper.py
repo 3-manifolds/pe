@@ -114,3 +114,40 @@ def doctest_modules(modules, verbose=False, print_info=True, extraglobs=dict()):
     return doctest.TestResults(failed, attempted)
 
 
+# Various basic things, set up to work in both contexts
+if _within_sage:
+    from sage.all import (RealField, MatrixSpace, ZZ, RR, CC, vector, matrix,
+                          pari, arg, sqrt)
+    eigenvalues = lambda A: A.charpoly().roots(A.base_ring(), False)
+    Id2 = MatrixSpace(ZZ, 2)(1)
+    complex_I = lambda R: R.gen()
+    complex_field = lambda R: R.complex_field()
+    elementary_divisors = lambda M: M.elementary_divisors()
+    smith_normal_form = lambda M: M.smith_form()
+else:
+    from cypari.gen import pari
+    from snappy.number import Number, SnapPyNumbers
+    from snappy.snap.utilities import Vector2 as vector, Matrix2x2 as matrix
+    eigenvalues = lambda A: A.eigenvalues()
+    Id2 = matrix(1, 0, 0, 1)
+    RealField = SnapPyNumbers
+    ComplexField = SnapPyNumbers
+    complex_I = lambda R: R.I()
+    complex_field = lambda R: R
+    RR = Number
+    CC = Number
+    sqrt = lambda x: x.sqrt()
+
+    def arg(x):
+        """Use the object's arg method."""
+        if isinstance(x, Number):
+            return x.arg()
+        else:
+            return Number(x).arg()
+
+    elementary_divisors = lambda M: M.matsnf()
+
+    def smith_normal_form(M):
+        U, V, D = M.matsnf(flag=1)
+        # Sage returns D, U, V and Pari returns U, V, D
+        return D, U, V

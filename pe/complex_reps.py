@@ -1,7 +1,10 @@
 import random, string
 from itertools import chain
 from .shape import ShapeSet, PolishedShapeSet
-from .sage_helper import _within_sage, cached_function
+from .sage_helper import (_within_sage, cached_function, RR, CC, Id2,
+                          elementary_divisors, smith_normal_form, pari,
+                          matrix, vector)
+from .matrix_helper import  SL2C_inverse, GL2C_inverse
 from snappy.snap import generators
 from snappy.snap.t3mlite.simplex import V0, V1, V2, V3, E01
 from snappy.snap.polished_reps import (initial_tet_ideal_vertices,
@@ -11,23 +14,9 @@ from snappy.snap.polished_reps import (initial_tet_ideal_vertices,
                                        prod)
 
 if _within_sage:
-    from sage.all import matrix, MatrixSpace, ZZ, RR, CC, pari
-    Id2 = MatrixSpace(ZZ, 2)(1)
     coboundary_matrix = matrix
-    elementary_divisors = lambda M: M.elementary_divisors()
-    smith_normal_form = lambda M: M.smith_form()
 else:
-    from snappy.number import Number
-    from snappy.snap.utilities import Matrix2x2 as matrix
-    from cypari.gen import pari
     coboundary_matrix = pari.matrix
-    elementary_divisors = lambda M: M.matsnf()
-    def smith_normal_form(M):
-        U, V, D = M.matsnf(flag=1)
-        # Sage returns D, U, V and Pari returns U, V, D
-        return D, U, V
-    Id2 = matrix(1, 0, 0, 1)
-    RR = Number
 
 def random_word(letters, N):
     return ''.join([random.choice(letters) for _ in range(N)])
@@ -67,12 +56,6 @@ def conjugacy_classes_in_Fn(gens, n):
 class CheckRepresentationFailed(Exception):
     pass
 
-def SL2C_inverse(A):
-    return A.adjoint()
-
-def GL2C_inverse(A):
-    return (1/A.det())*A.adjoint()
-
 def apply_representation(word, gen_images):
     gens = string.ascii_lowercase[:len(gen_images)]
     rho = dict([(g, gen_images[i]) for i, g in enumerate(gens)] +
@@ -104,12 +87,8 @@ def polished_group(M, shapes, precision=100,
 
 def format_complex(z, digits=5):
     conv = '%.' + repr(digits) + 'g'
-    if _within_sage:
-        ten = RR(10)
-        z = CC(z)
-    else:
-        ten = 10.0
-        z = Number(z)
+    ten = RR(10.0)
+    z = CC(z)
     real = conv % z.real()
     if abs(z.imag()) < ten**-(digits):
         return real
