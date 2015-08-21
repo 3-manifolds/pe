@@ -131,6 +131,20 @@ class SL2RLifter(object):
             if len(reps) > 1:
                 self.SL2R_rep_arcs.append(reps)
 
+        self.correct_rep_endpoints()
+
+    def correct_rep_endpoints(self):
+        """
+        Deal with minor discontinuities at parabolic endpoints of the rep
+        arcs
+        """
+        for arc in self.SL2R_rep_arcs:
+            for i, j in [(0, 1), (-2, -1)]:
+                rho0, rho1 = arc[i][1], arc[j][1]
+                A0, A1 = rho0('a')[1], rho1('a')[1]
+                if (A0 + A1).norm() < (A0 - A1).norm():
+                    rho0.flip()
+
     def find_translation_arcs(self):
         self.translation_arcs = []
         self.translation_dict = {}

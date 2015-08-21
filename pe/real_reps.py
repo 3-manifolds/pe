@@ -158,10 +158,11 @@ def conjugate_into_PSL2R(rho, max_error, (m_inf, m_0)):
     assert abs(B[0, 1]) < max_error and abs(abs(B[0,0]) - 1) < max_error
     A[1,0], B[0, 1] = 0, 0
 
-    # First conjugate so that A is diagonal
+    # First conjugate so that A is diagonal. 
     CC = A.base_ring()
     a0, a1 = A[0]
-    C = matrix(CC, [[1, a0*a1/(1 - a0**2)], [0, 1]])
+    z =  a0*a1/(1 - a0**2)   # Other fixed point of A
+    C = matrix(CC, [[1, z], [0, 1]])
     Cinv = SL2C_inverse(C)
     curr_mats = [Cinv*M*C for M in [A, B] + gen_mats]
     A, B = curr_mats[:2]
@@ -217,8 +218,8 @@ def conjugate_into_PSL2R(rho, max_error, (m_inf, m_0)):
 
     # Do a real dilation so that the fixed points of A and B are on
     # the imaginary axis and equidistant from i.  This is done so that
-    # the representations into PSL(2, R) are continous when you have a
-    # family with elliptic peripheral holonomy that limits on a
+    # the representations into PSL(2, R) are nearly continous when you
+    # have a family with elliptic peripheral holonomy that limits on a
     # representation with parabolic peripheral holonomy.
 
     C = matrix([[abs(v).sqrt(), 0], [0, 1]])
@@ -331,7 +332,8 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
                  rough_shapes=None,
                  precision=None,
                  fundamental_group_args=(False, False, False),
-                 special_meridians = None):
+                 special_meridians = None,
+                 flip=False):
         if isinstance(rep_or_manifold, PSL2CRepOf3ManifoldGroup):
             rep = rep_or_manifold
         else:
@@ -350,6 +352,7 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
         if special_meridians is None:
             special_meridians = meridians_fixing_infinity_and_zero(self.manifold)
         self.meridians = special_meridians
+        self._flip = flip
 
     def polished_holonomy(self, precision=None):
         """Construct and return a polished holonomy with values in PSL2(R)."""
@@ -366,12 +369,20 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
                                fundamental_group_args=self.fundamental_group_args,
                                lift_to_SL2=False)
             new_mats = conjugate_into_PSL2R(G, epsilon, self.meridians)
+            if self._flip:  # Reverse the orientation of H^2
+                for A in new_mats:
+                    A[0,1], A[1,0] = -A[0, 1], -A[1,0]
             self._new_matrices(G, new_mats)
             if not G.check_representation() < epsilon:
                 raise CheckRepresentationFailed
             self._cache[mangled] = G
         return self._cache[mangled]
 
+    def flip(self):
+        """Conjugate this rep by Δ, reversing the orientation on H^2"""
+        self._flip = not self._flip
+        self._cache = {}
+        
     @staticmethod
     def _new_matrices(G, new_mats):
         for g in G.generators():
@@ -379,24 +390,10 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
             G._hom_dict[g.upper()] = apply_representation(g.upper(), new_mats)
         G._id = Id2
 
-    def flip(self):
-        """Conjugate this rep by Δ."""
-        G = self.polished_holonomy()
-        new_mats = [G(g) for g in G.generators()]
-        meridian_word = self.meridian()
-        meridian_matrix = self(meridian_word)
-        CC = meridian_matrix.base_ring()
-        I = complex_I(CC)
-        D = matrix(CC, [[I, 0], [0, -I]])
-        new_mats = real_part_of_matrices_with_error([-D*M*D for M in new_mats])[0]
-        self._new_matrices(G, new_mats)
-        mangled = "polished_holonomy_%s" % self.precision
-        self._cache[mangled] = G
-
     def thurston_class_of_relation(self, word, init_pt):
         """
-        The Thurston Class is twice the Euler class.  Not sure WTF this means when there's
-        2-torsion in H^2.
+        The Thurston Class is twice the Euler class.  Not sure WTF this
+        means when there's 2-torsion in H^2.
         """
         n = len(word)
         b = normalize_vector(init_pt)
