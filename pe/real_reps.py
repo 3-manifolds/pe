@@ -1,37 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-Define the class PSL2RRepOf3ManifoldGroup which represents an arbitrary precision
-holonomy representation with image in SL(2,R).
+Define the class PSL2RRepOf3ManifoldGroup which represents an
+arbitrary precision holonomy representation with image in SL(2,R).
 """
 
-from .sage_helper import _within_sage, get_pi
-from .complex_reps import (PSL2CRepOf3ManifoldGroup, polished_group,
-                           apply_representation, inverse_word, GL2C_inverse, SL2C_inverse,
-                           CheckRepresentationFailed, words_in_Fn)
-from pe.euler import orientation, PSL2RtildeElement, LiftedFreeGroupRep
+from .sage_helper import (get_pi, matrix, vector, RealField, Id2,
+                          complex_I, complex_field, pari, arg)
 
-if _within_sage:
-    from sage.all import RealField, MatrixSpace, ZZ, vector, matrix, pari, arg
-    eigenvalues = lambda A: A.charpoly().roots(A.base_ring(), False)
-    Id2 = MatrixSpace(ZZ, 2)(1)
-    complex_I = lambda R: R.gen()
-    complex_field = lambda R: R.complex_field()
-else:
-    from cypari.gen import pari
-    from snappy.number import Number, SnapPyNumbers
-    from snappy.snap.utilities import Vector2 as vector, Matrix2x2 as matrix
-    eigenvalues = lambda A: A.eigenvalues()
-    Id2 = matrix(1, 0, 0, 1)
-    RealField = SnapPyNumbers
-    ComplexField = SnapPyNumbers
-    complex_I = lambda R: R.I()
-    complex_field = lambda R: R
-    def arg(x):
-        """Use the object's arg method."""
-        if isinstance(x, Number):
-            return x.arg()
-        else:
-            return Number(x).arg()
+from .complex_reps import (PSL2CRepOf3ManifoldGroup, polished_group,
+                           apply_representation, inverse_word,
+                           GL2C_inverse, SL2C_inverse,
+                           CheckRepresentationFailed, words_in_Fn)
+from .euler import orientation, PSL2RtildeElement, LiftedFreeGroupRep
+from .matrix_helper import (eigenvectors, apply_matrix, vector_dist,
+                            normalize_vector)
+
 
 class CouldNotConjugateIntoPSL2R(Exception):
     """Exception generated when a representation cannot be conjugated into PSL(2,R)."""
@@ -65,83 +48,6 @@ def real_part_of_matrices_with_error(matrices):
     real_with_errors = [real_part_of_matrix_with_error(A) for A in matrices]
     return [r for r, _ in real_with_errors], max(e for r, e in real_with_errors)
 
-def normalize_vector(v):
-    """Divide this non-zero vector by its L2 norm."""
-    return v/v.norm()
-
-def apply_matrix(mat, v):
-    """Multiply the matrix times the vector and return the normalized result."""
-    return normalize_vector(mat*v)
-
-def vector_dist(a, b):
-    """Return the L2 distance between two vectors."""
-    return (a - b).norm()
-
-def right_kernel_two_by_two(A):
-    """
-    For a 2x2 matrix A over an approximate field like RR or CC, find an
-    element in the right kernel.
-    """
-    prec = A.base_ring().precision()
-    epsilon = (2.0)**(-0.8*prec)
-    assert A.determinant().abs() < epsilon, 'Matrix looks non-singular'
-    a, b = max(A.rows(), key=lambda v: v.norm())
-    v = vector([1, -a/b]) if b.abs() > a.abs() else vector([-b/a, 1])
-    assert (A*v).norm() < epsilon, 'Supposed kernel vector is not in the kernel.'
-    return (1/v.norm())*v
-
-def eigenvectors(A):
-    """
-    Returns the two eigenvectors of a loxodromic matrix A.
-    """
-    CC = A.base_ring()
-    return [right_kernel_two_by_two(A-eigval) for eigval in A.charpoly().roots(CC, False)]
-
-#def eigenbasis(A, B):
-#    """
-#    Given loxodromic matrices A and B, return a basis of C^2 consisting of
-#   one eigenvector from each.
-#    """
-#    basis = [ (a, b) for a in eigenvectors(A) for b in eigenvectors(B) ]
-#    return matrix(min(basis, key=lambda (a,b) : abs(a*b))).transpose()
-
-def eigenvector(A):
-    """
-    Returns the eigenvector corresponding to the larger eigenvalue of a
-    loxodromic matrix A
-    """
-    evalues = eigenvalues(A)
-    evalue = max(evalues, key=lambda x: x.abs())
-    return right_kernel_two_by_two(A - evalue*Id2)
-
-def eigenbasis(A, B):
-    """
-    Given loxodromic matrices A and B, return a basis of C^2 consisting of
-    one eigenvector from each.
-    """
-    eA = eigenvector(A)
-    eB = eigenvector(B)
-    return matrix([[eA[0], eB[0]], [eA[1], eB[1]]])
-    #return matrix([eigenvector(A), eigenvector(B)]).transpose()
-
-def conjugator_into_PSL2R(A, B):
-    """
-    Given loxodromic matrices A and B which lie in a common conjugate of
-    PSL(2, R), return a matrix C so that C^(-1)*A*C and C^(-1)*B*C are in
-    PSL(2, R) itself.
-    """
-    C = eigenbasis(A, B)
-    AA = GL2C_inverse(C)*A*C
-    BB = GL2C_inverse(C)*B*C
-    a = AA[0, 1]
-    b = BB[1, 0]
-    if abs(a) > abs(b):
-        e, f = 1, abs(a)/a
-    else:
-        e, f = abs(b)/b, 1
-
-    return C * matrix(A.base_ring(), [[e, 0], [0, f]])
-
 
 def conjugate_into_PSL2R(rho, max_error, (m_inf, m_0)):
     # If all shapes are flat, or equivalently if the peripheral holonomy is
@@ -156,7 +62,6 @@ def conjugate_into_PSL2R(rho, max_error, (m_inf, m_0)):
     A, B = rho(m_inf), rho(m_0)
     assert abs(A[1, 0]) < max_error and abs(abs(A[0,0]) - 1) < max_error
     assert abs(B[0, 1]) < max_error and abs(abs(B[0,0]) - 1) < max_error
-    A[1,0], B[0, 1] = 0, 0
 
     # First conjugate so that A is diagonal. 
     CC = A.base_ring()
@@ -166,8 +71,7 @@ def conjugate_into_PSL2R(rho, max_error, (m_inf, m_0)):
     Cinv = SL2C_inverse(C)
     curr_mats = [Cinv*M*C for M in [A, B] + gen_mats]
     A, B = curr_mats[:2]
-    assert A[1,0] == 0 and abs(A[0,1]) < max_error
-    A[0, 1] = 0
+    assert abs(A[1,0]) < max_error and abs(A[0,1]) < max_error
 
     # The hyperplane P preserved by rho must be orthogonal to the axis
     # of A, which has endpoints 0 and infinity in S^2.  Thus P must
@@ -237,7 +141,7 @@ def fixed_point(A):
     Return a complex number fixed by the linear fractional
     transformation given by a matrix A.  In the case of a parabolic,
     the fixed point will be real, unless the parabolic fixed point is
-    aat infinity in which case all hell breaks loose.
+    at infinity in which case all hell breaks loose.
     """
     assert A.trace().abs() <= 2.0, 'Please make sure you have not changed the generators!'
     CC = complex_field(A.base_ring())
@@ -250,7 +154,7 @@ def fixed_point(A):
     return CC(fp)
 
 def elliptic_rotation_angle(A):
-    """Return the rotation angle of an element of PSL(2,R)at its fixed point."""
+    """Return the rotation angle of an element of PSL(2,R) at its fixed point."""
     z = fixed_point(A)
     c, d = A.list()[2:]
     derivative = 1/(c*z + d)**2
@@ -440,6 +344,26 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
                 return True
             else:
                 return False in [x == 0 for x in self.euler_class()]
+
+    def lift_on_cusped_manifold(self):
+        rel_cutoff = len(self.generators()) - 1
+        rels = self.relators()[:rel_cutoff]
+        euler_cocycle = self.euler_cocycle_on_relations()
+        D = self.coboundary_1_matrix()[:rel_cutoff]
+        M = matrix([euler_cocycle] + D.columns())
+        k = M.left_kernel().basis()[0]
+        if k[0] != 1:
+            # Two reasons we could be here: the euler class isn't zero or
+            # the implicit assumption about how left_kernel works is violated.
+            # Only the latter is actually worrysome.
+            if D.elementary_divisors() == M.transpose().elementary_divisors():
+                raise AssertionError('Need better implementation, Nathan')
+            else:
+                return None
+        shifts = (-k)[1:]
+        good_lifts = [PSL2RtildeElement(self(g), s)
+                      for g, s in zip(self.generators(), shifts)]
+        return LiftedFreeGroupRep(self, good_lifts)
 
 
 if __name__ == '__main__':
