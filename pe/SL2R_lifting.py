@@ -5,7 +5,6 @@ from .real_reps import (PSL2RRepOf3ManifoldGroup,
 from .complex_reps import PSL2CRepOf3ManifoldGroup
 from .shape import U1Q
 from .point import PEPoint
-from .euler import translation_of_lifted_rotation
 from snappy import CensusKnots
 from snappy.snap.polished_reps import MapToFreeAbelianization
 
@@ -286,8 +285,8 @@ def lifted_slope(M, target_meridian_holonomy_arg, shapes):
     rho_real = PSL2RRepOf3ManifoldGroup(rho)
     meridian, longitude = rho.polished_holonomy().peripheral_curves()[0]
     rho_tilde = rho_real.lift_on_cusped_manifold()
-    return (-translation_of_lifted_rotation(rho_tilde(longitude)) /
-            translation_of_lifted_rotation(rho_tilde(meridian)))
+    M, L = rho_tilde.peripheral_translations()
+    return -L/M
 
 def check_slope(H, n, s):
     F = H.T_fibers[n]
