@@ -18,7 +18,7 @@ be defined in terms of the bar notation as
 That is cbar([g1|g2]) = s(g1 g2)^-1 s(g1) s(g2) rather
 that the RHS being cbar(g1, g2)
 """
-from .sage_helper import matrix, Id2, sqrt
+from .sage_helper import Id2, sqrt
 from .matrix_helper import elliptic_rotation_angle, eigenvectors
 
 def wedge(a, b):
@@ -227,7 +227,6 @@ class LiftedFreeGroupRep(object):
         trans_M = self(meridian).translation_number()
         trans_L = self(longitude).translation_number()
         return trans_M, trans_L
-        
 
 # These are not currently used.
 def eval_thurston_cocycle(A, B, p):
