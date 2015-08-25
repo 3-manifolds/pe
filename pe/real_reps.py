@@ -4,8 +4,7 @@ Define the class PSL2RRepOf3ManifoldGroup which represents an
 arbitrary precision holonomy representation with image in SL(2,R).
 """
 
-from .sage_helper import (get_pi, matrix, vector, RealField, Id2,
-                          complex_I, pari, arg)
+from .sage_helper import (get_pi, matrix, vector, RealField, Id2, complex_I)
 
 from .complex_reps import (PSL2CRepOf3ManifoldGroup, polished_group,
                            apply_representation, inverse_word,
@@ -60,18 +59,18 @@ def conjugate_into_PSL2R(rho, max_error, (m_inf, m_0)):
 
     # Now for the harder case of elliptic peripheral holonomy
     A, B = rho(m_inf), rho(m_0)
-    assert abs(A[1, 0]) < max_error and abs(abs(A[0,0]) - 1) < max_error
-    assert abs(B[0, 1]) < max_error and abs(abs(B[0,0]) - 1) < max_error
+    assert abs(A[1, 0]) < max_error and abs(abs(A[0, 0]) - 1) < max_error
+    assert abs(B[0, 1]) < max_error and abs(abs(B[0, 0]) - 1) < max_error
 
-    # First conjugate so that A is diagonal. 
+    # First conjugate so that A is diagonal.
     CC = A.base_ring()
     a0, a1 = A[0]
-    z =  a0*a1/(1 - a0**2)   # Other fixed point of A
+    z = a0*a1/(1 - a0**2)   # Other fixed point of A
     C = matrix(CC, [[1, z], [0, 1]])
     Cinv = SL2C_inverse(C)
     curr_mats = [Cinv*M*C for M in [A, B] + gen_mats]
     A, B = curr_mats[:2]
-    assert abs(A[1,0]) < max_error and abs(A[0,1]) < max_error
+    assert abs(A[1, 0]) < max_error and abs(A[0, 1]) < max_error
 
     # The hyperplane P preserved by rho must be orthogonal to the axis
     # of A, which has endpoints 0 and infinity in S^2.  Thus P must
@@ -101,7 +100,7 @@ def conjugate_into_PSL2R(rho, max_error, (m_inf, m_0)):
 
     # Now exchange the hyperplane over the unit circle with the one
     # over the real line so that we end up in PSL(2, R).  The map we
-    # use sends (-1, 0, 1, infinity) -> (i, 1, -i, -1) 
+    # use sends (-1, 0, 1, infinity) -> (i, 1, -i, -1).
 
     i = complex_I(CC)
     C = matrix(CC, [[1, -i], [-1, -i]])
@@ -111,7 +110,7 @@ def conjugate_into_PSL2R(rho, max_error, (m_inf, m_0)):
 
     # Check that A fixes i in the upper halfspace model and the
     # ellptic fixed point of B is below it on the imaginary axis.
-    
+
     curr_mats, error = real_part_of_matrices_with_error(curr_mats)
     if error > max_error:
         raise CouldNotConjugateIntoPSL2R
@@ -132,7 +131,7 @@ def conjugate_into_PSL2R(rho, max_error, (m_inf, m_0)):
     A, B = curr_mats[:2]
     u, v = fixed_point(A), fixed_point(B)
     assert abs(u.real()) < max_error and abs(v.real()) < max_error
-    assert u.imag()  > 0 and v.imag() > 0
+    assert u.imag() > 0 and v.imag() > 0
     assert abs(u*v + 1) < max_error
     return curr_mats[2:]
 
@@ -149,7 +148,7 @@ def shift_of_central(A_til):
 
 def meridians_fixing_infinity_and_zero(manifold):
     M = manifold.without_hyperbolic_structure()
-    M.dehn_fill((0,0))
+    M.dehn_fill((0, 0))
     M = M.with_hyperbolic_structure()
     assert M.cusp_info('complete?') == [True]
     G = M.fundamental_group(False, False, False)
@@ -163,9 +162,9 @@ def meridians_fixing_infinity_and_zero(manifold):
         for w in words:
             m_w = w + m + inverse_word(w)
             A = G.SL2C(m_w)
-            if m_inf is None and abs(A[1,0]) < 1e-6:
+            if m_inf is None and abs(A[1, 0]) < 1e-6:
                 m_inf = m_w
-            if m_0 is None and abs(A[0,1]) < 1e-6:
+            if m_0 is None and abs(A[0, 1]) < 1e-6:
                 m_0 = m_w
             if None not in [m_inf, m_0]:
                 return m_inf, m_0
@@ -183,23 +182,24 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
     >>> rho.representation_lifts()
     True
 
-    Now an example which is elliptic on the boundary. 
+    Now an example which is elliptic on the boundary.
 
     >>> N = snappy.Manifold('m016')
-    >>> shapes = [(0.56872407246562728+0.20375919309358881j), (1.8955789278288073-0.89557892782880721j), 0.62339350249879155]
+    >>> shapes = [(0.56872407246562728+0.20375919309358881j),\
+ (1.8955789278288073-0.89557892782880721j), 0.62339350249879155]
     >>> psi = PSL2RRepOf3ManifoldGroup(N, -1j, shapes, 250)
     >>> psi
     <m016(0,0): [0.56872+0.20376I, 1.8956-0.89558I, 0.62339]>
     >>> psi.representation_lifts()
     True
     """
-    
+
     def __init__(self, rep_or_manifold,
                  target_meridian_holonomy=None,
                  rough_shapes=None,
                  precision=None,
                  fundamental_group_args=(False, False, False),
-                 special_meridians = None,
+                 special_meridians=None,
                  flip=False):
         if isinstance(rep_or_manifold, PSL2CRepOf3ManifoldGroup):
             rep = rep_or_manifold
@@ -238,7 +238,7 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
             new_mats = conjugate_into_PSL2R(G, epsilon, self.meridians)
             if self._flip:  # Reverse the orientation of H^2
                 for A in new_mats:
-                    A[0,1], A[1,0] = -A[0, 1], -A[1,0]
+                    A[0, 1], A[1, 0] = -A[0, 1], -A[1, 0]
             self._new_matrices(G, new_mats)
             if not G.check_representation() < epsilon:
                 raise CheckRepresentationFailed
@@ -249,7 +249,7 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
         """Conjugate this rep by Δ, reversing the orientation on H^2"""
         self._flip = not self._flip
         self._cache = {}
-        
+
     @staticmethod
     def _new_matrices(G, new_mats):
         for g in G.generators():
@@ -310,7 +310,6 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
 
     def lift_on_cusped_manifold(self):
         rel_cutoff = len(self.generators()) - 1
-        rels = self.relators()[:rel_cutoff]
         euler_cocycle = self.euler_cocycle_on_relations()
         D = self.coboundary_1_matrix()[:rel_cutoff]
         M = matrix([euler_cocycle] + D.columns())
