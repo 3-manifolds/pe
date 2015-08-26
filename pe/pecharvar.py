@@ -11,8 +11,6 @@ import time, sys, os
 from random import randint
 from numpy import arange, array, dot, float64, matrix, log, exp, pi, sqrt, zeros
 import snappy
-snappy.SnapPy.matrix = matrix
-snappy.SnapPyHP.matrix = matrix
 from snappy import Manifold, ManifoldHP
 from spherogram.graphs import Graph
 from .gluing import Glunomial
