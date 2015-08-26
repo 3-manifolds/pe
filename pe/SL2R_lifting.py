@@ -137,10 +137,11 @@ class SL2RLifter(object):
         arcs
         """
         for arc in self.SL2R_rep_arcs:
-            for i, j in [(0, 1), (-2, -1)]:
+            for i, j in [(0, 1), (-1, -2)]:
                 rho0, rho1 = arc[i][1], arc[j][1]
-                A0, A1 = rho0('a')[1], rho1('a')[1]
-                if (A0 + A1).norm() < (A0 - A1).norm():
+                A0, A1 = rho0('a'), rho1('a')
+                J = matrix([[-1, 0], [0, 1]])
+                if (J*A0*J - A1).norm() < (A0 - A1).norm():
                     rho0.flip()
 
     def find_translation_arcs(self):
