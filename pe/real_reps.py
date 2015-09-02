@@ -62,6 +62,10 @@ def conjugate_into_PSL2R(rho, max_error, (m_inf, m_0)):
     assert abs(A[1, 0]) < max_error and abs(abs(A[0, 0]) - 1) < max_error
     assert abs(B[0, 1]) < max_error and abs(abs(B[0, 0]) - 1) < max_error
 
+    # If A and B commute the we're in a degenerate situation and bail
+    if abs((A*B*SL2C_inverse(A)*SL2C_inverse(B)).trace() - 2) < max_error:
+        raise CouldNotConjugateIntoPSL2R
+
     # First conjugate so that A is diagonal.
     CC = A.base_ring()
     a0, a1 = A[0]
@@ -151,9 +155,9 @@ def meridians_fixing_infinity_and_zero(manifold):
     M.dehn_fill((0, 0))
     M = M.with_hyperbolic_structure()
     assert M.cusp_info('complete?') == [True]
-    G = M.fundamental_group(False, False, False)
+    G = polished_group(M, M.tetrahedra_shapes('rect'), precision=53)
     m_inf, m_0 = None, None
-    m = G.meridian()
+    m = G.peripheral_curves()[0][0]
     for n in range(7):
         if n == 0:
             words = ['']

@@ -8,6 +8,12 @@
 #SBATCH --output=slurm_out/%j
 #SBATCH --error=slurm_out/%j
 
+# Some problem cases:
+#
+# m036
+# m044
+
+
 import slurm
 import taskdb2
 import snappy

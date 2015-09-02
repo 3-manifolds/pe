@@ -68,10 +68,10 @@ def polished_group(M, shapes, precision=100,
     error = pari(2.0)**(-precision*0.8)
     G = M.fundamental_group(*fundamental_group_args)
     N = generators.SnapPy_to_Mcomplex(M, shapes)
-    #T = N.ChooseGenInitialTet
-    #z = T.ShapeParameters[E01]
-    #init_tet_vertices = {V0:0, V1:generators.Infinity, V2:z, V3:1}
-    init_tet_vertices = initial_tet_ideal_vertices(N)
+    T = N.ChooseGenInitialTet
+    z = T.ShapeParameters[E01]
+    init_tet_vertices = {V0:0, V1:generators.Infinity, V2:z, V3:1}
+    #init_tet_vertices = initial_tet_ideal_vertices(N)
     generators.visit_tetrahedra(N, init_tet_vertices)
     mats = generators.compute_matrices(N)
     gen_mats = [clean_matrix(A, error=error)
