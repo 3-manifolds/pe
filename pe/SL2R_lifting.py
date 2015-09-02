@@ -136,12 +136,16 @@ class SL2RLifter(object):
         Deal with minor discontinuities at parabolic endpoints of the rep
         arcs
         """
+        J = matrix([[-1, 0], [0, 1]])
         for arc in self.SL2R_rep_arcs:
             for i, j in [(0, 1), (-1, -2)]:
                 rho0, rho1 = arc[i][1], arc[j][1]
-                A0, A1 = rho0('a'), rho1('a')
-                J = matrix([[-1, 0], [0, 1]])
-                if (J*A0*J - A1).norm() < (A0 - A1).norm():
+                diff_rhos, diff_rhos_flipped = 0, 0
+                for g in rho0.generators():
+                    G0, G1 = rho0(g), rho1(g)
+                    diff_rhos += (G0 - G1).norm()
+                    diff_rhos_flipped += (J*G0*J - G1).norm()
+                if diff_rhos_flipped < diff_rhos:
                     rho0.flip()
 
     def find_translation_arcs(self):

@@ -34,8 +34,9 @@ def save_pdf(task):
     try:
         V = pe.PECharVariety(task['name'])
         L = pe.SL2RLifter(V)
-        F = L.show(True)
-        F.save('/pkgs/tmp/pe_pdfs/' + task['name'] + '.pdf')
+        if L.nonempty():
+            F = L.show(True)
+            F.save('/pkgs/tmp/pe_pdfs/' + task['name'] + '.pdf')
         task['done'] = True
     except:
         print('<apoly-error>')
