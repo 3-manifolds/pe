@@ -5,6 +5,7 @@ from .real_reps import (PSL2RRepOf3ManifoldGroup,
 from .complex_reps import PSL2CRepOf3ManifoldGroup
 from .shape import U1Q
 from .point import PEPoint
+from .fiber import Fiber
 from snappy import CensusKnots
 from snappy.snap.polished_reps import MapToFreeAbelianization
 
@@ -87,11 +88,20 @@ class SL2RLifter(object):
         H = self.elevation
         for s in range(self.degree):
             current_arc = None
+            successive_tighen_fails = 0
             for n in range(self.order):
-                try:
-                    point_is_good = in_SL2R(H, n, s)
-                except:
-                    point_is_good = False
+                if not isinstance(H.T_fibers[n], Fiber):
+                    if successive_tighen_fails > 2:
+                        point_is_good = False
+                        successive_tighen_fails = 0
+                    else:
+                        successive_tighen_fails += 1
+                        continue
+                else:
+                    try:
+                        point_is_good = in_SL2R(H, n, s)
+                    except:
+                        point_is_good = False
                 if point_is_good:
                     if current_arc:
                         current_arc.append(((s, n), H.T_fibers[n].shapes[s]))
