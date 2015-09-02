@@ -209,6 +209,7 @@ class SL2RLifter(object):
             self.draw_line(self.manifold.homological_longitude(), color='green')
             for edge in self.l_space_edges():
                 self.draw_line(edge, color='red')
+        return self.plot
 
 # This puts too many buttons on the graph.
     def show_homological(self):

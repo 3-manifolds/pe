@@ -92,6 +92,9 @@ class MatplotFigure(object):
         if not toolbar._active:
             toolbar.set_cursor(1)
 
+    def save(self, filename):
+        self.figure.savefig(filename, bbox_inches='tight', transparent='true')
+
 if __name__ == "__main__":
     from numpy import arange, sin, pi
     MF = MatplotFigure()
