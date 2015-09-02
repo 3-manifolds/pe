@@ -71,7 +71,7 @@ class SL2RLifter(object):
             M = self.manifold.copy()
             M.set_peripheral_curves([hom_m, hom_l])
             cusp = M.cusp_info(0).shape
-            assert abs(1 + cusp) > 1 and abs(1 - cusp) > 1
+            assert abs(1 + cusp) > 1 - 1e-10 and abs(1 - cusp) > 1 - 1e-10
         self.hom_m = hom_m
         self.hom_l = hom_l
         self.hom_m_abelian = abs(self.m_abelian*hom_m[0] + self.l_abelian*hom_m[1])
@@ -210,6 +210,9 @@ class SL2RLifter(object):
             for edge in self.l_space_edges():
                 self.draw_line(edge, color='red')
         return self.plot
+
+    def nonempty(self):
+        return sum(len(arc) for arc in self.SL2R_arcs) > 0
 
 # This puts too many buttons on the graph.
     def show_homological(self):
