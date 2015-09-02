@@ -217,6 +217,9 @@ class MatplotPlot(Plot):
     def show_plots(self):
         self.create_plot()
 
+    def save(self, filename):
+        self.figure.save(filename)
+
 if __name__ == "__main__":
     scattered = np.random.random((30, 2))
     zs = [complex(a, b) for a, b in scattered]
