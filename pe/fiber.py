@@ -100,12 +100,15 @@ class Fiber(object):
     def polish(self):
         """Ensure that the shapes are accurate to full double precision."""
         precision = 128
+        polished = None
         for _ in xrange(4):
             try:
                 polished = self.polished_shapelist(precision=precision)
                 break
             except GoodShapesNotFound:
                 precision *= 2
+        if polished is None:
+            raise GoodShapesNotFound                    
         for shapes, polished_shapes in zip(self, polished):
             shapes.update([complex128(z) for z in polished_shapes])
 
