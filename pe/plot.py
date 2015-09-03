@@ -36,9 +36,11 @@ class Plot(object):
         else:
             if not (isinstance(data[0], list) or isinstance(data[0], np.ndarray)):
                 data = [data]
-
-            duck = [d[0] for d in data if len(d) > 0][0]
-            self.type = type(duck)
+            ducks = [d[0] for d in data if len(d) > 0]
+            if len(ducks) == 0:
+                self.type = None
+            else:
+                self.type = type(ducks[0])
         if self.type == PEPoint:
             data = [expand_leave_gaps_to_nones(d) for d in data]
         elif self.type != complex:
