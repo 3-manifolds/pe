@@ -226,7 +226,7 @@ class SL2RLifter(object):
         return self.plot
 
     def nonempty(self):
-        return sum(len(arc) for arc in self.SL2R_arcs) > 0
+        return len(self.translation_dict) > 0
 
 # This puts too many buttons on the graph.
     def show_homological(self):
