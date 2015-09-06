@@ -32,7 +32,7 @@ def create_database():
 
 def save_pdf(task):
     try:
-        V = pe.PECharVariety(task['name'])
+        V = pe.PECharVariety(task['name'], radius=1.04)
         L = pe.SL2RLifter(V)
         if L.nonempty():
             F = L.show(True)

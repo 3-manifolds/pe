@@ -228,31 +228,40 @@ class SL2RLifter(object):
     def nonempty(self):
         return len(self.translation_dict) > 0
 
-# This puts too many buttons on the graph.
     def show_homological(self):
         A = self.change_trans_to_hom_framing
         m = self.hom_m_abelian
         plotlist = []
         for arc in self.translation_arcs:
-            reframed_arc = []
-            for t in arc:
-                x, y = A*vector((t.real, t.imag))
-                while x < 0:
-                    x += m
-                while x > m:
-                    x -= m
-                # Primitive way of dealing with crossing fundamental domains
-                if reframed_arc and abs(reframed_arc[-1].real - x) > 0.5:
-                    plotlist.append(reframed_arc)
-                    reframed_arc = []
-                reframed_arc.append(PEPoint(complex(x, y), index=t.index))
+            new_points = [A*vector((t.real, t.imag)) for t in arc]
+            floors = [x.floor() for x, y in new_points]
+            x0, y0 = new_points[0]
+            s0 = floors[0]
+            reframed_arc = [PEPoint(complex(x0 - s0, y0), index=arc[0].index)]
+            for i in range(1, len(arc)):
+                t1 = arc[i]
+                p0, p1 = new_points[i - 1], new_points[i]
+                x0, y0 = p0
+                x1, y1 = p1
+                s0, s1 = floors[i  - 1], floors[i]
+                new_pt = PEPoint(complex(x1 - s1, y1), index=t1.index)
+                if s0 == s1:
+                    reframed_arc.append(new_pt)
+                else:
+                    u0, u1, s = (1, 0, s1) if s1 > s0 else (0, 1, s0)
+                    v = (s - x0)/(x1 - x0)
+                    y_new = (1 - v)*y0 + v*y1
+                    id_new = (t1.index[0], t1.index[1] - 0.5)
+                    a = PEPoint(complex(u0, y_new), index=id_new, leave_gap=True)
+                    b = PEPoint(complex(u1, y_new), index=id_new)
+                    reframed_arc += [a, b, new_pt]
             plotlist.append(reframed_arc)
         self.plot = Plot(plotlist, title=self.manifold.name() + ' reframed')
         # Draw longitude
         ax = self.plot.figure.axis
         ax.plot((0, 1), (0, 0), color='green')
         self.plot.figure.draw()
-
+ 
     def show_slopes(self):
         M = self.elevation.manifold.copy()
         plotlist = []
