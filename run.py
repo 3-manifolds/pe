@@ -8,27 +8,11 @@
 #SBATCH --output=slurm_out/%j
 #SBATCH --error=slurm_out/%j
 
-# Some problem cases:
-#
-# m036
-# m044
-
-
 import slurm
 import taskdb2
-import snappy
 import traceback
-import pe
-import bz2
-import cPickle as pickle
+import zhcircles
 
-
-def create_database():
-    names = [M.name() for M in snappy.OrientableCuspedCensus(cusps=1)]
-    taskdb2.create_task_db(names, 'PEChar', overwrite=True)
-    db = taskdb2.TaskDatabase('PEChar')
-    db.add_column('lifter', 'mediumblob')
-    return db
 
 def save_pdf(task):
     try:
@@ -46,6 +30,6 @@ def save_pdf(task):
 
 
 if __name__ == '__main__':
-    db = taskdb2.TaskDatabase('PEChar')
-    db.run_function(save_pdf, num_tasks=1)
+    db = zhcircles.ZHCircles()
+    db.run_function('task0', zhcircles.save_plot_data, num_tasks=1)
 
