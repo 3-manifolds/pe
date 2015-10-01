@@ -228,7 +228,7 @@ class SL2RLifter(object):
     def nonempty(self):
         return len(self.translation_dict) > 0
 
-    def show_homological(self):
+    def _show_homological_data(self):
         A = self.change_trans_to_hom_framing
         m = self.hom_m_abelian
         plotlist = []
@@ -256,6 +256,10 @@ class SL2RLifter(object):
                     b = PEPoint(complex(u1, y_new), index=id_new)
                     reframed_arc += [a, b, new_pt]
             plotlist.append(reframed_arc)
+        return plotlist
+
+    def show_homological(self):
+        plotlist = self._show_homological_data()            
         self.plot = Plot(plotlist, title=self.manifold.name() + ' reframed')
         # Draw longitude
         ax = self.plot.figure.axis
