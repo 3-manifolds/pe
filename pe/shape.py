@@ -132,8 +132,11 @@ class ShapeSet(object):
         """True if the holonomy rep associated to these shapes has image in  SU(2)."""
         gens = self.manifold.fundamental_group().generators()
         tolerance = self.SU2_tolerance
-        # First check that all generators have real trace in [-2,2]
-        for X in [self._SL2C(g) for g in gens]:
+        # First check that all generators have real trace in (-2,2)
+        # and look for non-trivial generators
+        good_gens = []
+        for g in gens:
+            X = self._SL2C(g)
             tr = complex(X[0, 0] + X[1, 1])
             if abs(tr.imag) > tolerance:
                 # print 'trace is not real'
@@ -141,18 +144,23 @@ class ShapeSet(object):
             if abs(tr.real) > 2.0:
                 # print 'trace is not in [-2,2]'
                 return False
-        # Get O31 matrix generators ...
-        o31matrices = [real_array(array(self._O31(g))) for g in gens]
-        # take the first two, ...
-        A, B = o31matrices[:2]
+            if abs(tr.real) < 2.0 - tolerance:
+                good_gens.append(g)
+        if len(good_gens) < 2:
+            raise RuntimeError('Yikes! This rep is abelian!')
+        # Get the first two non-trivial O31 matrix generators ...
+        A, B = [real_array(array(self._O31(g))) for g in good_gens[:2]]
         # find their axes, ...
         M = matrix(zeros((4, 4)))
-        s, v = svd(A - eye(4))[1:]
-        vt = transpose(v)
-        M[:, [0, 1]] = vt[:, [n for n in range(4) if abs(s[n]) < tolerance]]
-        s, v = svd(B - eye(4))[1:]
-        vt = transpose(v)
-        M[:, [2, 3]] = vt[:, [n for n in range(4) if abs(s[n]) < tolerance]]
+        try:
+            s, v = svd(A - eye(4))[1:]
+            vt = transpose(v)
+            M[:, [0, 1]] = vt[:, [n for n in range(4) if abs(s[n]) < tolerance]]
+            s, v = svd(B - eye(4))[1:]
+            vt = transpose(v)
+            M[:, [2, 3]] = vt[:, [n for n in range(4) if abs(s[n]) < tolerance]]
+        except:
+            raise RuntimeError('Failed to find two crossing axes.')
         # check if the axes cross,
         # and find the fixed point (i.e. Minkwoski line)
         s, v = svd(M)[1:]
@@ -169,7 +177,8 @@ class ShapeSet(object):
         if abs(fix[0]) <= norm(fix[1:]):
             # print 'fixed line is not in the light cone'
             return False
-        # Check if all of the generators fix the same point.
+        # Check that all of the generators fix the same point.
+        o31matrices = [real_array(array(self._O31(g))) for g in gens]
         for O in o31matrices:
             if norm(O*fix - fix) > tolerance:
                 # print 'some generators do not share the fixed point.'
