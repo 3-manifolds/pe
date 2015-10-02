@@ -1,3 +1,31 @@
+"""
+Problems: 
+
+m103: skips
+m389: component of mult 2? 
+o9_01035: skips
+o9_02163: not symmetric
+s068: skips
+s114: skips
+s301: skips
+s385: vertical jump?
+s936: vertical jump?
+t00027: missing component?
+t00565: not symmetric
+t02069: not symmetric
+t04557: not symmetric
+t04697: very scattered
+t08979: seriously no symmetric
+v1964: not symmetric
+v3505: just deadends
+
+Interesing examples
+
+t03608 crosses the L=0 line without any unimodular reducible reps.
+t09612 this is pretty wierd.
+
+"""
+
 import snappy
 import taskdb2
 import pe
@@ -112,9 +140,10 @@ def save_plot_data(task):
         task['done'] = True
     return task
 
-def make_plots():
-    db = taskdb2.ExampleDatabase('ZHCircles')
-    df = db.dataframe()
+def make_plots(df=None):
+    if df is None:
+        db = taskdb2.ExampleDatabase('ZHCircles')
+        df = db.dataframe()
     df = df[df.trans_arcs.notnull()]
     for i, d in df.iterrows():
         if d['num_psl2R_arcs'] == 0:
