@@ -54,7 +54,6 @@ import bz2
 import md5
 from sage.all import ComplexField, PolynomialRing, QQ, RR
 from pe.plot import MatplotPlot as Plot
-import matplotlib.pyplot as plt
 
 
 def initial_database():
