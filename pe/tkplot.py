@@ -95,6 +95,10 @@ class MatplotFigure(object):
     def save(self, filename):
         self.figure.savefig(filename, bbox_inches='tight', transparent='true')
 
+    def save_tikz(self, filename, path='plots/'):
+        import nplot.tikzplot
+        nplot.tikzplot.save_matplotlib_for_paper(self.figure, filename, path)
+
 if __name__ == "__main__":
     from numpy import arange, sin, pi
     MF = MatplotFigure()

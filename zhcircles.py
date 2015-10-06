@@ -288,6 +288,10 @@ class ZHCircles(taskdb2.ExampleDatabase):
     def __init__(self):
         taskdb2.ExampleDatabase.__init__(self, 'ZHCircles')
 
+    def dataframe(self):
+        ans = taskdb2.ExampleDatabase.dataframe(self)
+        return ans.set_index('name', drop=False)
+
 
 if __name__ == '__main__':
     #initial_database()
