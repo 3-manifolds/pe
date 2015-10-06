@@ -52,7 +52,7 @@ import pe
 import cPickle as pickle
 import bz2
 import md5
-from sage.all import ComplexField, PolynomialRing, QQ, RR
+from sage.all import ComplexField, RealField, PolynomialRing, QQ, RR
 from pe.plot import MatplotPlot as Plot
 
 
@@ -143,6 +143,70 @@ def parabolic_psl2R(task):
         task['done'] = True
     return task
 
+def longitude_translation(rho):
+    a, b = rho.manifold.homological_longitude()
+    G = rho.polished_holonomy(1000)
+    rhotil = rho.lift_on_cusped_manifold()
+    x, y = rhotil.peripheral_translations()
+    ans = abs(a*x + b*y)
+    assert abs(ans - ans.round()) < 1e-100
+    return ans.round()
+    
+def real_reps_from_ptolemy(M):
+    R = PolynomialRing(QQ, 'x')
+    RR = RealField(212)
+    ans = []
+    obs_classes = M.ptolemy_obstruction_classes()
+    for obs in obs_classes:
+        V = M.ptolemy_variety(N=2, obstruction_class=obs)
+        for sol in V.retrieve_solutions():
+            is_geometric = sol.is_geometric()
+            cross_ratios = sol.cross_ratios()
+            shapes = [R(cross_ratios['z_0000_%d' % i].lift())
+                      for i in range(M.num_tetrahedra())]
+            s = shapes[0]
+            p = R(sol.number_field())
+            if p == 0:  # Field is Q
+                assert False
+            for r in p.roots(RR, False):
+                rho = pe.real_reps.PSL2RRepOf3ManifoldGroup(
+                    M, target_meridian_holonomy = 1.0,
+                    rough_shapes=[cr(r) for cr in shapes])
+                rho.is_galois_conj_of_geom = is_geometric
+                ans.append(rho)
+    return ans
+                    
+
+def parabolic_psl2R_details(task):
+    R = PolynomialRing(QQ, 'x')
+    M = snappy.Manifold(task['name'])
+    assert M.homology().elementary_divisors() == [0]
+    ans = 0
+    obs_classes = M.ptolemy_obstruction_classes()
+    assert len(obs_classes) == 2
+    for obs in obs_classes:
+        V = M.ptolemy_variety(N=2, obstruction_class=obs)
+        for sol in V.retrieve_solutions():
+            p = R(sol.number_field())
+            if p == 0:  # Field is Q
+                n = 1
+            else:
+                n = num_real_roots(p)
+            ans += n
+            try:
+                if sol.is_geometric():
+                    task['real_places'] = n
+            except:
+                if obs._index > 0:
+                    task['real_places'] = n
+            
+                            
+    task['parabolic_PSL2R'] = ans
+    if 'real_places' in task:
+        task['done'] = True
+    return task
+
+
 def comp_pickle(obj):
     return bz2.compress(pickle.dumps(obj, 2), 9)
 
@@ -191,7 +255,7 @@ def make_plots(df=None):
         plot.save('plots/' + d['name'] + '.pdf')
 
 def make_plot(row):
-    if 'trans_arcs_highres' in row:
+    if row['trans_arcs_highres'] is not None:
         arcs = row['trans_arcs_highres'].unpickle()
     else:
         arcs = row['trans_arcs'].unpickle()
@@ -207,6 +271,15 @@ def make_plot(row):
         theta = rotation_angle(z)
         color = 'red' if e == 1 else 'purple'
         ax.plot([theta], [0], color=color, marker='o', ms=7, markeredgecolor=color)
+
+
+    M = snappy.Manifold(row['name'])
+    for rho in real_reps_from_ptolemy(M):
+        L = longitude_translation(rho)
+        color = 'orange' if rho.is_galois_conj_of_geom else 'white'
+        for x, y in [(0, L), (0, -L), (1, L), (1, -L)]:
+            ax.plot([x], [y], color=color, marker='o', ms=10, markeredgecolor='black')
+            
     plot.figure.draw()
     return plot
 
