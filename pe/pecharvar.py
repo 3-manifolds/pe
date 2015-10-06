@@ -480,7 +480,7 @@ class PECharVariety(object):
                 cap = [level.pop(0), level.pop(distances.argmin())]
                 cap.sort(key=lambda a: a[0].real)
                 left, right = cap
-                if .05 < right[0].imag < .45:
+                if .01 < right[0].imag < .49:
                     join = True
                     if right[1].real > right[0].real and left[1].real < left[0].real:
                         right.insert(0, left[0])
@@ -507,7 +507,7 @@ class PECharVariety(object):
                 cup = [level.pop(0), level.pop(distances.argmin())]
                 cup.sort(key=lambda a: a[-1].real)
                 left, right = cup
-                if 0.05 < right[-1].imag < 0.45:
+                if 0.01 < right[-1].imag < 0.49:
                     join = True
                     if right[-2].real > right[-1].real and left[-2].real < left[-1].real:
                         right.append(left[-1])
