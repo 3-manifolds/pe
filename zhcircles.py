@@ -152,7 +152,7 @@ def longitude_translation(rho):
     assert abs(ans - ans.round()) < 1e-100
     return ans.round()
     
-def real_reps_from_ptolemy(M):
+def real_parabolic_reps_from_ptolemy(M):
     R = PolynomialRing(QQ, 'x')
     RR = RealField(212)
     ans = []
@@ -178,32 +178,14 @@ def real_reps_from_ptolemy(M):
                     
 
 def parabolic_psl2R_details(task):
-    R = PolynomialRing(QQ, 'x')
     M = snappy.Manifold(task['name'])
-    assert M.homology().elementary_divisors() == [0]
-    ans = 0
-    obs_classes = M.ptolemy_obstruction_classes()
-    assert len(obs_classes) == 2
-    for obs in obs_classes:
-        V = M.ptolemy_variety(N=2, obstruction_class=obs)
-        for sol in V.retrieve_solutions():
-            p = R(sol.number_field())
-            if p == 0:  # Field is Q
-                n = 1
-            else:
-                n = num_real_roots(p)
-            ans += n
-            try:
-                if sol.is_geometric():
-                    task['real_places'] = n
-            except:
-                if obs._index > 0:
-                    task['real_places'] = n
-            
-                            
-    task['parabolic_PSL2R'] = ans
-    if 'real_places' in task:
-        task['done'] = True
+    reps = real_parabolic_reps_from_ptolemy(M)
+    ans = []
+    for rho in reps:
+        ans.append( (longitude_translation(rho), rho.is_galois_conj_of_geom) )
+    ans.sort()
+    task['parabolic_PSL2R_details']  = repr(ans)
+    task['done'] = True
     return task
 
 
