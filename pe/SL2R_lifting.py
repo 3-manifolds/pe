@@ -91,12 +91,7 @@ class SL2RLifter(object):
             successive_tighen_fails = 0
             for n in range(self.order):
                 if not isinstance(H.T_fibers[n], Fiber):
-                    if successive_tighen_fails > 2:
-                        point_is_good = False
-                        successive_tighen_fails = 0
-                    else:
-                        successive_tighen_fails += 1
-                        continue
+                    continue
                 else:
                     point_is_good = in_SL2R(H, n, s)
                 if point_is_good:
