@@ -31,5 +31,5 @@ def save_pdf(task):
 
 if __name__ == '__main__':
     db = zhcircles.ZHCircles()
-    db.run_function('task0', zhcircles.save_plot_data, num_tasks=1)
+    db.run_function('taskhigh', zhcircles.save_plot_highres, num_tasks=1)
 

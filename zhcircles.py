@@ -168,6 +168,12 @@ def save_plot_data(task):
         task['done'] = True
     return task
 
+def save_plot_highres(task):
+    V = pe.PECharVariety(task['name'], radius=task['radius'], order=2048)
+    L = pe.SL2RLifter(V)
+    task['trans_arcs_highres'] = comp_pickle(L._show_homological_data())
+    task['done'] = True
+    
 def make_plots(df=None):
     if df is None:
         db = taskdb2.ExampleDatabase('ZHCircles')
@@ -186,7 +192,10 @@ def make_plots(df=None):
         plot.save('plots/' + d['name'] + '.pdf')
 
 def make_plot(row):
-    arcs = row['trans_arcs'].unpickle()
+    if 'trans_arcs_highres' in row:
+        arcs = row['trans_arcs_highres'].unpickle()
+    else:
+        arcs = row['trans_arcs'].unpickle()
     title = row['name'] + ': genus = ' + repr(row['alex_deg']//2)
     plot = Plot(arcs, title=title)
     ax = plot.figure.axis
@@ -198,7 +207,7 @@ def make_plot(row):
     for z, e in unimodular_roots(alex):
         theta = rotation_angle(z)
         color = 'red' if e == 1 else 'purple'
-        ax.plot([theta], [0], color=color, marker='.', linewidth=15)
+        ax.plot([theta], [0], color=color, marker='o', ms=7, markeredgecolor=color)
     plot.figure.draw()
     return plot
 
