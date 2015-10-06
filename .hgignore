@@ -3,3 +3,4 @@ syntax: glob
 PE_base_fibers/*
 hints/*
 plots/*
+slurm*
