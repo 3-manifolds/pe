@@ -15,9 +15,9 @@ from time import time
 
 def in_SL2R(H, f, s):
     shape = H.T_fibers[f].shapes[s]
-    ev = H.T_longitude_evs[s][f][1]
-    if abs(1.0 - abs(ev)) > .00001:
-        return False
+    #ev = H.T_longitude_evs[s][f][1]
+    #if abs(1.0 - abs(ev)) > .00001:
+    #    return False
     if not shape.has_real_traces():
         return False
     if shape.in_SU2():
@@ -98,10 +98,7 @@ class SL2RLifter(object):
                         successive_tighen_fails += 1
                         continue
                 else:
-                    try:
-                        point_is_good = in_SL2R(H, n, s)
-                    except:
-                        point_is_good = False
+                    point_is_good = in_SL2R(H, n, s)
                 if point_is_good:
                     if current_arc:
                         current_arc.append(((s, n), H.T_fibers[n].shapes[s]))

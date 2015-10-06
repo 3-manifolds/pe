@@ -24,6 +24,26 @@ Interesing examples
 t03608 crosses the L=0 line without any unimodular reducible reps.
 t09612 this is pretty wierd.
 
+
+Only 21 with unimodular roots of multiplicity > 1.  
+
+t12247
+o9_30426
+o9_38639
+
+
+
+For talk:
+
+m016
+m201 - red to parabolic on axis
+m222 - mult. roots
+m389 - deadend component from degree 2 component
+s841 - parabolic to parabolic
+v0220 - basic example with interleaving
+t11462 - parabolic to parabolic only 
+o9_34801 - don't get half + epsilon of everything. 
+o9_04139 - everything
 """
 
 import snappy
@@ -34,6 +54,7 @@ import bz2
 import md5
 from sage.all import ComplexField, PolynomialRing, QQ, RR
 from pe.plot import MatplotPlot as Plot
+import matplotlib.pyplot as plt
 
 
 def initial_database():
@@ -75,6 +96,13 @@ def unimodular_roots(p):
 
 def num_real_roots(p):
     return len(p.roots(RR))
+
+def rotation_angle(z):
+    twopi = 2*z.parent().pi()
+    arg = z.argument()/twopi
+    if arg < 0:
+        arg += 1
+    return arg
     
 def alexander(task):
     M = snappy.Manifold(task['name'])
@@ -156,6 +184,23 @@ def make_plots(df=None):
         ax.set_xbound(0, 1)
         plot.figure.draw()
         plot.save('plots/' + d['name'] + '.pdf')
+
+def make_plot(row):
+    arcs = row['trans_arcs'].unpickle()
+    title = row['name'] + ': genus = ' + repr(row['alex_deg']//2)
+    plot = Plot(arcs, title=title)
+    ax = plot.figure.axis
+    ax.plot((0, 1), (0, 0), color='green')
+    ax.legend_.remove()
+    ax.set_xbound(0, 1)
+
+    alex = PolynomialRing(QQ, 'a')(row['alex'])
+    for z, e in unimodular_roots(alex):
+        theta = rotation_angle(z)
+        color = 'red' if e == 1 else 'purple'
+        ax.plot([theta], [0], color=color, marker='.', linewidth=15)
+    plot.figure.draw()
+    return plot
 
 
 class ZHCircles(taskdb2.ExampleDatabase):
