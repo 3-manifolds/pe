@@ -152,15 +152,17 @@ def longitude_translation(rho):
     assert abs(ans - ans.round()) < 1e-100
     return ans.round()
     
-def real_parabolic_reps_from_ptolemy(M):
+def real_parabolic_reps_from_ptolemy(M, pari_prec=15):
     R = PolynomialRing(QQ, 'x')
-    RR = RealField(212)
+    RR = RealField(1000)
     ans = []
     obs_classes = M.ptolemy_obstruction_classes()
     for obs in obs_classes:
         V = M.ptolemy_variety(N=2, obstruction_class=obs)
         for sol in V.retrieve_solutions():
+            prec = snappy.pari.set_real_precision(pari_prec)
             is_geometric = sol.is_geometric()
+            snappy.pari.set_real_precision(prec)
             cross_ratios = sol.cross_ratios()
             shapes = [R(cross_ratios['z_0000_%d' % i].lift())
                       for i in range(M.num_tetrahedra())]
@@ -169,17 +171,18 @@ def real_parabolic_reps_from_ptolemy(M):
             if p == 0:  # Field is Q
                 assert False
             for r in p.roots(RR, False):
+                print r
                 rho = pe.real_reps.PSL2RRepOf3ManifoldGroup(
-                    M, target_meridian_holonomy = 1.0,
+                    M, target_meridian_holonomy = RR(1),
                     rough_shapes=[cr(r) for cr in shapes])
                 rho.is_galois_conj_of_geom = is_geometric
                 ans.append(rho)
     return ans
                     
 
-def parabolic_psl2R_details(task):
+def parabolic_psl2R_details(task, pari_prec=15):
     M = snappy.Manifold(task['name'])
-    reps = real_parabolic_reps_from_ptolemy(M)
+    reps = real_parabolic_reps_from_ptolemy(M, pari_prec)
     ans = []
     for rho in reps:
         ans.append( (longitude_translation(rho), rho.is_galois_conj_of_geom) )
