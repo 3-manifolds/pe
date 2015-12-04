@@ -27,9 +27,21 @@ t09612 this is pretty wierd.
 
 Only 21 with unimodular roots of multiplicity > 1.  
 
-t12247
+t12247 <-- multiple root but not tangent to L=0!
 o9_30426
 o9_38639
+
+Odd one:
+
+o9_09530
+t03608
+
+
+Does this have an ideal point? 
+
+t11462
+
+
 
 
 
@@ -226,18 +238,12 @@ def make_plots(df=None):
     if df is None:
         db = taskdb2.ExampleDatabase('ZHCircles')
         df = db.dataframe()
-    df = df[df.trans_arcs.notnull()]
-    for i, d in df.iterrows():
-        if d['num_psl2R_arcs'] == 0:
+    df = df[(df.trans_arcs.notnull())&(df.parabolic_PSL2R_details.notnull())]
+    for i, row in df.iterrows():
+        if row['num_psl2R_arcs'] == 0:
             continue
-        arcs = d['trans_arcs'].unpickle()
-        plot = Plot(arcs, title=d['name'] + ' reframed')
-        ax = plot.figure.axis
-        ax.plot((0, 1), (0, 0), color='green')
-        ax.legend_.remove()
-        ax.set_xbound(0, 1)
-        plot.figure.draw()
-        plot.save('plots/' + d['name'] + '.pdf')
+        plot = make_plot(row)
+        plot.save('/tmp/plots/' + row['name'] + '.pdf')
 
 def make_plot(row):
     if row['trans_arcs_highres'] is not None:
@@ -259,9 +265,8 @@ def make_plot(row):
 
 
     M = snappy.Manifold(row['name'])
-    for rho in real_reps_from_ptolemy(M):
-        L = longitude_translation(rho)
-        color = 'orange' if rho.is_galois_conj_of_geom else 'white'
+    for L, is_galois_conj_of_geom in eval(row['parabolic_PSL2R_details']):
+        color = 'orange' if is_galois_conj_of_geom else 'white'
         for x, y in [(0, L), (0, -L), (1, L), (1, -L)]:
             ax.plot([x], [y], color=color, marker='o', ms=10, markeredgecolor='black')
             
