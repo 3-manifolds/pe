@@ -15,13 +15,16 @@ K8_101 (t05252)
 """
 
 import snappy
-from sage.all import CC
+from sage.all import QQ, CC, ComplexField, PolynomialRing
+import pandas as pd
+
+CC = ComplexField(1000)
 
 def unimodular_roots(poly):
     """Roots on the unit circle, repeated with appropriate multiplicity"""
     ans = []
     for z, m in poly.roots(CC):
-        if abs(abs(z) - 1) < 1e-10:
+        if abs(abs(z) - 1) < 1e-100:
             ans += m*[z]
     return ans
 
@@ -64,3 +67,12 @@ def snap_test():
     for M in snappy.CensusKnots:
         K, places, traces = find_trace_field(M)
         print M.name(), K.degree(), len(K.real_embeddings())
+
+
+def alex_sample():
+    R = PolynomialRing(QQ, 'a')
+    df = pd.read_csv('random_knot_alex.csv')[:300]
+    df.alexander = df.alexander.apply(R)
+    df['degree'] = df.alexander.apply(lambda x:x.degree())
+    df['on_circle'] = df.alexander.apply(num_unimodular_roots)
+    return df
