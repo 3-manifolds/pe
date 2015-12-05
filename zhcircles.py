@@ -1,4 +1,11 @@
 """
+How to make a plot:
+
+sage: run zhcircles.py
+sage: df = db.dataframe()
+sage: F = make_plot(df.ix['m016'])
+sage: F.save_tikz('m016.pdf')   # .pdf important, otherwise saves as png
+
 Problems: 
 
 m103: skips

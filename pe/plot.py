@@ -223,6 +223,9 @@ class MatplotPlot(Plot):
     def save(self, filename):
         self.figure.save(filename)
 
+    def save_tikz(self, filename, path='plots/'):
+        self.figure.save_tikz(filename, path='plots/')
+
 if __name__ == "__main__":
     scattered = np.random.random((30, 2))
     zs = [complex(a, b) for a, b in scattered]
