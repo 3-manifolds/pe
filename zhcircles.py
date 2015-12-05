@@ -6,6 +6,19 @@ sage: df = db.dataframe()
 sage: F = make_plot(df.ix['m016'])
 sage: F.save_tikz('m016.pdf')   # .pdf important, otherwise saves as png
 
+To do for paper:
+
+Why is there a missing component on m389?
+
+Is that an ideal point with t11462?  Well, regina says it's small, so
+probably it's a triangulation issue.  So probably a Tillmann point. Alternatively, program complains about end fibers not agreeing.  
+
+Counterexample to: 
+
+real place + simple root => (-infinity, 1)
+
+
+
 Problems: 
 
 m103: skips
