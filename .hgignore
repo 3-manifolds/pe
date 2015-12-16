@@ -4,3 +4,13 @@ PE_base_fibers/*
 hints/*
 plots/*
 slurm*
+*.pdf
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.nav
+*.out
+*.snm
+*.synctex.gz
+*.toc
