@@ -6,12 +6,48 @@ sage: df = db.dataframe()
 sage: F = make_plot(df.ix['m016'])
 sage: F.save_tikz('m016.pdf')   # .pdf important, otherwise saves as png
 
-To do for paper:
+Old to do's for the paper:
 
-Why is there a missing component on m389?
+Q1. Why is there a missing component on m389?
 
-Is that an ideal point with t11462?  Well, regina says it's small, so
-probably it's a triangulation issue.  So probably a Tillmann point. Alternatively, program complains about end fibers not agreeing.  
+A1. There is a component corresponding to representations factoring
+through C_2 * C_3 = PSL(2, Z).
+
+
+Q2: Issue with t11462: There's a "parabolic" point in the translation
+extension variety that is not seen by ptolemy, namely (0, -2) or
+symmetrically (1, 2).  
+
+
+A2. This is because of a "Tillmann point", that is, a representation
+that can't be realized for the given triangulation.
+
+First, we tried randomizing the triangulation and computing with
+ptolemy/magma from scratch always saw only the one parabolic
+representation where the longitude has trace -2.  Let's look at this
+example in more detail:
+
+sage: rho2 = L.rep_dict[2,1]
+sage: rho2
+<t11462(0,0): [0.32474, 0.99977+0.0071319I, 0.99977-0.0071319I, 1.0001+0.0079763I, 1, 3.0807, 1.0001-0.0079763I, 1.7545]>
+sage: RDF(rho2(l).trace())
+1.9902037446379561
+sage: rho2til(l)
+<PSL2tilde: A = [[-4.33709,-7.06504],[4.02575,6.32730]]; s = -2>
+
+Certainly, the shapes are degenerating, but does this correspond to an
+ideal point or a Tillmann point?  For rho2, the max trace of a
+generator is 8.2, slightly less than the corresponding number for the
+known parabolic. Also, Regina claims this manifold is small, so there
+can't be an ideal point associated to a closed surface. 
+
+So I guess it's just a very robust Tillmann point. Indeed, the code in
+"examples/t11462.py" uses Magma to confirm (starting with a
+presentation for the fundamental group) that there is a representation
+into SL(2, C) where all peripheral elements are parabolic with trace
++2, and this representation is definitely not found by ptolemy.
+
+To do: 
 
 Counterexample to: 
 
@@ -191,7 +227,8 @@ def real_parabolic_reps_from_ptolemy(M, pari_prec=15):
     obs_classes = M.ptolemy_obstruction_classes()
     for obs in obs_classes:
         V = M.ptolemy_variety(N=2, obstruction_class=obs)
-        for sol in V.retrieve_solutions():
+        #for sol in V.retrieve_solutions():
+        for sol in V.compute_solutions(engine='magma'):
             prec = snappy.pari.set_real_precision(pari_prec)
             is_geometric = sol.is_geometric()
             snappy.pari.set_real_precision(prec)
@@ -202,8 +239,8 @@ def real_parabolic_reps_from_ptolemy(M, pari_prec=15):
             p = R(sol.number_field())
             if p == 0:  # Field is Q
                 assert False
+            # print p, '\n'
             for r in p.roots(RR, False):
-                print r
                 rho = pe.real_reps.PSL2RRepOf3ManifoldGroup(
                     M, target_meridian_holonomy = RR(1),
                     rough_shapes=[cr(r) for cr in shapes])
@@ -305,8 +342,9 @@ class ZHCircles(taskdb2.ExampleDatabase):
 
 if __name__ == '__main__':
     #initial_database()
-    db = ZHCircles()
+    #db = ZHCircles()
     #df = db.dataframe()
     #task = db.get_row(199)
     #print db.remaining('task0')
     #db.run_function('task0', save_plot_data, num_tasks=1)
+    pass
