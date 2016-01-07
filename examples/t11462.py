@@ -1,6 +1,6 @@
 import os, sys, re, snappy
 import phc
-from sage.all import CC, RR, QQ, PolynomialRing, matrix, prod
+from sage.all import CC, RR, QQ, GF, PolynomialRing, matrix, prod
 
 def inverse_sl2(x):
     x0, x1, x2, x3 = x.list()
@@ -10,7 +10,9 @@ M = snappy.Manifold('t11462')
 G = M.fundamental_group()
 periph = G.peripheral_curves()[0]
 
-R = PolynomialRing(QQ, ['a0', 'a1', 'a2', 'a3', 'b0', 'b1', 'b2', 'b3',
+K = QQ
+#K = GF(31991)
+R = PolynomialRing(K, ['a0', 'a1', 'a2', 'a3', 'b0', 'b1', 'b2', 'b3',
                         'c0', 'c1', 'c2', 'c3'])
 
 a = matrix(R, 2, 2, R.gens()[:4])
