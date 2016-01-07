@@ -120,10 +120,19 @@ import pe
 import cPickle as pickle
 import bz2
 import md5
-from sage.all import ComplexField, RealField, PolynomialRing, QQ, RR
+from sage.all import ComplexField, RealField, PolynomialRing, QQ, RR, floor
 from pe.plot import MatplotPlot as Plot
 import nplot
+import matplotlib
 import matplotlib.style
+matplotlib.rcParams['xtick.direction'] = 'out'
+matplotlib.rcParams['ytick.direction'] = 'out'
+matplotlib.rcParams['lines.linewidth'] = 1.5
+matplotlib.rcParams['axes.linewidth'] = 1.5
+matplotlib.rcParams['xtick.major.width'] =  1.5
+matplotlib.rcParams['ytick.major.width'] =  1.5
+matplotlib.rcParams['xtick.major.size'] =  5.0
+matplotlib.rcParams['ytick.major.size'] =  5.0
 #matplotlib.style.use('classic')
 import pandas as pd
 
@@ -308,6 +317,11 @@ def make_plots(df=None):
 
 
 class PaperPlot(Plot):
+    def __init__(self, data,  **kwargs):
+        kwargs = kwargs.copy()
+        kwargs['linewidth'] = kwargs.get('linewidth', 1.5)
+        Plot.__init__(self, data, **kwargs)
+    
     @staticmethod
     def color(i):
         return 'black'
@@ -323,7 +337,7 @@ plot_default = {
 
 plot_paper = {
     'longitude line':'black',
-    'simple alex root':'grey',
+    'simple alex root':'0.6',
     'mult alex root':'black',
     'galois of geom':'black',
     'other parabolic':'0.9',
@@ -340,10 +354,21 @@ def make_plot(row, params=plot_default):
     title = '$' + row['name'] + '$: genus = ' + repr(row['alex_deg']//2)
     plot = params['plot_cls'](arcs, title=title)
     ax = plot.figure.axis
-    ax.plot((0, 1), (0, 0), color=params['longitude line'])
+    
+    ax.plot((0, 1), (0, 0), color=params['longitude line'],
+            linewidth=plot.linewidth)
     ax.legend_.remove()
-    ax.set_xbound(0, 1)
 
+    ax.set_xbound(0, 1)
+    ax.get_xaxis().tick_bottom()
+    
+    yvals = [p.imag for arc in arcs for p in arc]
+    ax.set_ybound(1.1 * min(yvals), 1.1 * max(yvals))
+
+    ytop = floor(1.1 * max(yvals))
+    if 1 <= ytop <= 10:
+        ax.set_yticks(range(-ytop, ytop+1))
+        
     alex = PolynomialRing(QQ, 'a')(row['alex'])
     for z, e in unimodular_roots(alex):
         theta = rotation_angle(z)
@@ -352,7 +377,7 @@ def make_plot(row, params=plot_default):
         else:
             color = params['mult alex root']
         ax.plot([theta], [0], color=color, marker='o',
-                ms=7, markeredgecolor=color)
+                ms=10, markeredgecolor='black')
 
     M = snappy.Manifold(row['name'])
     for L, is_galois_conj_of_geom in eval(row['parabolic_PSL2R_details']):
@@ -363,7 +388,6 @@ def make_plot(row, params=plot_default):
         for x, y in [(0, L), (0, -L), (1, L), (1, -L)]:
             ax.plot([x], [y], color=color, marker='o', ms=10,
                     markeredgecolor='black')
-            
     plot.figure.draw()
     return plot
 
@@ -385,7 +409,8 @@ if __name__ == '__main__':
     #print db.remaining('task0')
     #db.run_function('task0', save_plot_data, num_tasks=1)
     df = pd.read_pickle('zhcircle.pickle')
-    for name in ['m016', 'v0220', 'm389', 'm201',
-                 'm222', 's841', 't11462', 'o9_34801', 'o9_04139']:
+    examples = ['m016', 'v0220', 'm389', 'm201',
+                'm222', 's841', 't11462', 'o9_34801', 'o9_04139']
+    for name in examples:
         F = make_plot(df.ix[name], plot_paper)
         F.save_tikz(name + '.pdf')
