@@ -122,6 +122,10 @@ import bz2
 import md5
 from sage.all import ComplexField, RealField, PolynomialRing, QQ, RR
 from pe.plot import MatplotPlot as Plot
+import nplot
+import matplotlib.style
+#matplotlib.style.use('classic')
+import pandas as pd
 
 
 def initial_database():
@@ -136,7 +140,7 @@ def initial_database():
             ('num_uniroots', 'int'), ('num_mult_uniroots', 'int'),
             ('num_psl2R_arcs', 'int'), ('real_places', 'int'),
             ('parabolic_PSL2R', 'int'), ('base_index', 'int'),
-            ('radius', 'double'), ('trans_arcs', 'mediumblob')
+            ('radius', 'double'), ('transa_rcs', 'mediumblob')
     ]
     db = taskdb2.ExampleDatabase('ZHCircles', names, cols)
     db.new_task_table('task0')
@@ -302,30 +306,63 @@ def make_plots(df=None):
         plot = make_plot(row)
         plot.save('/tmp/plots/' + row['name'] + '.pdf')
 
-def make_plot(row):
+
+class PaperPlot(Plot):
+    @staticmethod
+    def color(i):
+        return 'black'
+
+plot_default = {
+    'longitude line':'green',
+    'simple alex root':'red',
+    'mult alex root':'purple',
+    'galois of geom':'orange',
+    'other parabolic':'white',
+    'plot_cls':Plot
+}
+
+plot_paper = {
+    'longitude line':'black',
+    'simple alex root':'grey',
+    'mult alex root':'black',
+    'galois of geom':'black',
+    'other parabolic':'0.9',
+    'plot_cls':PaperPlot
+}
+
+
+
+def make_plot(row, params=plot_default):
     if row['trans_arcs_highres'] is not None:
         arcs = row['trans_arcs_highres'].unpickle()
     else:
         arcs = row['trans_arcs'].unpickle()
-    title = row['name'] + ': genus = ' + repr(row['alex_deg']//2)
-    plot = Plot(arcs, title=title)
+    title = '$' + row['name'] + '$: genus = ' + repr(row['alex_deg']//2)
+    plot = params['plot_cls'](arcs, title=title)
     ax = plot.figure.axis
-    ax.plot((0, 1), (0, 0), color='green')
+    ax.plot((0, 1), (0, 0), color=params['longitude line'])
     ax.legend_.remove()
     ax.set_xbound(0, 1)
 
     alex = PolynomialRing(QQ, 'a')(row['alex'])
     for z, e in unimodular_roots(alex):
         theta = rotation_angle(z)
-        color = 'red' if e == 1 else 'purple'
-        ax.plot([theta], [0], color=color, marker='o', ms=7, markeredgecolor=color)
-
+        if e == 1:
+            color = params['simple alex root']
+        else:
+            color = params['mult alex root']
+        ax.plot([theta], [0], color=color, marker='o',
+                ms=7, markeredgecolor=color)
 
     M = snappy.Manifold(row['name'])
     for L, is_galois_conj_of_geom in eval(row['parabolic_PSL2R_details']):
-        color = 'orange' if is_galois_conj_of_geom else 'white'
+        if is_galois_conj_of_geom:
+            color = params['galois of geom']
+        else:
+            color = params['other parabolic']
         for x, y in [(0, L), (0, -L), (1, L), (1, -L)]:
-            ax.plot([x], [y], color=color, marker='o', ms=10, markeredgecolor='black')
+            ax.plot([x], [y], color=color, marker='o', ms=10,
+                    markeredgecolor='black')
             
     plot.figure.draw()
     return plot
@@ -347,4 +384,8 @@ if __name__ == '__main__':
     #task = db.get_row(199)
     #print db.remaining('task0')
     #db.run_function('task0', save_plot_data, num_tasks=1)
-    pass
+    df = pd.read_pickle('zhcircle.pickle')
+    for name in ['m016', 'v0220', 'm389', 'm201',
+                 'm222', 's841', 't11462', 'o9_34801', 'o9_04139']:
+        F = make_plot(df.ix[name], plot_paper)
+        F.save_tikz(name + '.pdf')
