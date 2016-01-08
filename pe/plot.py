@@ -96,7 +96,7 @@ class MatplotPlot(Plot):
             color = self.color(self.color_dict.get(i, i))
             X = attribute_map(component, 'real')
             Y = attribute_map(component, 'imag')
-            arc = axis.plot(X, Y, color=color, linewidth=self.linewidth, label='%d' % i)
+            arc = axis.plot(X, Y, color=color, label='%d' % i)
             self.arcs.append(arc[0])
             verts = axis.scatter(X, Y, s=0.01, color=color, marker='.', picker=3)
             self.vertex_sets.append(verts)
