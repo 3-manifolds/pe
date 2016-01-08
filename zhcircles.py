@@ -125,15 +125,10 @@ from pe.plot import MatplotPlot as Plot
 import nplot
 import matplotlib
 import matplotlib.style
-matplotlib.rcParams['xtick.direction'] = 'out'
-matplotlib.rcParams['ytick.direction'] = 'out'
-matplotlib.rcParams['lines.linewidth'] = 1.5
-matplotlib.rcParams['axes.linewidth'] = 1.5
-matplotlib.rcParams['xtick.major.width'] =  1.5
-matplotlib.rcParams['ytick.major.width'] =  1.5
-matplotlib.rcParams['xtick.major.size'] =  5.0
-matplotlib.rcParams['ytick.major.size'] =  5.0
+
 #matplotlib.style.use('classic')
+
+import matplotlib.pyplot as plt
 import pandas as pd
 
 
@@ -319,12 +314,12 @@ def make_plots(df=None):
 class PaperPlot(Plot):
     def __init__(self, data,  **kwargs):
         kwargs = kwargs.copy()
-        kwargs['linewidth'] = kwargs.get('linewidth', 1.5)
         Plot.__init__(self, data, **kwargs)
+        self.linewidth = None
     
     @staticmethod
     def color(i):
-        return 'black'
+        return None
 
 plot_default = {
     'longitude line':'green',
@@ -337,14 +332,34 @@ plot_default = {
 
 plot_paper = {
     'longitude line':'black',
-    'simple alex root':'0.6',
-    'mult alex root':'black',
-    'galois of geom':'black',
-    'other parabolic':'0.9',
+    'simple alex root':'mediumturquoise',
+    'mult alex root':'0.2',
+    'galois of geom':'greenyellow',
+    'other parabolic':'0.2',
     'plot_cls':PaperPlot
 }
 
+style_sheet = {
+    'xtick.direction':'out',
+    'ytick.direction':'out',
+    'lines.linewidth':1.5,
+    'axes.linewidth':1.5,
+    'xtick.major.width':1.5,
+    'ytick.major.width':1.5,
+    'xtick.major.size':5.0,
+    'ytick.major.size':5.0,
+    'axes.prop_cycle':plt.cycler('color', ['darkmagenta']),
+    'lines.solid_capstyle':'round',
+    'lines.dash_capstyle':'round',
+    'lines.markersize':10,
+}
 
+messy_style_sheet = style_sheet.copy()
+messy_style_sheet.update({
+    'lines.linewidth':0.5,
+    'lines.markersize':5,
+    }
+)
 
 def make_plot(row, params=plot_default):
     if row['trans_arcs_highres'] is not None:
@@ -355,8 +370,7 @@ def make_plot(row, params=plot_default):
     plot = params['plot_cls'](arcs, title=title)
     ax = plot.figure.axis
     
-    ax.plot((0, 1), (0, 0), color=params['longitude line'],
-            linewidth=plot.linewidth)
+    ax.plot((0, 1), (0, 0))
     ax.legend_.remove()
 
     ax.set_xbound(0, 1)
@@ -368,7 +382,10 @@ def make_plot(row, params=plot_default):
     ytop = floor(1.1 * max(yvals))
     if 1 <= ytop <= 10:
         ax.set_yticks(range(-ytop, ytop+1))
-        
+    elif 25 <= ytop <= 100:
+        ticks = range(10, ytop, 10)
+        ticks = [-y for y in ticks] + [0] + ticks
+        ax.set_yticks(ticks)
     alex = PolynomialRing(QQ, 'a')(row['alex'])
     for z, e in unimodular_roots(alex):
         theta = rotation_angle(z)
@@ -377,7 +394,7 @@ def make_plot(row, params=plot_default):
         else:
             color = params['mult alex root']
         ax.plot([theta], [0], color=color, marker='o',
-                ms=10, markeredgecolor='black')
+                markeredgecolor='black')
 
     M = snappy.Manifold(row['name'])
     for L, is_galois_conj_of_geom in eval(row['parabolic_PSL2R_details']):
@@ -386,7 +403,7 @@ def make_plot(row, params=plot_default):
         else:
             color = params['other parabolic']
         for x, y in [(0, L), (0, -L), (1, L), (1, -L)]:
-            ax.plot([x], [y], color=color, marker='o', ms=10,
+            ax.plot([x], [y], color=color, marker='o',
                     markeredgecolor='black')
     plot.figure.draw()
     return plot
@@ -409,8 +426,28 @@ if __name__ == '__main__':
     #print db.remaining('task0')
     #db.run_function('task0', save_plot_data, num_tasks=1)
     df = pd.read_pickle('zhcircle.pickle')
-    examples = ['m016', 'v0220', 'm389', 'm201',
-                'm222', 's841', 't11462', 'o9_34801', 'o9_04139']
-    for name in examples:
-        F = make_plot(df.ix[name], plot_paper)
-        F.save_tikz(name + '.pdf')
+
+    # All of these are complements of knots in S^3 and are fibered.
+    # (for the latter, hard cases checked against data of Bell-Dunfield).
+    examples = ['m016', 'v0220', 'm389', 'm201', 'm222', 's841',
+                't11462', 'o9_34801', 'o9_04139']
+    messy_examples = ['v0220']
+    #for name in examples:
+    #    M = snappy.Manifold(name)
+    #    M.randomize()
+    #    print name, M.fundamental_group().num_generators()
+        
+
+    #examples = ['m016']
+    
+    #with plt.style.context((style_sheet)):
+    #    for name in examples:
+    #        F = make_plot(df.ix[name], plot_paper)
+    #        F.save_tikz(name + '.pdf')
+
+    with plt.style.context((messy_style_sheet)):
+        for name in messy_examples:
+            F = make_plot(df.ix[name], plot_paper)
+            F.save_tikz(name + '.pdf')
+
+            
