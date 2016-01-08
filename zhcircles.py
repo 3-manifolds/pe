@@ -120,7 +120,7 @@ import pe
 import cPickle as pickle
 import bz2
 import md5
-from sage.all import ComplexField, RealField, PolynomialRing, QQ, RR, floor
+from sage.all import ComplexField, RealField, PolynomialRing, QQ, RR, floor, prod, gcd
 from pe.plot import MatplotPlot as Plot
 import nplot
 import matplotlib
@@ -334,7 +334,7 @@ plot_paper = {
     'longitude line':'black',
     'simple alex root':'mediumturquoise',
     'mult alex root':'0.2',
-    'galois of geom':'greenyellow',
+    'galois of geom':'#adf802',
     'other parabolic':'0.2',
     'plot_cls':PaperPlot
 }
@@ -342,7 +342,7 @@ plot_paper = {
 style_sheet = {
     'xtick.direction':'out',
     'ytick.direction':'out',
-    'lines.linewidth':1.5,
+    'lines.linewidth':2.5,
     'axes.linewidth':1.5,
     'xtick.major.width':1.5,
     'ytick.major.width':1.5,
@@ -351,7 +351,7 @@ style_sheet = {
     'axes.prop_cycle':plt.cycler('color', ['darkmagenta']),
     'lines.solid_capstyle':'round',
     'lines.dash_capstyle':'round',
-    'lines.markersize':10,
+    'lines.markersize':12,
 }
 
 messy_style_sheet = style_sheet.copy()
@@ -418,6 +418,17 @@ class ZHCircles(taskdb2.ExampleDatabase):
         return ans.set_index('name', drop=False)
 
 
+def reallynonZHC():
+    for M in snappy.OrientableCuspedCensus(cusps=1, betti=1):
+        G = M.fundamental_group()
+        phi = snappy.snap.nsagetools.MapToFreeAbelianization(G)
+        m, l = [phi(g)[0] for g in G.peripheral_curves()[0]]
+        if gcd(m, l) != 1:
+            print M.name(), m, l
+    
+    
+
+    
 if __name__ == '__main__':
     #initial_database()
     #db = ZHCircles()
@@ -429,9 +440,11 @@ if __name__ == '__main__':
 
     # All of these are complements of knots in S^3 and are fibered.
     # (for the latter, hard cases checked against data of Bell-Dunfield).
-    examples = ['m016', 'v0220', 'm389', 'm201', 'm222', 's841',
+    examples = ['m016', 'm389', 'm201', 'm222', 's841',
                 't11462', 'o9_34801', 'o9_04139']
     messy_examples = ['v0220']
+
+    new_examples = ['t03632', 't11592']
     #for name in examples:
     #    M = snappy.Manifold(name)
     #    M.randomize()
@@ -440,14 +453,14 @@ if __name__ == '__main__':
 
     #examples = ['m016']
     
-    #with plt.style.context((style_sheet)):
-    #    for name in examples:
-    #        F = make_plot(df.ix[name], plot_paper)
-    #        F.save_tikz(name + '.pdf')
-
-    with plt.style.context((messy_style_sheet)):
-        for name in messy_examples:
+    with plt.style.context((style_sheet)):
+        for name in new_examples:
             F = make_plot(df.ix[name], plot_paper)
             F.save_tikz(name + '.pdf')
+
+    #with plt.style.context((messy_style_sheet)):
+    #    for name in messy_examples:
+    #        F = make_plot(df.ix[name], plot_paper)
+    #        F.save_tikz(name + '.pdf')
 
             

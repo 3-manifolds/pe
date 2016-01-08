@@ -225,6 +225,8 @@ class SL2RLifter(object):
         m = self.hom_m_abelian
         plotlist = []
         for arc in self.translation_arcs:
+            if len(arc) == 0:
+                continue
             new_points = [A*vector((t.real, t.imag)) for t in arc]
             floors = [x.floor() for x, y in new_points]
             x0, y0 = new_points[0]
