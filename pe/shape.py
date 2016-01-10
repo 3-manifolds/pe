@@ -264,8 +264,8 @@ class PolishedShapeSet(object):
         total_change = infinity_norm(init_shapes - shapes)
         if error > 1000*target_epsilon:
             raise GoodShapesNotFound('Failed to find solution')
-        if flag_initial_error and total_change > pari(0.0000001):
-            raise GoodShapesNotFound('Moved to far finding a good solution')
+        #if flag_initial_error and total_change > pari(0.0000001):
+        #    raise GoodShapesNotFound('Moved too far finding a good solution')
         shapes = pari_vector_to_list(shapes)
         self.shapelist = [Number(z, precision=precision) for z in shapes]
 
