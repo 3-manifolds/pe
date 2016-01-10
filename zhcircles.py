@@ -1,4 +1,8 @@
 """
+This file and associated data is poorly named.  The focus here is
+really on integral homology solid tori. 
+
+
 How to make a plot:
 
 sage: run zhcircles.py
@@ -268,6 +272,28 @@ def parabolic_psl2R_details(task, pari_prec=15):
     task['done'] = True
     return task
 
+def parabolic_psl2R_details_2(task, pari_prec=15):
+    """
+    For examples where the longitudes are nontrivial torsion in H_1(M)
+    """
+    M = snappy.Manifold(task['name'])
+    reps = real_parabolic_reps_from_ptolemy(M, pari_prec)
+    ans = []
+    for rho in reps:
+        G = rho.polished_holonomy(1000)
+        rhotil = rho.lift_on_cusped_manifold()
+        if rhotil:
+            a, b = rho.manifold.homological_longitude()
+            x, y = rhotil.peripheral_translations()
+            z = a*x + b*y
+            assert abs(z - z.round()) < 1e-100
+            assert abs(x - x.round()) < 1e-100
+            ans.append( (int(x), int(z), rho.is_galois_conj_of_geom) )
+    ans.sort()
+    task['parabolic_PSL2R_details']  = repr(ans)
+    task['done'] = True
+    return task
+
 
 def comp_pickle(obj):
     return bz2.compress(pickle.dumps(obj, 2), 9)
@@ -294,9 +320,15 @@ def save_plot_data(task):
     return task
 
 def save_plot_highres(task):
-    V = pe.PECharVariety(task['name'], radius=task['radius'], order=2048)
+    V = pe.PECharVariety(task['name'], radius=task['radius'], order=512)
     L = pe.SL2RLifter(V)
     task['trans_arcs_highres'] = comp_pickle(L._show_homological_data())
+    task['done'] = True
+
+def save_plot_highres_manual(task):
+    V = pe.PECharVariety(task['name'], radius=task['radius'], order=2048)
+    L = pe.SL2RLifter(V)
+    task['trans_arcs_highres'] = taskdb2.db_tools.Blob(comp_pickle(L._show_homological_data()))
     task['done'] = True
     
 def make_plots(df=None):
@@ -369,11 +401,13 @@ def make_plot(row, params=plot_default):
     title = '$' + row['name'] + '$: genus = ' + repr(row['alex_deg']//2)
     plot = params['plot_cls'](arcs, title=title)
     ax = plot.figure.axis
+
+    k = order_of_longitude(snappy.Manifold(row['name']))
     
-    ax.plot((0, 1), (0, 0))
+    ax.plot((0, k), (0, 0))
     ax.legend_.remove()
 
-    ax.set_xbound(0, 1)
+    ax.set_xbound(0, k)
     ax.get_xaxis().tick_bottom()
     
     yvals = [p.imag for arc in arcs for p in arc]
@@ -388,7 +422,7 @@ def make_plot(row, params=plot_default):
         ax.set_yticks(ticks)
     alex = PolynomialRing(QQ, 'a')(row['alex'])
     for z, e in unimodular_roots(alex):
-        theta = rotation_angle(z)
+        theta = k*rotation_angle(z)
         if e == 1:
             color = params['simple alex root']
         else:
@@ -397,14 +431,21 @@ def make_plot(row, params=plot_default):
                 markeredgecolor='black')
 
     M = snappy.Manifold(row['name'])
-    for L, is_galois_conj_of_geom in eval(row['parabolic_PSL2R_details']):
+    for parabolic in eval(row['parabolic_PSL2R_details']):
+        if len(parabolic) == 2:
+            L, is_galois_conj_of_geom = parabolic
+            points = [(0, L), (0, -L), (1, L), (1, -L)]
+        else:
+            x, y, is_galois_conj_of_geom = parabolic
+            points = [(x, y)]
         if is_galois_conj_of_geom:
             color = params['galois of geom']
         else:
             color = params['other parabolic']
-        for x, y in [(0, L), (0, -L), (1, L), (1, -L)]:
+        for x, y in points:
             ax.plot([x], [y], color=color, marker='o',
-                    markeredgecolor='black')
+                        markeredgecolor='black')
+        
     plot.figure.draw()
     return plot
 
@@ -418,6 +459,12 @@ class ZHCircles(taskdb2.ExampleDatabase):
         return ans.set_index('name', drop=False)
 
 
+def order_of_longitude(M):
+    G = M.fundamental_group()
+    phi = snappy.snap.nsagetools.MapToFreeAbelianization(G)
+    m, l = [phi(g)[0] for g in G.peripheral_curves()[0]]
+    return gcd(m, l)
+    
 def reallynonZHC():
     for M in snappy.OrientableCuspedCensus(cusps=1, betti=1):
         G = M.fundamental_group()
@@ -451,16 +498,27 @@ if __name__ == '__main__':
     #    print name, M.fundamental_group().num_generators()
         
 
-    #examples = ['m016']
+    examples = ['m016']
     
-    with plt.style.context((style_sheet)):
-        for name in new_examples:
-            F = make_plot(df.ix[name], plot_paper)
-            F.save_tikz(name + '.pdf')
+    #with plt.style.context((style_sheet)):
+    #    for name in examples:
+    #        F = make_plot(df.ix[name], plot_paper)
+    #        F.save_tikz(name + '.pdf')
 
     #with plt.style.context((messy_style_sheet)):
     #    for name in messy_examples:
     #        F = make_plot(df.ix[name], plot_paper)
     #        F.save_tikz(name + '.pdf')
 
-            
+    #l_is_torsion = pd.read_pickle('nonZHCs.pickle')
+    #with plt.style.context((style_sheet)):
+    #    for i, datum in l_is_torsion.iterrows():
+    #        F = make_plot(datum, plot_paper)
+    #        F.save_tikz(datum['name'] + '.pdf')
+    
+    temp_sheet = style_sheet.copy()
+    temp_sheet['lines.linewidth'] = 1.0
+    with plt.style.context((temp_sheet)):
+        datum = df.ix['t11592']
+        F = make_plot(datum, plot_paper)
+        F.save_tikz(datum['name'] + '.pdf')

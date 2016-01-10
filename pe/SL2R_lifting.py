@@ -9,7 +9,7 @@ from .fiber import Fiber
 from snappy import CensusKnots
 from snappy.snap.polished_reps import MapToFreeAbelianization
 
-from sage.all import RealField, ComplexField, ZZ, log, vector, matrix, xgcd
+from sage.all import RealField, ComplexField, ZZ, log, vector, matrix, gcd, xgcd
 from snappy.snap.nsagetools import hyperbolic_torsion
 from time import time
 
@@ -59,6 +59,8 @@ class SL2RLifter(object):
         if m < 0:
             m, l = -m, -l
         self.m_abelian, self.l_abelian = m, l
+        # Same as index of homological meridian in H_1(M)_free
+        self.l_order = gcd(m, l)  
 
         # We also want to be able to view things from a more homologically
         # natural point of view.
@@ -223,12 +225,13 @@ class SL2RLifter(object):
     def _show_homological_data(self):
         A = self.change_trans_to_hom_framing
         m = self.hom_m_abelian
+        g = self.l_order
         plotlist = []
         for arc in self.translation_arcs:
             if len(arc) == 0:
                 continue
             new_points = [A*vector((t.real, t.imag)) for t in arc]
-            floors = [x.floor() for x, y in new_points]
+            floors = [g*((x/g).floor()) for x, y in new_points]
             x0, y0 = new_points[0]
             s0 = floors[0]
             reframed_arc = [PEPoint(complex(x0 - s0, y0), index=arc[0].index)]
@@ -242,9 +245,9 @@ class SL2RLifter(object):
                 if s0 == s1:
                     reframed_arc.append(new_pt)
                 else:
-                    u0, u1, s = (1, 0, s1) if s1 > s0 else (0, 1, s0)
+                    u0, u1, s = (g, 0, s1) if s1 > s0 else (0, g, s0)
                     v = (s - x0)/(x1 - x0)
-                    y_new = (1 - v)*y0 + v*y1
+                    y_new = (g - v)*y0 + v*y1
                     id_new = (t1.index[0], t1.index[1] - 0.5)
                     a = PEPoint(complex(u0, y_new), index=id_new, leave_gap=True)
                     b = PEPoint(complex(u1, y_new), index=id_new)
