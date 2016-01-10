@@ -393,7 +393,7 @@ messy_style_sheet.update({
     }
 )
 
-def make_plot(row, params=plot_default):
+def make_plot(row, params=plot_default, extra_plots=None):
     if row['trans_arcs_highres'] is not None:
         arcs = row['trans_arcs_highres'].unpickle()
     else:
@@ -402,6 +402,9 @@ def make_plot(row, params=plot_default):
     plot = params['plot_cls'](arcs, title=title)
     ax = plot.figure.axis
 
+    for x, y in extra_plots:
+        ax.plot(x, y)
+    
     k = order_of_longitude(snappy.Manifold(row['name']))
     
     ax.plot((0, k), (0, 0))
@@ -516,9 +519,15 @@ if __name__ == '__main__':
     #        F = make_plot(datum, plot_paper)
     #        F.save_tikz(datum['name'] + '.pdf')
     
-    temp_sheet = style_sheet.copy()
-    temp_sheet['lines.linewidth'] = 1.0
-    with plt.style.context((temp_sheet)):
-        datum = df.ix['t11592']
-        F = make_plot(datum, plot_paper)
-        F.save_tikz(datum['name'] + '.pdf')
+    #temp_sheet = style_sheet.copy()
+    #temp_sheet['lines.linewidth'] = 1.0
+    # with plt.style.context((temp_sheet)):
+    #    datum = df.ix['t11592']
+    #    F = make_plot(datum, plot_paper)
+    #    F.save_tikz(datum['name'] + '.pdf')
+
+    with plt.style.context((style_sheet)):
+        for name in ['m389']:
+            extras = [((0, 1/6.0), (-2, 0)), ((1, 1 - 1/6.0), (2, 0))]
+            F = make_plot(df.ix[name], plot_paper, extras)
+            F.save_tikz(name + '.pdf')
