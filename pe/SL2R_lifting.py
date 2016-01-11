@@ -90,7 +90,6 @@ class SL2RLifter(object):
         H = self.elevation
         for s in range(self.degree):
             current_arc = None
-            successive_tighen_fails = 0
             for n in range(self.order):
                 if not isinstance(H.T_fibers[n], Fiber):
                     continue

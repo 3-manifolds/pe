@@ -402,8 +402,9 @@ def make_plot(row, params=plot_default, extra_plots=None):
     plot = params['plot_cls'](arcs, title=title)
     ax = plot.figure.axis
 
-    for x, y in extra_plots:
-        ax.plot(x, y)
+    if extra_plots:
+        for x, y in extra_plots:
+            ax.plot(x, y)
     
     k = order_of_longitude(snappy.Manifold(row['name']))
     
@@ -526,8 +527,22 @@ if __name__ == '__main__':
     #    F = make_plot(datum, plot_paper)
     #    F.save_tikz(datum['name'] + '.pdf')
 
+    def add_tillmann_point(name, reps):
+        curr = df.loc[name, 'parabolic_PSL2R_details']
+        df.loc[name, 'parabolic_PSL2R_details'] = repr(eval(curr) + reps)
+
+    add_tillmann_point('m389', [(2, False)])
+    add_tillmann_point('t11462', [(2, False)])
+        
+    # Adding missing component
     with plt.style.context((style_sheet)):
-        for name in ['m389']:
-            extras = [((0, 1/6.0), (-2, 0)), ((1, 1 - 1/6.0), (2, 0))]
-            F = make_plot(df.ix[name], plot_paper, extras)
+        name  ='m389'
+        extras = [((0, 1/6.0), (-2, 0)), ((1, 1 - 1/6.0), (2, 0))]
+        F = make_plot(df.ix[name], plot_paper, extras)
+        F.save_tikz(name + '.pdf')
+
+    # Adding in some Tillman points
+    with plt.style.context((style_sheet)):
+        for name in ['t11462']:
+            F = make_plot(df.ix[name], plot_paper)
             F.save_tikz(name + '.pdf')
