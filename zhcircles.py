@@ -135,6 +135,9 @@ import matplotlib.style
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
+from mpl_toolkits.axes_grid1.inset_locator import mark_inset
+
 
 def initial_database():
     names = []
@@ -487,6 +490,15 @@ if __name__ == '__main__':
     #db.run_function('task0', save_plot_data, num_tasks=1)
     df = pd.read_pickle('zhcircle.pickle')
 
+    def add_tillmann_point(name, reps):
+        curr = df.loc[name, 'parabolic_PSL2R_details']
+        df.loc[name, 'parabolic_PSL2R_details'] = repr(eval(curr) + reps)
+
+    add_tillmann_point('m389', [(2, False)])
+    add_tillmann_point('t11462', [(2, False)])
+    add_tillmann_point('t03632', [(4, False)])
+    add_tillmann_point('v1971', [(2, False)])
+        
     # All of these are complements of knots in S^3 and are fibered.
     # (for the latter, hard cases checked against data of Bell-Dunfield).
     examples = ['m016', 'm389', 'm201', 'm222', 's841',
@@ -533,14 +545,7 @@ if __name__ == '__main__':
     #    F = make_plot(datum, plot_paper)
     #    F.save_tikz(datum['name'] + '.pdf')
 
-    def add_tillmann_point(name, reps):
-        curr = df.loc[name, 'parabolic_PSL2R_details']
-        df.loc[name, 'parabolic_PSL2R_details'] = repr(eval(curr) + reps)
-
-    add_tillmann_point('m389', [(2, False)])
-    add_tillmann_point('t11462', [(2, False)])
-    add_tillmann_point('t03632', [(4, False)])
-        
+    
     # Adding missing component
     #with plt.style.context((style_sheet)):
     #    name  ='m389'
@@ -553,3 +558,32 @@ if __name__ == '__main__':
     #    for name in ['t03632']:
     #        F = make_plot(df.ix[name], plot_paper)
     #        F.save_tikz(name + '.pdf')
+
+    # Fancy pants zoom in on v1971
+
+    # with plt.style.context((style_sheet)):
+    #     row = df.ix['v1971']
+    #     F = make_plot(row, plot_paper)
+    #     ax = F.figure.axis
+
+    #     substyle = style_sheet.copy()
+    #     substyle['axes.linewidth'] = 1.0
+    #     substyle['axes.edgecolor'] = "0.5"
+    #     substyle['lines.markersize'] = 8
+    #     with plt.style.context((substyle)):
+    #         axins = zoomed_inset_axes(ax, 5.5,  loc = 4,
+    #                                   bbox_to_anchor=(-0.03, 0, 1, 1), bbox_transform=ax.transAxes)
+    #         axins.set_xlim(0.68, 0.72)
+    #         axins.set_ylim(-0.15, 0.1)
+    #         axins.set_xticks([])
+    #         axins.set_yticks([])
+    #         bbox = axins.get_position()
+    #         mark_inset(ax, axins, loc1=1, loc2=3, fc="none", ec="0.5")
+    #         arcs = row['trans_arcs_highres'].unpickle()
+    #         # Also dealing with vertical gap.
+    #         xs = [z.real for z in arcs[0] + list(reversed(arcs[4]))] 
+    #         ys = [z.imag for z in arcs[0] + list(reversed(arcs[4]))] 
+    #         axins.plot(xs, ys)
+    #         axins.plot( (0, 1), (0, 0) )
+    #         axins.plot([0.7], [0], color=plot_paper['mult alex root'], marker='o',
+    #             markeredgecolor='black')
