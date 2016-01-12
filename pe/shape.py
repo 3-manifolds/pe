@@ -147,7 +147,8 @@ class ShapeSet(object):
             if abs(tr.real) < 2.0 - tolerance:
                 good_gens.append(g)
         if len(good_gens) < 2:
-            raise RuntimeError('Yikes! This rep is abelian!')
+            return True
+            #raise RuntimeError('Yikes! This rep is abelian!')
         # Get the first two non-trivial O31 matrix generators ...
         A, B = [real_array(array(self._O31(g))) for g in good_gens[:2]]
         # find their axes, ...
