@@ -504,10 +504,10 @@ if __name__ == '__main__':
 
     #examples = ['m016']
     
-    with plt.style.context((style_sheet)):
-        for name in mult_examples:
-            F = make_plot(df.ix[name], plot_paper)
-            F.save_tikz(name + '.pdf')
+    #with plt.style.context((style_sheet)):
+    #    for name in mult_examples:
+    #        F = make_plot(df.ix[name], plot_paper)
+    #        F.save_tikz(name + '.pdf')
 
     #with plt.style.context((messy_style_sheet)):
     #    for name in messy_examples:
