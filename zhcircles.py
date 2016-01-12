@@ -587,3 +587,5 @@ if __name__ == '__main__':
     #         axins.plot( (0, 1), (0, 0) )
     #         axins.plot([0.7], [0], color=plot_paper['mult alex root'], marker='o',
     #             markeredgecolor='black')
+    #
+    #     F.save_tikz(row['name'] + '.pdf')
