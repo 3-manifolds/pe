@@ -320,7 +320,7 @@ def save_plot_data(task):
     return task
 
 def save_plot_highres(task):
-    V = pe.PECharVariety(task['name'], radius=task['radius'], order=512)
+    V = pe.PECharVariety(task['name'], radius=task['radius'], order=2048)
     L = pe.SL2RLifter(V)
     task['trans_arcs_highres'] = comp_pickle(L._show_homological_data())
     task['done'] = True
@@ -354,7 +354,6 @@ class PaperPlot(Plot):
         return None
 
 plot_default = {
-    'longitude line':'green',
     'simple alex root':'red',
     'mult alex root':'purple',
     'galois of geom':'orange',
@@ -363,9 +362,8 @@ plot_default = {
 }
 
 plot_paper = {
-    'longitude line':'black',
     'simple alex root':'mediumturquoise',
-    'mult alex root':'0.2',
+    'mult alex root':'blue',
     'galois of geom':'#adf802',
     'other parabolic':'0.2',
     'plot_cls':PaperPlot
@@ -496,25 +494,33 @@ if __name__ == '__main__':
     messy_examples = ['v0220']
 
     new_examples = ['t03632', 't11592']
+
+    mult_examples = ['o9_30426', 't12247', 'v1971']
     #for name in examples:
     #    M = snappy.Manifold(name)
     #    M.randomize()
     #    print name, M.fundamental_group().num_generators()
         
 
-    examples = ['m016']
+    #examples = ['m016']
     
-    #with plt.style.context((style_sheet)):
-    #    for name in examples:
-    #        F = make_plot(df.ix[name], plot_paper)
-    #        F.save_tikz(name + '.pdf')
+    with plt.style.context((style_sheet)):
+        for name in mult_examples:
+            F = make_plot(df.ix[name], plot_paper)
+            F.save_tikz(name + '.pdf')
 
     #with plt.style.context((messy_style_sheet)):
     #    for name in messy_examples:
     #        F = make_plot(df.ix[name], plot_paper)
     #        F.save_tikz(name + '.pdf')
 
-    #l_is_torsion = pd.read_pickle('nonZHCs.pickle')
+    l_is_torsion = pd.read_pickle('nonZHCs.pickle')
+    l_is_torsion = l_is_torsion.set_index('name', False)
+    # Fix Tillmann point
+    curr = l_is_torsion.loc['v1108', 'parabolic_PSL2R_details']
+    extras = [(0, 1, False), (0, -1, False),  (2, 1, False), (2, -1, False)]
+    l_is_torsion.loc['v1108', 'parabolic_PSL2R_details'] = repr(eval(curr) + extras)
+    
     #with plt.style.context((style_sheet)):
     #    for i, datum in l_is_torsion.iterrows():
     #        F = make_plot(datum, plot_paper)
@@ -533,16 +539,17 @@ if __name__ == '__main__':
 
     add_tillmann_point('m389', [(2, False)])
     add_tillmann_point('t11462', [(2, False)])
+    add_tillmann_point('t03632', [(4, False)])
         
     # Adding missing component
-    with plt.style.context((style_sheet)):
-        name  ='m389'
-        extras = [((0, 1/6.0), (-2, 0)), ((1, 1 - 1/6.0), (2, 0))]
-        F = make_plot(df.ix[name], plot_paper, extras)
-        F.save_tikz(name + '.pdf')
+    #with plt.style.context((style_sheet)):
+    #    name  ='m389'
+    #    extras = [((0, 1/6.0), (-2, 0)), ((1, 1 - 1/6.0), (2, 0))]
+    #    F = make_plot(df.ix[name], plot_paper, extras)
+    #    F.save_tikz(name + '.pdf')
 
     # Adding in some Tillman points
-    with plt.style.context((style_sheet)):
-        for name in ['t11462']:
-            F = make_plot(df.ix[name], plot_paper)
-            F.save_tikz(name + '.pdf')
+    #with plt.style.context((style_sheet)):
+    #    for name in ['t03632']:
+    #        F = make_plot(df.ix[name], plot_paper)
+    #        F.save_tikz(name + '.pdf')
