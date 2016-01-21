@@ -244,6 +244,9 @@ def real_parabolic_reps_from_ptolemy(M, pari_prec=15):
         V = M.ptolemy_variety(N=2, obstruction_class=obs)
         #for sol in V.retrieve_solutions():
         for sol in V.compute_solutions(engine='magma'):
+            if sol.dimension > 0:
+                print("Positive dimensional component!")
+                continue
             prec = snappy.pari.set_real_precision(pari_prec)
             is_geometric = sol.is_geometric()
             snappy.pari.set_real_precision(prec)
@@ -589,3 +592,13 @@ if __name__ == '__main__':
     #             markeredgecolor='black')
     #
     #     F.save_tikz(row['name'] + '.pdf')
+
+    all_examples = (examples + messy_examples + new_examples
+                    + mult_examples + list(l_is_torsion.index))
+
+    #import nreginatools
+    #for name in all_examples:
+    #    M = snappy.Manifold(name)
+    #    print M, nreginatools.is_small(M)
+                    
+    
