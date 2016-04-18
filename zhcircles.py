@@ -116,6 +116,37 @@ v0220 - basic example with interleaving
 t11462 - parabolic to parabolic only 
 o9_34801 - don't get half + epsilon of everything. 
 o9_04139 - everything
+
+
+Jake's request: Other knots in S^3 with lens space fillings:
+
+m071
+m082
+m103
+m118
+m144
+
+
+sage: df.ix['t10930']
+name                                                                  t10930
+volume                                                               6.99719
+tets                                                                       8
+inS3                                                                       1
+alex                                                           a^6 - a^3 + 1
+alex_deg                                                                   6
+alex_monic                                                                 1
+num_uniroots                                                               6
+num_mult_uniroots                                                          0
+num_psl2R_arcs                                                            11
+real_places                                                                1
+parabolic_PSL2R                                                            5
+base_index                                                               123
+radius                                                                  1.02
+trans_arcs                                                            <blob>
+trans_arcs_highres                                                      None
+parabolic_PSL2R_details    [(0, False), (1, False), (1, False), (2, False...
+signature                                                                  2
+
 """
 
 import snappy
@@ -481,9 +512,23 @@ def reallynonZHC():
         if gcd(m, l) != 1:
             print M.name(), m, l
     
-    
+def orientation_pres_isometric(M, N):
+    for iso in M.is_isometric_to(N, True):
+        if iso.cusp_maps()[0].det() == 1:
+            return True
+    return False
 
-    
+def signature(name):
+    M = snappy.Manifold(name)
+    N = snappy.HTLinkExteriors.identify(M)
+    if N:
+        K = N.link()
+        E = K.exterior()
+        sign = 1 if orientation_pres_isometric(M, E) else -1
+        return sign * K.signature()
+
+
+            
 if __name__ == '__main__':
     #initial_database()
     #db = ZHCircles()
