@@ -1,3 +1,8 @@
+build
+dist
+pe.egg-info/
+.DS_Store
+
 syntax: glob
 *.pyc
 PE_base_fibers/*
