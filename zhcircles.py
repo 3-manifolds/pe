@@ -154,7 +154,8 @@ import taskdb2
 import pe
 import cPickle as pickle
 import bz2
-import md5
+import json
+import random
 from sage.all import ComplexField, RealField, PolynomialRing, QQ, RR, floor, prod, gcd
 from pe.plot import MatplotPlot as Plot
 import nplot
@@ -527,7 +528,10 @@ def signature(name):
         sign = 1 if orientation_pres_isometric(M, E) else -1
         return sign * K.signature()
 
-
+def quick_plot(row):
+    with plt.style.context((style_sheet)):
+        F = make_plot(row, plot_paper)
+    return F
             
 if __name__ == '__main__':
     #initial_database()
@@ -546,7 +550,9 @@ if __name__ == '__main__':
     add_tillmann_point('t11462', [(2, False)])
     add_tillmann_point('t03632', [(4, False)])
     add_tillmann_point('v1971', [(2, False)])
-        
+
+    dg = df[df.signature_fn.notnull()&df.trans_arcs.notnull()]
+    
     # All of these are complements of knots in S^3 and are fibered.
     # (for the latter, hard cases checked against data of Bell-Dunfield).
     examples = ['m016', 'm389', 'm201', 'm222', 's841',
