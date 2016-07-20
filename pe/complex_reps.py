@@ -74,7 +74,7 @@ def polished_group(M, shapes, precision=100,
     #init_tet_vertices = initial_tet_ideal_vertices(N)
     generators.visit_tetrahedra(N, init_tet_vertices)
     mats = generators.compute_matrices(N)
-    gen_mats = [clean_matrix(A, error=error)
+    gen_mats = [clean_matrix(A, error=error, prec=precision)
                 for A in reconstruct_representation(G, mats)]
     PG = ManifoldGroup(
         G.generators(), G.relators(), G.peripheral_curves(), gen_mats)
@@ -201,6 +201,19 @@ class PSL2CRepOf3ManifoldGroup(object):
                 return False
         return True
 
+    def is_reducible(self, precision=None):
+        G = self.polished_holonomy()
+        gens = G.generators()
+        real_precision = self.precision if self.precision else 15
+        epsilon = RR(2.0)**(-0.9*real_precision)
+        for i, g in enumerate(gens):
+            a, A = G.SL2C(g), G.SL2C(g.upper())
+            for h in gens[i+1:]:
+                b, B = G.SL2C(h), G.SL2C(h.upper())
+                if abs((a*b*A*B).trace() - 2) > epsilon:
+                    return False
+        return True
+                
     def is_PSL2R_rep(self):
         rt = self.has_real_traces()
         not_su2 = not self.appears_to_be_SU2_rep()
@@ -213,10 +226,12 @@ class PSL2CRepOf3ManifoldGroup(object):
 
     def peripheral_curves(self):
         M = self.manifold
-        #   Warning: Changing the fundamental group args from the default (True,False,True)
-        #   can lead to cases where the saved meridian word is expressed in terms of
-        #   different generators than are actually being used.  Something like this code
-        #   might be necessary ...
+        #   Warning: Changing the fundamental group args from the
+        #   default (False, False, False) can lead to cases where the
+        #   saved meridian word is expressed in terms of different
+        #   generators than are actually being used.  Something like
+        #   this code might be necessary ...
+        #
         #        if False in M.cusp_info('is_complete'):
         #            M = M.copy()
         #            M.dehn_fill([(0,0) for n in range(M.num_cusps())])
