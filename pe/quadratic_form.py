@@ -1,7 +1,8 @@
 from mpmath import mp
 from sage.all import ZZ, RealField, ComplexField, block_matrix, matrix, vector
 
-from .matrix_helper import SL2C_inverse
+def SL2C_inverse(A):
+    return A.adjoint()
 
 def sage_matrix_to_mpmath(A):
     return mp.matrix([list(row) for row in A])
@@ -115,6 +116,30 @@ def preserves_hermitian_form(SL2C_matrices):
                               for A in SL2C_matrices)
         sig = 'definite' if J.det() > 0 else 'indefinite'
         return True, sig, J
+
+
+def conjugator_into_SL2R(SL2C_matrices):
+    """
+    Returns a matrix C in SL(2, C) so that C^-1 * M * C is
+    (essentially) in SL(2, R) for all the input matrices M.
+    """
+    ans, sig, form = preserves_hermitian_form(SL2C_matrices)
+    if ans is None:
+        raise ValueError('No invariant hermitian form found')
+    if sig == 'definite':
+        raise ValueError('Conjugate into SU(2), not SL(2, R)')
+    if sig == 'both':
+        raise ValueError('This degnerate case not implemented')
+    assert sig == 'indefinite'
+    J = sage_matrix_to_mpmath(form)
+    eigs, U = mp.eighe(J)
+    C = U * mp.diag([1/mp.sqrt(abs(e)) for e in eigs])
+    sq_two = mp.sqrt(2)
+    sq_two_i = mp.mpc(imag=sq_two)
+    S = mp.matrix([[1/sq_two_i, 1/sq_two_i], [-1/sq_two, 1/sq_two]])
+    C = C * S.H
+    C = (1/mp.sqrt(mp.det(C)))*C
+    return mpmath_matrix_to_sage(C)
 
 if __name__ == '__main__':
     import doctest

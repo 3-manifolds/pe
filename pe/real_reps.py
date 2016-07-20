@@ -13,6 +13,7 @@ from .complex_reps import (PSL2CRepOf3ManifoldGroup, polished_group,
 from .euler import orientation, PSL2RtildeElement, LiftedFreeGroupRep
 from .matrix_helper import (eigenvectors, apply_matrix, vector_dist,
                             normalize_vector, fixed_point)
+from . import quadratic_form
 
 
 class CouldNotConjugateIntoPSL2R(Exception):
@@ -62,10 +63,18 @@ def conjugate_into_PSL2R(rho, max_error, (m_inf, m_0)):
     assert abs(A[1, 0]) < max_error and abs(abs(A[0, 0]) - 1) < max_error
     assert abs(B[0, 1]) < max_error and abs(abs(B[0, 0]) - 1) < max_error
 
-    # If A and B commute the we're in a degenerate situation and bail
+    # If A and B commute the we're in a degenerate situation and so use
+    # a generic algorithm.
+    
     if abs((A*B*SL2C_inverse(A)*SL2C_inverse(B)).trace() - 2) < max_error:
-        raise CouldNotConjugateIntoPSL2R
-
+        C = quadratic_form.conjugator_into_SL2R(gen_mats)
+        Cinv = SL2C_inverse(C)
+        curr_mats = [Cinv*M*C for M in gen_mats]
+        curr_mats, error = real_part_of_matrices_with_error(curr_mats)
+        if error > max_error:
+            raise CouldNotConjugateIntoPSL2R
+        return curr_mats
+    
     # First conjugate so that A is diagonal.
     CC = A.base_ring()
     a0, a1 = A[0]
