@@ -1,8 +1,8 @@
 import getopt, sys
 from . import sage_helper
-from . import complex_reps, real_reps, shape
+from . import complex_reps, real_reps, shape, quadratic_form
 
-modules = [complex_reps, real_reps, shape]
+modules = [complex_reps, real_reps, shape, quadratic_form]
 
 
 if __name__ == '__main__':
