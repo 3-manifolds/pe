@@ -4,7 +4,8 @@ from .shape import ShapeSet, PolishedShapeSet
 from .sage_helper import (_within_sage, cached_function, RR, CC, Id2,
                           elementary_divisors, smith_normal_form, pari,
                           matrix, vector)
-from .matrix_helper import  SL2C_inverse, GL2C_inverse
+from .matrix_helper import SL2C_inverse, GL2C_inverse
+from .quadratic_form import preserves_hermitian_form
 from snappy.snap import generators
 from snappy.snap.t3mlite.simplex import V0, V1, V2, V3, E01
 from snappy.snap.polished_reps import (initial_tet_ideal_vertices,
@@ -190,19 +191,26 @@ class PSL2CRepOf3ManifoldGroup(object):
         max_imaginary_part = max([abs(tr.imag()) for tr in self.trace_field_generators()])
         return  max_imaginary_part < RR(2.0)**(-0.5*real_precision)
 
-    def appears_to_be_SU2_rep(self, depth=5, trys=50, rand_length=20):
+    def is_PSU2_rep(self, precision=None):
+        if not self.has_real_traces(precision):
+            return False
         G = self.polished_holonomy()
-        gens = G.generators()
-        words = conjugacy_classes_in_Fn(tuple(gens), depth)
-        words += [random_word(gens, rand_length) for _ in range(trys)]
-        for w in words:
-            d = abs(self(w).trace())
-            if d > 2.1:
-                return False
-        return True
+        ans, sig, form = preserves_hermitian_form(G._matrices)
+        if ans == False:
+            raise ValueError('Rep with real traces does not preserve quad form')
+        return sig != 'indefinite'
+
+    def is_PSL2R_rep(self, precision=None):
+        if not self.has_real_traces(precision):
+            return False
+        G = self.polished_holonomy()
+        ans, sig, form = preserves_hermitian_form(G._matrices)
+        if ans == False:
+            raise ValueError('Rep with real traces does not preserve quad form')
+        return sig != 'definite'
 
     def is_reducible(self, precision=None):
-        G = self.polished_holonomy()
+        G = self.polished_holonomy(precision)
         gens = G.generators()
         real_precision = self.precision if self.precision else 15
         epsilon = RR(2.0)**(-0.9*real_precision)
@@ -214,14 +222,8 @@ class PSL2CRepOf3ManifoldGroup(object):
                     return False
         return True
                 
-    def is_PSL2R_rep(self):
-        rt = self.has_real_traces()
-        not_su2 = not self.appears_to_be_SU2_rep()
-        from_filling = self.really_comes_from_filling()
-        return rt and not_su2 and from_filling
-
-    def really_comes_from_filling(self):
-        G = self.polished_holonomy()
+    def really_comes_from_filling(self, precision=None):
+        G = self.polished_holonomy(precision)
         return G.check_representation() < RR(2.0)**(-0.8*self.precision)
 
     def peripheral_curves(self):
