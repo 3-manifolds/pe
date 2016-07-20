@@ -288,7 +288,7 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
         ans = [self.thurston_class_of_relation(R, init_pt) for R in self.relators()]
         thurston, error = [x[0] for x in ans], min([x[1] for x in ans])
         return self.class_in_H2(thurston), error
-
+        
     def euler_cocycle_on_relations(self):
         """
         Evaluate the euler cocycle on each relation and return the list of values.
@@ -313,13 +313,13 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
         """Does this rep lift to ~PSL(2,R)?"""
         self._update_precision(precision)
         thurston, _ = self.thurston_class()
-        if False in [x == 0 for x in thurston]:
+        if any(x != 0 for x in thurston):
             return False
         else:
             if not self.has_2_torsion_in_H2():
                 return True
             else:
-                return False in [x == 0 for x in self.euler_class()]
+                return all(x == 0 for x in self.euler_class())
 
     def lift_on_cusped_manifold(self):
         rel_cutoff = len(self.generators()) - 1
