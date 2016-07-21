@@ -65,7 +65,7 @@ def apply_representation(word, gen_images):
 
 def polished_group(M, shapes, precision=100,
                    fundamental_group_args=(False, False, False),
-                   lift_to_SL2=True):
+                   lift_to_SL2=True, check=True):
     error = pari(2.0)**(-precision*0.8)
     G = M.fundamental_group(*fundamental_group_args)
     N = generators.SnapPy_to_Mcomplex(M, shapes)
@@ -82,7 +82,7 @@ def polished_group(M, shapes, precision=100,
     if lift_to_SL2:
         PG.lift_to_SL2C()
     else:
-        if not PG.is_projective_representation():
+        if check and not PG.is_projective_representation():
             raise CheckRepresentationFailed
     return PG
 
@@ -159,7 +159,7 @@ class PSL2CRepOf3ManifoldGroup(object):
 
         return self._cache[mangled]
 
-    def polished_holonomy(self, precision=None):
+    def polished_holonomy(self, precision=None, check=True):
         self._update_precision(precision)
         precision = self.precision
         mangled = "polished_holonomy_%s" % precision
@@ -168,9 +168,10 @@ class PSL2CRepOf3ManifoldGroup(object):
                                self.polished_shapes().shapelist,
                                precision=precision,
                                fundamental_group_args=self.fundamental_group_args,
-                               lift_to_SL2=False)
-            if not G.check_representation() < RR(2.0)**(-0.8*precision):
-                raise CheckRepresentationFailed
+                               lift_to_SL2=False, check=check)
+            if check:
+                if not G.check_representation() < RR(2.0)**(-0.8*precision):
+                    raise CheckRepresentationFailed
             self._cache[mangled] = G
 
         return self._cache[mangled]
