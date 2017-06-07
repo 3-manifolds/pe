@@ -125,7 +125,7 @@ if _within_sage:
     elementary_divisors = lambda M: M.elementary_divisors()
     smith_normal_form = lambda M: M.smith_form()
 else:
-    from cypari.gen import pari
+    from cypari import pari
     from snappy.number import Number, SnapPyNumbers
     from snappy.snap.utilities import Vector2 as vector, Matrix2x2 as matrix
     eigenvalues = lambda A: A.eigenvalues()

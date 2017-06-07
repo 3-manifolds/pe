@@ -16,28 +16,23 @@ class Fibrator(object):
     A factory for Fibers, used to construct an initial Fiber.  Either loads
     a pre-computed Fiber from a file, or uses PHC to construct one.
     """
-    def __init__(self, manifold, target=None, fiber_file=None, tolerance=1.0E-5):
+    def __init__(self, manifold, target=None, shapes=None, tolerance=1.0E-5, base_dir=None):
         # The tolerance is used to decode when PHC solutions are regarded
         # as being at infinity.
-        if target is None and fiber_file is None:
-            raise ValueError('Supply either a target or a saved base fiber.')
+        self.base_dir = base_dir
+        if target is None and shapes is None:
+            raise ValueError('Supply either a target or a list of shapes.')
         self.manifold = manifold
         self.manifold_name = manifold.name()
         self.target = target
-        self.fiber_file = fiber_file
+        self.shapes = shapes
         self.tolerance = tolerance
 
     def __call__(self):
-        """Construct a Fiber, or read in a precomputed Fiber, and return it."""
-        fiber_file = self.fiber_file
-        signature = self.manifold.isometry_signature()
-        if fiber_file and os.path.exists(fiber_file):
-            print 'Loading the starting fiber from %s'%fiber_file
-            with open(fiber_file) as datafile:
-                from snappy import Manifold, ManifoldHP
-                data = eval(datafile.read())
-            assert data['signature'] == signature, 'Triangulations do not match!'
-            return data['fiber']
+        """
+        Return a base Fiber constructed from scratch or from precomputed shapes."""
+        if self.shapes:
+            return Fiber(self.manifold, self.target, shapes=self.shapes) 
         else:
             print 'Computing the starting fiber ... ',
             begin = time.time()
@@ -51,11 +46,17 @@ class Fibrator(object):
             base_system = parametrized_system.start(self.target, self.tolerance)
             result = Fiber(self.manifold, self.target, PHCsystem=base_system)
             print 'done. (%.3f seconds)'%(time.time() - begin)
-            if fiber_file:
-                with open(fiber_file, 'w') as datafile:
-                    datafile.write("{\n'fiber': %s, \n'signature': '%s'\n}"%(
-                        result, signature))
-                print 'Saved base fiber as %s'%fiber_file
+            if self.base_dir:
+                base_fiber_file=os.path.join(self.base_dir, self.manifold.name()+'.base')
+                template="{{\n'manifold': '''{mfld}''',\n'H_meridian': {target},\n'shapes': {shapes}\n}}"
+                shape_repr = repr([list(s) for s in result.shapes])
+                shape_repr = shape_repr.replace(',', ',\n').replace('[[','[\n [')            
+                with open(base_fiber_file, 'w') as datafile:
+                    datafile.write(template.format(
+                        mfld=self.manifold._to_string(),
+                        target=self.target,
+                        shapes=shape_repr))
+                print 'Saved base fiber as %s'%base_fiber_file
             return result
 
     @staticmethod

@@ -21,6 +21,9 @@ from .shape import PolishedShapeSet, U1Q
 from .plot import MatplotPlot as Plot
 from .complex_reps import PSL2CRepOf3ManifoldGroup
 from .real_reps import PSL2RRepOf3ManifoldGroup
+from IPython import get_ipython
+
+get_ipython().magic("%gui tk")
 
 class CircleElevation(object):
     """
@@ -45,7 +48,8 @@ class CircleElevation(object):
     reported on the console and then ignored.
     """
     def __init__(self, manifold, order=128, radius=1.02, target_arg=None,
-                 base_fiber_file=None):
+                 shapes=None, base_dir=None):
+        self.base_dir = base_dir
         self.order = order
         self.radius = radius
         self.manifold = manifold
@@ -55,17 +59,13 @@ class CircleElevation(object):
         # The minus sign is for consistency with the sign convention
         # used by numpy.fft
         self.R_circle = [radius*exp(-n*Darg*1j) for n in range(self.order)]
-        if base_fiber_file and os.path.exists(base_fiber_file):
-            target = None
+        if target_arg:
+            target = radius*exp(target_arg)
         else:
-            if target_arg:
-                target = radius*exp(target_arg)
-            else:
-                base_index = randint(0, order-1)
-                print 'Choosing random base index: %d'%base_index
-                target = radius*exp(-2*pi*1j*base_index/self.order)
-        self.fibrator = Fibrator(manifold, target=target,
-                                 fiber_file=base_fiber_file)
+            base_index = randint(0, order-1)
+            print 'Choosing random base index: %d'%base_index
+            target = radius*exp(-2*pi*1j*base_index/self.order)
+        self.fibrator = Fibrator(manifold, target=target, shapes=shapes, base_dir=base_dir)
         self.base_fiber = base_fiber = self.fibrator()
         arg = log(base_fiber.H_meridian).imag%(2*pi)
         self.base_index = (self.order - int(arg*self.order/(2*pi)))%self.order
@@ -317,26 +317,35 @@ class PEArc(list):
 class PECharVariety(object):
     """Representation of the PE Character Variety of a 3-manifold."""
     def __init__(self, manifold, order=128, radius=1.02,
-                 elevation=None, base_dir='PE_base_fibers', hint_dir='hints'):
+                 elevation=None, base_dir='PE_base_fibers', hint_dir='hints',
+                 ignore_saved=False):
+        self.base_dir = base_dir
         if isinstance(manifold, (Manifold, ManifoldHP)):
             self.manifold = manifold
+            saved_data = {}
+        elif not ignore_saved:
+            saved_data = self.get_saved_data(manifold)
+            self.manifold = Manifold(saved_data['manifold'])
         else:
             self.manifold = Manifold(manifold)
+            saved_data = {}
         self.radius = radius
         self.order = order
         self.hint_dir = hint_dir
         if elevation is None:
             self._check_dir(base_dir, 'I need a directory for storing base fibers.')
+            target = saved_data.get('H_meridian', None)
+            target_arg = log(target).imag if target else None
             self.elevation = CircleElevation(
                 self.manifold,
                 order=order,
                 radius=radius,
-                base_fiber_file=os.path.join(
-                    base_dir, self.manifold.name()+'.base')
-                )
-            self.elevation.tighten()
+                target_arg=target_arg,
+                shapes=saved_data.get('shapes', None),
+                base_dir=base_dir)
         else:
             self.elevation = elevation
+        self.elevation.tighten()
 
     def __getitem__(self, index):
         """
@@ -356,6 +365,16 @@ class PECharVariety(object):
             print
             os.mkdir(newdir)
 
+    def get_saved_data(self, manifold_name):
+        base_fiber_file=os.path.join(self.base_dir, manifold_name+'.base')
+        try:
+            with open(base_fiber_file) as datafile:
+                data = eval(datafile.read())
+            print 'Loaded the starting fiber from %s'%base_fiber_file
+        except IOError:
+            data = {'manifold': Manifold(manifold_name)}
+        return data
+        
     def save_hint(self, basename=None, directory=None):
         """Save the settings used to compute this variety."""
         if directory == None:
