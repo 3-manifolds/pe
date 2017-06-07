@@ -12,34 +12,37 @@ from .gluing import GluingSystem
 from .shape import ShapeSet, PolishedShapeSet, GoodShapesNotFound
 
 class Fiber(object):
-    """A fiber for the rational function [holonomy of the meridian]
+    """
+    A fiber for the rational function [holonomy of the meridian]
     restricted to the curve defined by the gluing system for a
     triangulated cusped manifold.  Can be initialized with a PHCSystem
-    and a list of PHCsolutions.
+    and a list of PHCsolutions, or with a list of shapes.
 
     """
     def __init__(self, manifold, H_meridian, gluing_system=None,
                  PHCsystem=None, shapes=None, tolerance=1.0E-05):
-        self.manifold = manifold
-        # Here the tolerance is used to determine which of the PHC solutions
+        # The tolerance is used to determine which of the PHC solutions
         # are at infinity.
+        self.manifold = manifold
         self.H_meridian = H_meridian
         self.tolerance = tolerance
-        if shapes:
-            self.shapes = [ShapeSet(self.manifold, S) for S in shapes]
         if gluing_system is None:
             self.gluing_system = GluingSystem(manifold)
         else:
             self.gluing_system = gluing_system
         self.system = PHCsystem
-        if self.system:
+        if shapes:
+            self.shapes = [ShapeSet(manifold, S) for S in shapes]
+        elif self.system:
             N = self.system.num_variables()/2
             self.solutions = self.system.solution_list(tolerance=self.tolerance)
             # We only keep the "X" variables.
             self.shapes = [ShapeSet(self.manifold, S.point[:N]) for S in self.solutions]
+        else:
+            raise ValueError('Fiber object requires a PHC system or a list of shapes.')
 
     def __str__(self):
-        return "Fiber(ManifoldHP('%s'),\n%s,\nshapes=%s\n)"%(
+        return "Fiber(Manifold('%s'),\n%s,\nshapes=%s\n)"%(
             repr(self.manifold),
             repr(self.H_meridian),
             repr([list(x) for x in self.shapes]).replace('],', '],\n')
