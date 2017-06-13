@@ -201,10 +201,8 @@ class GluingSystem(object):
         if debug:
             print 'Z = %s; condition=%s'%(Z, [self.condition(x) for x in Z])
         # First we try the cheap and easy method
-        while T < 1.0:
-            T = T+dT
-            target = M_start + T*delta
-            Zn, residual = self.newton1(Zn, target)
+        target = M_start + delta
+        Zn, residual = self.newton1(Zn, target)
         if residual < 1.0E-14: # What is a good threshold here?
             return Zn
         # If that fails, try taking baby steps.
@@ -220,6 +218,7 @@ class GluingSystem(object):
             baby_target = M_start + Tn*delta
             Zn, residual = self.newton2(prev_Z, baby_target, debug=debug)
             if residual < 1.0E-12:
+                # After 3 successful baby steps, double the step size.
                 prev_Z = Zn
                 if success > 3:
                     success = 0
@@ -230,6 +229,7 @@ class GluingSystem(object):
                     success += 1
                 T = Tn
             else:
+                # If we fail, halve the step size and try again.  Give up after 16 failures.
                 success = 0
                 dT /= 2
                 if debug:

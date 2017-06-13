@@ -71,7 +71,7 @@ class Fiber(object):
 
     def collision(self):
         """
-        Are two points in this fiber which are so close together as to
+        Are there two points in this fiber which are so close together as to
         suggest that the fiber is very close to a singuarity?
         """
         for n, p in enumerate(self.shapes):
@@ -141,7 +141,7 @@ class Fiber(object):
             remaining.remove(n)
         return result
 
-    def transport(self, target_holonomy, debug=False):
+    def transport(self, target_holonomy, allow_collision=False, debug=False):
         """
         Transport this fiber to a different target holonomy.
         """
@@ -159,7 +159,7 @@ class Fiber(object):
             result = Fiber(self.manifold, target_holonomy,
                            gluing_system=self.gluing_system,
                            shapes=shapes)
-            if result.collision():
+            if not allow_collision and result.collision():
                 dT *= 0.5
             else:
                 break
