@@ -60,7 +60,7 @@ class CircleElevation(object):
         # used by numpy.fft
         self.R_circle = [radius*exp(-n*Darg*1j) for n in range(self.order)]
         if target_arg:
-            target = radius*exp(target_arg)
+            target = radius*exp(target_arg*1j)
         else:
             base_index = randint(0, order-1)
             print 'Choosing random base index: %d'%base_index
