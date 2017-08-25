@@ -7,6 +7,7 @@ Variety.  Each PECHarVariety oject manages two CircleElevation
 objects, which represent a family of fibers for the meridian holonomy
 map lying above a circle in the compex plane.
 """
+from __future__ import print_function
 import time, sys, os
 from random import randint
 from numpy import arange, array, dot, float64, matrix, log, exp, pi, sqrt, zeros
@@ -24,6 +25,11 @@ from .real_reps import PSL2RRepOf3ManifoldGroup
 from IPython import get_ipython
 
 get_ipython().magic("%gui tk")
+
+if sys.version_info.major == 2:
+    user_input = raw_input
+else:
+    user_input = input
 
 class CircleElevation(object):
     """
@@ -63,7 +69,7 @@ class CircleElevation(object):
             target = radius*exp(target_arg*1j)
         else:
             base_index = randint(0, order-1)
-            print 'Choosing random base index: %d'%base_index
+            print('Choosing random base index: %d'%base_index)
             target = radius*exp(-2*pi*1j*base_index/self.order)
         self.fibrator = Fibrator(manifold, target=target, shapes=shapes, base_dir=base_dir)
         self.base_fiber = base_fiber = self.fibrator()
@@ -72,12 +78,12 @@ class CircleElevation(object):
         if not base_fiber.is_finite():
             raise RuntimeError('The starting fiber contains Tillmann points.')
         self.degree = len(base_fiber)
-        print 'Degree is %s.'%self.degree
+        print('Degree is %s.'%self.degree)
         # pre-initialize by just inserting an integer for each fiber
         # if the fiber construction fails, this can be detected by
         # isinstance(fiber, int)
-        self.R_fibers = range(order)
-        self.T_fibers = range(order)
+        self.R_fibers = list(range(order))
+        self.T_fibers = list(range(order))
         self.dim = manifold.num_tetrahedra()
         self.rhs = []
         eqns = manifold.gluing_equations('rect')
@@ -109,48 +115,48 @@ class CircleElevation(object):
         """
         Construct the fibers over the circle of radius R.
         """
-        print 'Tracking the satellite at radius %s ...'%self.radius
+        print('Tracking the satellite at radius %s ...'%self.radius)
         start = time.time()
         circle = self.R_circle
         base = self.base_index
-        print 'Base index is %s'%base
-        print ' %-5s\r'%base,
+        print('Base index is %s'%base)
+        print(' %-5s\r'%base, end=' ')
         # Move to the R-circle, if necessary.
         self.R_fibers[base] = self.base_fiber.transport(circle[base])
-        for n in xrange(base+1, self.order):
-            print ' %-5s\r'%n,
+        for n in range(base+1, self.order):
+            print(' %-5s\r'%n, end=' ')
             sys.stdout.flush()
             try:
                 self.R_fibers[n] = F = self.R_fibers[n-1].transport(circle[n])
             except Exception as e:
-                print '\nfailure at index %d'%n
+                print('\nfailure at index %d'%n)
                 raise e
             # self.R_fibers[n].polish()
             if not F.is_finite():
-                print '**',
-        for n in xrange(base-1, -1, -1):
-            print ' %-5s\r'%n,
+                print('**', end=' ')
+        for n in range(base-1, -1, -1):
+            print(' %-5s\r'%n, end=' ')
             sys.stdout.flush()
             try:
                 self.R_fibers[n] = F = self.R_fibers[n+1].transport(circle[n])
             except Exception as e:
-                print '\nfailure at index %d'%n
+                print('\nfailure at index %d'%n)
                 raise e
             if not F.is_finite():
-                print '**',
-        print
+                print('**', end=' ')
+        print()
         self.last_R_fiber = self.R_fibers[-1].transport(circle[0])
-        print 'Polishing the end fibers ...'
+        print('Polishing the end fibers ...')
         self.R_fibers[0].polish()
         self.last_R_fiber.polish()
-        print 'Checking for completeness ... ',
+        print('Checking for completeness ... ', end=' ')
         if not self.last_R_fiber == self.R_fibers[0]:
-            print 'The end fibers did not agree!'
-            print 'It might help to use a larger radius, or you might'
-            print 'have been unlucky in your choice of base fiber.'
+            print('The end fibers did not agree!')
+            print('It might help to use a larger radius, or you might')
+            print('have been unlucky in your choice of base fiber.')
         else:
-            print 'OK'
-        print 'Tracked in %s seconds.'%(time.time() - start)
+            print('OK')
+        print('Tracked in %s seconds.'%(time.time() - start))
 
     def tighten(self):
         """
@@ -158,16 +164,16 @@ class CircleElevation(object):
         fiber over a point on the T-circle.
         """
         T = 1.0
-        print 'Tightening the circle to radius %s ...'%T
+        print('Tightening the circle to radius %s ...'%T)
         Darg = 2*pi/self.order
         self.T_circle = circle = [T*exp(-n*Darg*1j) for n in range(self.order)]
-        for n in xrange(self.order):
-            print ' %-5s\r'%n,
+        for n in range(self.order):
+            print(' %-5s\r'%n, end=' ')
             sys.stdout.flush()
             try:
                 self.T_fibers[n] = self.R_fibers[n].transport(circle[n])
             except ValueError:
-                print 'Tighten failed at %s'%n
+                print('Tighten failed at %s'%n)
         self.T_longitude_holos, self.T_longitude_evs = self.longidata(
             self.T_fibers)
 
@@ -188,18 +194,18 @@ class CircleElevation(object):
         sampled circle.
 
         """
-        print 'Computing longitude holonomies and eigenvalues.'
+        print('Computing longitude holonomies and eigenvalues.')
         # This crashes if there are bad fibers.
         longitude_holonomies = [
             [(n, self.L_holo(f.shapes[m].array))
              for n, f in enumerate(fiber_list)
              if isinstance(f, Fiber)]
-            for m in xrange(self.degree)]
+            for m in range(self.degree)]
         if isinstance(fiber_list[0], Fiber):
             index = 0
         else:
             index = randint(0, self.order - 1)
-            print 'Using %d as the starting index.'%index
+            print('Using %d as the starting index.'%index)
         longitude_traces = self.find_longitude_traces(fiber_list[index])
         longitude_eigenvalues = []
         for m, L in enumerate(longitude_holonomies):
@@ -284,7 +290,7 @@ def solve_mod2_system(the_matrix, rhs):
     A[:, -1] = rhs
     S = zeros(N, 'i')
     P = []
-    R = range(M)
+    R = list(range(M))
     r = 0
     for j in range(N):
         i = r
@@ -358,11 +364,11 @@ class PECharVariety(object):
         if not os.path.exists(directory):
             cwd = os.path.abspath(os.path.curdir)
             newdir = os.path.join(cwd, directory)
-            print '\n'+ message
-            response = raw_input("May I create a directory %s?(Y/n)"%newdir)
+            print('\n'+ message)
+            response = user_input("May I create a directory %s?(Y/n)"%newdir)
             if response and response.lower()[0] != 'y':
                 sys.exit(0)
-            print
+            print()
             os.mkdir(newdir)
 
     def get_saved_data(self, manifold_name):
@@ -370,7 +376,7 @@ class PECharVariety(object):
         try:
             with open(base_fiber_file) as datafile:
                 data = eval(datafile.read())
-            print 'Loaded the starting fiber from %s'%base_fiber_file
+            print('Loaded the starting fiber from %s'%base_fiber_file)
         except IOError:
             data = {'manifold': Manifold(manifold_name)}
         return data
@@ -445,7 +451,7 @@ class PECharVariety(object):
                 arc.last_shape = self.elevation.T_fibers[n].shapes[m]
                 self.arcs.append(arc)
                 self.arc_info.append(info)
-        self.curve_graph = curve_graph = Graph([], range(len(self.arcs)))
+        self.curve_graph = curve_graph = Graph([], list(range(len(self.arcs))))
         self.add_extrema()
         # build the color dict
         self.colors = {}

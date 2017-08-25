@@ -1,3 +1,4 @@
+from __future__ import print_function
 from .plot import MatplotPlot as Plot
 from .real_reps import (PSL2RRepOf3ManifoldGroup,
                         CouldNotConjugateIntoPSL2R,
@@ -36,21 +37,21 @@ class SL2RLifter(object):
         self.manifold = V.manifold
         self.set_peripheral_info()
         if not silent:
-            print 'polishing shapes ... ',
+            print('polishing shapes ... ', end=' ')
         self.find_shapes()
         if not silent:
             now = time()
-            print '(%.2f secs)\n'%(now - start), 'lifting reps ... ',
+            print('(%.2f secs)\n'%(now - start), 'lifting reps ... ', end=' ')
             start = now
         self.find_reps()
         if not silent:
             now = time()
-            print '(%.2f secs)\n'%(now - start), 'computing translations ... ',
+            print('(%.2f secs)\n'%(now - start), 'computing translations ... ', end=' ')
             start = now
         self.find_translation_arcs()
         if not silent:
             now = time()
-            print '(%.2f secs)\n'%(now - start),
+            print('(%.2f secs)\n'%(now - start), end=' ')
 
     def set_peripheral_info(self):
         G = self.manifold.fundamental_group()
@@ -128,7 +129,7 @@ class SL2RLifter(object):
                         reps.append((sn, rho))
                         self.rep_dict[sn] = rho
                 except CouldNotConjugateIntoPSL2R:
-                    print "Skipping rep probably misclassified as PSL(2,R)"
+                    print("Skipping rep probably misclassified as PSL(2,R)")
             if len(reps) > 1:
                 self.SL2R_rep_arcs.append(reps)
 
@@ -160,7 +161,7 @@ class SL2RLifter(object):
                 rho.translations = None
                 rho_til = rho.lift_on_cusped_manifold()
                 if rho_til is None:
-                    print 'No lift!'
+                    print('No lift!')
                     continue
                 try:
                     m, l = rho_til.peripheral_translations()
@@ -170,7 +171,7 @@ class SL2RLifter(object):
                     while P[0] >= self.m_abelian:
                         P = (P[0] - self.m_abelian, P[1] - self.l_abelian)
                 except AssertionError:
-                    print "Warning: an assertion failed somewhere"
+                    print("Warning: an assertion failed somewhere")
                 translations.append(self._saved_point(P, sn, rho))
             #self._fix_translations(translations)
             self.translation_arcs.append(translations)
@@ -330,7 +331,7 @@ def bisection(H, low, high, s, target_slope, epsilon=1.0e-8):
     M = H.manifold
     F = H.fibrator
     assert check_slope(H, low, s) < target_slope < check_slope(H, high, s)
-    print 'finding:', target_slope
+    print('finding:', target_slope)
     count = 0
     while count < 100:
         z = (low_fiber.H_meridian + high_fiber.H_meridian)/2
@@ -343,11 +344,11 @@ def bisection(H, low, high, s, target_slope, epsilon=1.0e-8):
             return new_fiber.shapes[s]
         if new_slope < target_slope:
             low_fiber = new_fiber
-            print new_slope, 'too low'
+            print(new_slope, 'too low')
         else:
             high_fiber = new_fiber
-            print new_slope, 'too high'
+            print(new_slope, 'too high')
         count += 1
-        print count
-    print 'limit exceeded'
+        print(count)
+    print('limit exceeded')
     return new_fiber.shapes[s]

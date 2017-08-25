@@ -49,9 +49,10 @@ def real_part_of_matrices_with_error(matrices):
     return [r for r, _ in real_with_errors], max(e for r, e in real_with_errors)
 
 
-def conjugate_into_PSL2R(rho, max_error, (m_inf, m_0)):
+def conjugate_into_PSL2R(rho, max_error, xxx_todo_changeme):
     # If all shapes are flat, or equivalently if the peripheral holonomy is
     # hyperbolic or parabolic, then there's nothing to do:
+    (m_inf, m_0) = xxx_todo_changeme
     gens = tuple(rho.generators())
     gen_mats = [rho(g) for g in gens]
     new_mats, error = real_part_of_matrices_with_error(gen_mats)
@@ -241,7 +242,7 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
         if precision == None:
             raise ValueError("Need to have a nontrivial precision set")
         mangled = "polished_holonomy_%s" % precision
-        if not self._cache.has_key(mangled):
+        if mangled not in self._cache:
             epsilon = 2.0**(-0.8*precision)
             G = polished_group(self.manifold,
                                self.polished_shapes().shapelist,

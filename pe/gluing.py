@@ -4,6 +4,7 @@ Define the GluingSystem and Glunomial classes.
 A GluingSystem object represents a system of gluing equations.  The
 monomials in the equations are represented by Glunomial objects.
 """
+from __future__ import print_function
 from numpy import dtype, array, matrix, prod, ones
 from numpy.linalg import svd, norm, solve, lstsq
 # The numpy type for our complex arrays
@@ -35,11 +36,11 @@ class Glunomial(object):
         try:
             return self.sign*prod(Z**self.A)*prod(W**self.B)
         except ValueError:
-            print 'Glunomial evaluation crashed on %s'%self
-            print 'A =', self.A
-            print 'B =', self.B
-            print 'c =', self.sign
-            print 'Z =', Z
+            print('Glunomial evaluation crashed on %s'%self)
+            print('A =', self.A)
+            print('B =', self.B)
+            print('c =', self.sign)
+            print('Z =', Z)
             raise ValueError
 
     def gradient(self, Z):
@@ -143,7 +144,7 @@ class GluingSystem(object):
         while True:
             Zn, step_size, residual = self.newton_step(prev_Z, M_target)
             if debug:
-                print count, residual, step_size
+                print(count, residual, step_size)
             if residual > prev_residual:
                 return prev_Z, prev_residual
             if step_size < STEPSIZE_BOUND or residual < RESIDUAL_BOUND or count > 10:
@@ -175,10 +176,10 @@ class GluingSystem(object):
                 else:
                     t *= 0.5
             if debug:
-                print 'scaled dZ by %s; residual: %s'%(t, residual)
+                print('scaled dZ by %s; residual: %s'%(t, residual))
             if residual > prev_residual:
                 if debug:
-                    print 'Armijo failed with t=%s'%t
+                    print('Armijo failed with t=%s'%t)
                 return prev_Z, prev_residual
             step_size = norm(t*dZ)
             if step_size < STEPSIZE_BOUND or residual < RESIDUAL_BOUND or count > 10:
@@ -199,7 +200,7 @@ class GluingSystem(object):
         T = 0.0
         Zn = Z
         if debug:
-            print 'Z = %s; condition=%s'%(Z, [self.condition(x) for x in Z])
+            print('Z = %s; condition=%s'%(Z, [self.condition(x) for x in Z]))
         # First we try the cheap and easy method
         target = M_start + delta
         Zn, residual = self.newton1(Zn, target)
@@ -207,14 +208,14 @@ class GluingSystem(object):
             return Zn
         # If that fails, try taking baby steps.
         if debug:
-            print 'Taking baby steps ...'
+            print('Taking baby steps ...')
         success = 0
         T, dT = 0.0, 0.5*dT
         prev_Z = Z
         while T < 1.0:
             Tn = min(T+dT, 1.0)
             if debug:
-                print 'trying T = %.17f'%Tn
+                print('trying T = %.17f'%Tn)
             baby_target = M_start + Tn*delta
             Zn, residual = self.newton2(prev_Z, baby_target, debug=debug)
             if residual < 1.0E-12:
@@ -224,7 +225,7 @@ class GluingSystem(object):
                     success = 0
                     dT *= 2
                     if debug:
-                        print 'Track step increased to %.17f'%dT
+                        print('Track step increased to %.17f'%dT)
                 else:
                     success += 1
                 T = Tn
@@ -233,7 +234,7 @@ class GluingSystem(object):
                 success = 0
                 dT /= 2
                 if debug:
-                    print 'Track step reduced to %.17f; condition = %s'%(dT, self.condition(prev_Z))
+                    print('Track step reduced to %.17f; condition = %s'%(dT, self.condition(prev_Z)))
                 if dT < 2.0**(-16):
                     raise ValueError('Track failed: step size limit reached.')
         return Zn
