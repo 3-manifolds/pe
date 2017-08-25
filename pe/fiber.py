@@ -7,6 +7,7 @@ A Fiber object represents the pre-image of a point under the meridian
 holonomy map on the gluing variety.
 """
 
+from __future__ import print_function
 from numpy import complex128
 from .gluing import GluingSystem
 from .shape import ShapeSet, PolishedShapeSet, GoodShapesNotFound
@@ -92,19 +93,19 @@ class Fiber(object):
     def phc_details(self):
         """Print all shapes.  Only works for fibers constructed with PHC."""
         for n, s in enumerate(self.solutions):
-            print 'solution #%s:'%n
-            print s
+            print('solution #%s:'%n)
+            print(s)
 
     def phc_residuals(self):
         """Print the residuals for the PHC approximations."""
         for n, s in enumerate(self.solutions):
-            print n, s.res
+            print(n, s.res)
 
     def polish(self):
         """Ensure that the shapes are accurate to full double precision."""
         precision = 128
         polished = None
-        for _ in xrange(4):
+        for _ in range(4):
             try:
                 polished = self.polished_shapelist(precision=precision)
                 break

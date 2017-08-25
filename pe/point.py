@@ -10,10 +10,10 @@ class PEPoint(complex):
     """
     def __new__(cls, *args, **kwargs):
         attrs = dict()
-        for kw, default in keyword_defaults.items():
+        for kw, default in list(keyword_defaults.items()):
             attrs[kw] = kwargs.pop(kw, default)
         obj = complex.__new__(cls, *args, **kwargs)
-        for kw, val in attrs.items():
+        for kw, val in list(attrs.items()):
             setattr(obj, kw, val)
         return obj
 
@@ -36,7 +36,7 @@ class PEPoint(complex):
 
     def __str__(self):
         parts = [complex.__repr__(self)]
-        for kw, default in keyword_defaults.items():
+        for kw, default in list(keyword_defaults.items()):
             val = getattr(self, kw)
             if val != default:
                 parts.append(kw + '=' + repr(val))

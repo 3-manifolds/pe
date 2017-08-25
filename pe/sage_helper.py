@@ -7,6 +7,7 @@ Any method which works only in Sage should be decorated with
 be run only in Sage should be styled with input prompt "sage:" rather
 than the usual ">>>".
 """
+from __future__ import print_function
 try:
     import sage.all
     _within_sage = True
@@ -89,12 +90,12 @@ else:
     globs = dict()
 
 def print_results(module, results):
-    print  module.__name__ + ':'
-    print '   %s failures out of %s tests.' %  (results.failed, results.attempted)
+    print(module.__name__ + ':')
+    print('   %s failures out of %s tests.' %  (results.failed, results.attempted))
 
 def doctest_modules(modules, verbose=False, print_info=True, extraglobs=dict()):
     finder = doctest.DocTestFinder(parser=DocTestParser())
-    full_extraglobals = dict(globs.items() + extraglobs.items())
+    full_extraglobals = dict(list(globs.items()) + list(extraglobs.items()))
     failed, attempted = 0, 0
     for module in modules:
         if isinstance(module, types.ModuleType):
@@ -110,7 +111,7 @@ def doctest_modules(modules, verbose=False, print_info=True, extraglobs=dict()):
             print_results(module, result)
 
     if print_info:
-        print '\nAll doctests:\n   %s failures out of %s tests.' % (failed, attempted)
+        print('\nAll doctests:\n   %s failures out of %s tests.' % (failed, attempted))
     return doctest.TestResults(failed, attempted)
 
 

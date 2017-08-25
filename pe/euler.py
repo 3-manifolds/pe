@@ -18,6 +18,7 @@ be defined in terms of the bar notation as
 That is cbar([g1|g2]) = s(g1 g2)^-1 s(g1) s(g2) rather
 that the RHS being cbar(g1, g2)
 """
+from __future__ import print_function
 from .sage_helper import Id2, sqrt
 from .matrix_helper import elliptic_rotation_angle, eigenvectors
 
@@ -124,9 +125,9 @@ def univ_euler_cocycle(A, B, samples=3):
     # Uh-oh. Apparently we have run into some sort of numerical issue.
     # We'll try sampling our "constant" function at several random points.
     # And let's print something here to see if this ever happens:
-    print 'Trying random samples!'
+    print('Trying random samples!')
     data = set()
-    for _ in xrange(samples):
+    for _ in range(samples):
         x = R.random_element()
         ans, rounded = eval_cocycle(A, B, AB, x)
         if abs(ans - rounded) < epsilon:

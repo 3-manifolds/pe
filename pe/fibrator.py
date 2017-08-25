@@ -4,11 +4,12 @@ Define the Fibrator class.
 A Fibrator object uses PHC to construct an initial fiber, which can
 then be transported around a circle.
 """
+from __future__ import print_function
 import os, time
 try:
     from phc import PolyRing, PHCPoly, ParametrizedSystem
 except ImportError:
-    print 'No phc module, so will only work with precomputed fibers'
+    print('No phc module, so will only work with precomputed fibers')
 from .fiber import Fiber
 
 class Fibrator(object):
@@ -34,7 +35,7 @@ class Fibrator(object):
         if self.shapes:
             return Fiber(self.manifold, self.target, shapes=self.shapes) 
         else:
-            print 'Computing the starting fiber ... ',
+            print('Computing the starting fiber ... ', end=' ')
             begin = time.time()
             N = self.manifold.num_tetrahedra()
             variables = (['X%s'%n for n in range(N)] + ['Y%s'%n for n in range(N)])
@@ -45,7 +46,7 @@ class Fibrator(object):
                                                      [PHCPoly(ring, e) for e in equations])
             base_system = parametrized_system.start(self.target, self.tolerance)
             result = Fiber(self.manifold, self.target, PHCsystem=base_system)
-            print 'done. (%.3f seconds)'%(time.time() - begin)
+            print('done. (%.3f seconds)'%(time.time() - begin))
             if self.base_dir:
                 base_fiber_file=os.path.join(self.base_dir, self.manifold.name()+'.base')
                 template="{{\n'manifold': '''{mfld}''',\n'H_meridian': {target},\n'shapes': {shapes}\n}}"
@@ -56,7 +57,7 @@ class Fibrator(object):
                         mfld=self.manifold._to_string(),
                         target=self.target,
                         shapes=shape_repr))
-                print 'Saved base fiber as %s'%base_fiber_file
+                print('Saved base fiber as %s'%base_fiber_file)
             return result
 
     @staticmethod

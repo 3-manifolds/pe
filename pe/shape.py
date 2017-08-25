@@ -5,13 +5,13 @@ solutions to a gluing system.  The shapes in a ShapeSet are double precision
 complex numbers, while those in a PolishedShapeSet have arbitrary precision.
 """
 
+from __future__ import print_function
 from snappy.snap.shapes import (pari, pari_column_vector, infinity_norm, pari_matrix,
                                 pari_vector_to_list, enough_gluing_equations,
                                 eval_gluing_equation, prec_bits_to_dec)
-import numpy
-from numpy import array, matrix, complex128, zeros, eye, transpose
+from numpy import array, matrix, complex128, zeros, eye, transpose, vectorize
 from numpy.linalg import svd, norm
-real_array = numpy.vectorize(float)
+real_array = vectorize(float)
 from .sage_helper import _within_sage
 
 if _within_sage:
@@ -117,7 +117,7 @@ class ShapeSet(object):
             if abs(tr.imag) > tolerance:
                 return False
         mats = gen_mats[:]
-        for _ in xrange(1, len(gens) + 1):
+        for _ in range(1, len(gens) + 1):
             new_mats = []
             for A in gen_mats:
                 for B in mats:
@@ -256,7 +256,7 @@ class PolishedShapeSet(object):
 
             det = derivative.matdet().abs()
             if min(det, 1/det) < det_epsilon:
-                break  # Pari might crash
+                raise GoodShapesNotFound('Gluing system is too singular (|det| = %s).'%det)
             gauss = derivative.matsolve(pari_column_vector(errors))
             shapes = shapes - gauss
 
@@ -278,7 +278,7 @@ class PolishedShapeSet(object):
         last = [eval_gluing_equation(eqns[-1], shapes) - RHS_of_last_eqn]
         return [eval_gluing_equation(eqn, shapes) - 1
                 for eqn in eqns[:-1]] + last
-
+        
     def _gluing_equation_error(self, eqns, shapes, RHS_of_last_eqn):
         return infinity_norm(self._gluing_equation_errors(
             eqns, shapes, RHS_of_last_eqn))

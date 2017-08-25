@@ -1,3 +1,4 @@
+from __future__ import print_function
 try:
     from .tkplot import MatplotFigure, Tk, ttk
 except ImportError:
@@ -58,23 +59,23 @@ class Plot(object):
 
     def show_plots(self):
         if not self.quiet:
-            print 'There are %d functions.'%len(self.data)
-            print 'Which ones do you want to see?'
+            print('There are %d functions.'%len(self.data))
+            print('Which ones do you want to see?')
         else:
-            self.create_plot(range(len(self.data)))
+            self.create_plot(list(range(len(self.data))))
         while 1:
             try:
-                stuff = raw_input('plot> ')
+                stuff = input('plot> ')
                 items = stuff.split()
                 if len(items) and items[0] == 'all':
-                    funcs = range(len(self.data))
+                    funcs = list(range(len(self.data)))
                 else:
                     funcs = [int(item)%len(self.data) for item in items]
                 if len(funcs) == 0:
                     break
             except ValueError:
                 break
-            print funcs
+            print(funcs)
             self.create_plot(funcs)
         return
 
@@ -155,9 +156,9 @@ class MatplotPlot(Plot):
 
     def on_pick(self, event):
         num_points = len(event.ind)
-        print num_points, 'points; choosing',
+        print(num_points, 'points; choosing', end=' ')
         median = event.ind[num_points // 2]
-        print self.scatter_point_to_raw_data[event.artist][median]
+        print(self.scatter_point_to_raw_data[event.artist][median])
 
     def on_hover(self, event):
         for verts in self.vertex_sets:
