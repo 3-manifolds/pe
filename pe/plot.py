@@ -5,6 +5,7 @@ except ImportError:
     pass
 
 from .point import PEPoint
+from .input import user_input
 import collections
 import numpy as np
 import time
@@ -65,7 +66,7 @@ class Plot(object):
             self.create_plot(list(range(len(self.data))))
         while 1:
             try:
-                stuff = input('plot> ')
+                stuff = user_input('plot> ')
                 items = stuff.split()
                 if len(items) and items[0] == 'all':
                     funcs = list(range(len(self.data)))
