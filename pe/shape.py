@@ -6,9 +6,10 @@ complex numbers, while those in a PolishedShapeSet have arbitrary precision.
 """
 
 from __future__ import print_function
-from snappy.snap.shapes import (pari, pari_column_vector, infinity_norm, pari_matrix,
-                                pari_vector_to_list, enough_gluing_equations,
-                                eval_gluing_equation, prec_bits_to_dec)
+from snappy.snap.shapes import (pari, pari_column_vector, infinity_norm,
+                                pari_matrix, pari_vector_to_list,
+                                enough_gluing_equations, eval_gluing_equation,
+                                prec_bits_to_dec)
 from numpy import array, matrix, complex128, zeros, eye, transpose, vectorize
 from numpy.linalg import svd, norm
 real_array = vectorize(float)
@@ -25,7 +26,8 @@ else:
 
 def U1Q(p, q, precision=212):
     """An arbitrarily precise value for exp(2πip/q)"""
-    result = (2*pari.pi(precision=precision)*p*pari('I')/q).exp(precision=precision)
+    result = (2*pari.pi(precision=precision)*p*pari('I')/q).exp(
+        precision=precision)
     return Number(result, precision=precision)
 
 def pari_set_precision(x, precision):

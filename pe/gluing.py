@@ -7,6 +7,7 @@ monomials in the equations are represented by Glunomial objects.
 from __future__ import print_function
 from numpy import dtype, array, matrix, prod, ones
 from numpy.linalg import svd, norm, solve, lstsq
+from snappy.snap.shapes import enough_gluing_equations
 # The numpy type for our complex arrays
 DTYPE = dtype('c16')
 # Constants for Newton's method
@@ -21,7 +22,8 @@ class Glunomial(object):
     returned by Manifold.gluing_equations('rect').
     """
     def __init__(self, A, B, c):
-        self.A, self.B, self.sign = array(A), array(B), float(c)
+        # Convert gens to integers if A and B are lists of gens.
+        self.A, self.B, self.sign = array(map(int, A)), array(map(int, B)), float(c)
 
     def __repr__(self):
         apower = lambda n, p: 'z%d^%s'%(n, p) if p != 1 else 'z%s'%n
@@ -61,11 +63,10 @@ class GluingSystem(object):
     def __init__(self, manifold):
         assert manifold.num_cusps() == 1, 'Manifold must be one-cusped.'
         self.manifold = manifold
-        eqns = manifold.gluing_equations('rect')
-        # drop the last edge equation
-        self.glunomials = [Glunomial(A, B, c) for A, B, c in eqns[:-3]]
-        self.M_nomial, self.L_nomial = [Glunomial(A, B, c) for A, B, c in eqns[-2:]]
-        self.glunomials.append(self.M_nomial)
+        eqns = enough_gluing_equations(manifold)
+        self.glunomials = [Glunomial(A, B, c) for A, B, c in eqns]
+        rect_eqns = manifold.gluing_equations('rect')
+        self.M_nomial, self.L_nomial = [Glunomial(A, B, c) for A, B, c in rect_eqns[-2:]]
 
     def __repr__(self):
         return '\n'.join([str(G) for G in self.glunomials])
