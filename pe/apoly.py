@@ -2,7 +2,9 @@
 from __future__ import print_function
 import os, tkinter
 from snappy import Manifold
-from .pecharvar import CircleElevation, user_input
+from .pecharvar import CircleElevation
+from .input import user_input
+from .plot import MatplotPlot as Plot
 import numpy
 from numpy import (array, matrix, dot, prod, diag, transpose, zeros,
                    ones, eye, log, exp, pi, sqrt, ceil, dtype, take,

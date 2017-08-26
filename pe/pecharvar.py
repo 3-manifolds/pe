@@ -19,17 +19,13 @@ from .fiber import Fiber
 from .fibrator import Fibrator
 from .point import PEPoint
 from .shape import PolishedShapeSet, U1Q
+from .input import user_input
 from .plot import MatplotPlot as Plot
 from .complex_reps import PSL2CRepOf3ManifoldGroup
 from .real_reps import PSL2RRepOf3ManifoldGroup
 from IPython import get_ipython
 
 get_ipython().magic("%gui tk")
-
-if sys.version_info.major == 2:
-    user_input = raw_input
-else:
-    user_input = input
 
 class CircleElevation(object):
     """
@@ -229,9 +225,14 @@ class CircleElevation(object):
         """Return a list of the volumes of all the characters in a list of fibers."""
         volumes = [[] for n in range(self.degree)]
         for fiber in fiber_list:
-            for n, shape in enumerate(fiber.shapes):
-                self.manifold.set_tetrahedra_shapes(shape(), fillings=[(0, 0)])
-                volumes[n].append(self.manifold.volume())
+            if isinstance(fiber, int):
+                for n in range(self.degree):
+                    volumes[n].append(None)
+            else:
+                for n, shape in enumerate(fiber.shapes):
+                    a = shape.array
+                    self.manifold.set_tetrahedra_shapes(a, a, fillings=[(0, 0)])
+                    volumes[n].append(self.manifold.volume())
         return volumes
 
     def find_longitude_traces(self, fiber):
