@@ -100,13 +100,13 @@ class Apoly:
             radius=self.radius,
             base_dir=self.base_dir)
         if self.tight:
-            self.elevation.tighten(1.01)
+            self.elevation.tighten()
             if self.gluing_form:
                 vals = [array([x for n,x in track])
-                        for track in self.elevation.R_longitude_holos]
+                        for track in self.elevation.T_longitude_holos]
             else:
                 vals = [array([x for n,x in track])
-                        for track in self.elevation.R_longitude_evs]
+                        for track in self.elevation.T_longitude_evs]
         else:
             if self.gluing_form:
                 vals = [array([x for n,x in track])
@@ -174,6 +174,9 @@ class Apoly:
         return result
     
     def __repr__(self):
+        return 'A-polynomial of %s'%self.manifold
+
+    def __str__(self):
         digits = 2 + int(ceil(log(self.height)/log(10)))
         width = len(self.coefficients[0])
         format = '[' + ('%' + str(digits) + '.0f')*width + ']\n'
@@ -233,7 +236,7 @@ class Apoly:
        rows, cols = self.normalized_coeffs.shape
        shifts = [0]
        #start from the top and search for the last row above the middle
-       #whose left-most non-zero entry is 1.
+       #whose left-most non-zero entry is +-1.
        for i in range(rows):
           for j in range(1, 1 + cols//2):
              if abs(abs(self.normalized_coeffs[i][-j]) - 1.) < .01:
