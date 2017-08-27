@@ -138,7 +138,7 @@ class CircleElevation(object):
             data = {}
         return data
         
-    def save_hint(self, basename=None, directory=None):
+    def save_hint(self, basename=None, directory=None, extra_options={}):
         """Save the settings used to compute this variety."""
         if directory == None:
             directory = self.hint_dir
@@ -146,13 +146,17 @@ class CircleElevation(object):
         if basename == None:
             basename = self.manifold.name()
         hintfile_name = os.path.join(directory, basename + '.hint')
-        hintfile = open(hintfile_name, 'w')
-        hintfile.write('hint={\n')
-        hintfile.write('"manifold" : %s,\n'%self.manifold)
-        hintfile.write('"radius" : %f,\n'%self.radius)
-        hintfile.write('"order" : %d,\n'%self.order)
-        hintfile.write('}\n')
-        hintfile.close()
+        hint_dict = {"manifold": "%s"%self.manifold,
+                     "radius" : self.radius,
+                     "order" : self.order,
+                     }
+        hint_dict.update(extra_options)
+        str_rep = str(hint_dict).replace(
+                '{', '{\n').replace(
+                ', ', ',\n').replace(
+                '}', '\n}\n')
+        with open(hintfile_name, 'w') as hintfile:
+            hintfile.write('hint=' + str_rep)
 
     def track_satellite(self):
         """
