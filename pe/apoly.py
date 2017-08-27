@@ -16,13 +16,13 @@ class Apoly:
     """
     The A-polynomial of a SnapPy manifold.  
 
-    Constructor: Apoly(mfld, fft_size=128, gluing_form=False, denom=None, multi=False)
+    Constructor: Apoly(mfld, order=128, gluing_form=False, denom=None, multi=False)
     <mfld>           is a manifold name recognized by SnapPy, or a Manifold instance.
     <gluing_form>    (True/False) indicates whether to find a "standard"
                      A-polynomial, or the gluing variety variant.
     <tight>           (True/False) if set, try to get the elevation to 
                      tighten to radius 1, and use those fibers.
-    <fft_size>       must be at least twice the M-degree.  Try doubling this
+    <order>       must be at least twice the M-degree.  Try doubling this
                      if the coefficients seem to be wrapping.
     <denom>          Denominator for leading coefficient.  This should be
                      a string, representing a polynomial expression in H,
@@ -55,8 +55,8 @@ class Apoly:
 
     An Apoly object prints itself as a matrix of coefficients.
   """
-    def __init__(self, mfld, fft_size=128, gluing_form=False, tight=False,
-                 radius=1.02, denom=None, multi=False,
+    def __init__(self, mfld, order=128, gluing_form=False, tight=False,
+                 radius=1.02, denom=None, multi=False, use_hints=True,
                  apoly_dir='apolys', gpoly_dir='gpolys',
                  base_dir='PE_base_fibers', hint_dir='hints'):
         if isinstance(mfld, Manifold):
@@ -67,36 +67,37 @@ class Apoly:
             self.manifold = Manifold(mfld)
         self.gluing_form = gluing_form
         self.tight = tight
-        options = {'fft_size'    : fft_size,
+        self.apoly_dir = apoly_dir
+        self.gpoly_dir = gpoly_dir
+        self.base_dir = base_dir
+        self.hint_dir = hint_dir
+        options = {'order'    : order,
                    'denom'       : denom,
                    'multi'       : multi,
-                   'radius'      : radius,
-                   'apoly_dir'   : apoly_dir,
-                   'gpoly_dir'   : gpoly_dir,
-                   'base_dir'    : base_dir,
-                   'hint_dir'    : hint_dir}
-#        if (fft_size, radius, denom, multi) == (128, None, None, False):
-#            print "Checking for hints ...",
-#            hintfile = os.path.join(self.hint_dir, mfld_name+'.hint')
-#            if os.path.exists(hintfile):
-#                print "yes!" 
-#                exec(open(hintfile).read())
-#                options.update(hint)
-#            else:
-#                print "nope."
-        self.fft_size = N = options['fft_size']
+                   'radius'      : radius
+                   }
+                   # 'apoly_dir'   : apoly_dir,
+                   # 'gpoly_dir'   : gpoly_dir,
+                   # 'base_dir'    : base_dir,
+                   # 'hint_dir'    : hint_dir}
+        if use_hints:
+            print("Checking for hints ... ", end='')
+            hintfile = os.path.join(self.hint_dir, self.mfld_name+'.hint')
+            if os.path.exists(hintfile):
+                print("yes!")
+                exec(open(hintfile).read())
+                options.update(hint)
+            else:
+                print("nope.")
+        self.order = N = options['order']
         self.denom = options['denom']
         self.multi = options['multi']
         self.radius = options['radius']
-        self.apoly_dir = options['apoly_dir']
-        self.gpoly_dir = options['gpoly_dir']
-        self.base_dir = options['base_dir']
-        self.hint_dir = options['hint_dir']
         filename = self.manifold.name()+'.base'
         saved_base_fiber = os.path.join(self.base_dir, filename) 
         self.elevation = CircleElevation(
             self.manifold,
-            order=self.fft_size,
+            order=self.order,
             radius=self.radius,
             base_dir=self.base_dir)
         if self.tight:
@@ -215,7 +216,7 @@ class Apoly:
     # this is the old version
     def XXfind_shift(self, raw_coeffs):
        rows, cols = raw_coeffs.shape
-       N = self.fft_size
+       N = self.order
        shifts = [0]
        # Renormalize, since R != 1.
        if N%2 == 0:
@@ -250,7 +251,7 @@ class Apoly:
         Decide how many negative powers of M occur in the Laurent
         polynomial coefficients a_n(M).
         """
-        N = self.fft_size
+        N = self.order
         coeffs = self.normalized_coeffs.transpose()
         # If the coefficients are large all the way to the middle, bail.
         if max(abs(coeffs[N/2])) > 0.5:
@@ -398,7 +399,12 @@ class Apoly:
         polyfile.write(';\n')
         polyfile.close()
         if with_hint:
-            self.elevation.save_hint()
+            self.elevation.save_hint(
+                directory=self.hint_dir,
+                extra_options={
+                    'denom': self.denom,
+                    'multi': self.multi
+                })
             
     def boundary_slopes(self):
         print(self.newton_polygon.lower_slopes)
