@@ -49,8 +49,7 @@ class CircleElevation(object):
     the unit circle, and may prevent the transport. Such failures are
     reported on the console and then ignored.
     """
-    def __init__(self, manifold, order=128, radius=1.02, target_arg=None,
-                 shapes=None, base_dir=None):
+    def __init__(self, manifold, order=128, radius=1.02, base_dir=None, ignore_saved=False):
         self.base_dir = base_dir
         self.order = order
         self.radius = radius
@@ -61,12 +60,20 @@ class CircleElevation(object):
         # The minus sign is for consistency with the sign convention
         # used by numpy.fft
         self.R_circle = [radius*exp(-n*Darg*1j) for n in range(self.order)]
+        self._check_dir(base_dir, 'I need a directory for storing base fibers.')
+        if not ignore_saved:
+            saved_data = self._get_saved_data()
+        else:
+            saved_data = {}
+        target = saved_data.get('H_meridian', None)
+        target_arg = log(target).imag if target else None
         if target_arg:
             target = radius*exp(target_arg*1j)
         else:
             base_index = randint(0, order-1)
             print('Choosing random base index: %d'%base_index)
             target = radius*exp(-2*pi*1j*base_index/self.order)
+        shapes = saved_data.get('shapes', None)
         self.fibrator = Fibrator(manifold, target=target, shapes=shapes, base_dir=base_dir)
         self.base_fiber = base_fiber = self.fibrator()
         arg = log(base_fiber.H_meridian).imag%(2*pi)
@@ -106,6 +113,44 @@ class CircleElevation(object):
                 return self.T_fibers[fiber_index].shapes[shape_index]
             except ValueError:
                 raise IndexError('Syntax: V[fiber_index, shape_index]')
+
+    @staticmethod
+    def _check_dir(directory, message=''):
+        if not os.path.exists(directory):
+            cwd = os.path.abspath(os.path.curdir)
+            newdir = os.path.join(cwd, directory)
+            print('\n'+ message)
+            response = user_input("May I create a directory %s?(Y/n)"%newdir)
+            if response and response.lower()[0] != 'y':
+                sys.exit(0)
+            print()
+            os.mkdir(newdir)
+
+    def _get_saved_data(self):
+        base_fiber_file=os.path.join(self.base_dir, self.manifold.name()+'.base')
+        try:
+            with open(base_fiber_file) as datafile:
+                data = eval(datafile.read())
+            print('Loaded the starting fiber from %s'%base_fiber_file)
+        except IOError:
+            data = {}
+        return data
+        
+    def save_hint(self, basename=None, directory=None):
+        """Save the settings used to compute this variety."""
+        if directory == None:
+            directory = self.hint_dir
+        self._check_dir(directory, 'I need a directory for storing hint files.')
+        if basename == None:
+            basename = self.manifold.name()
+        hintfile_name = os.path.join(directory, basename + '.hint')
+        hintfile = open(hintfile_name, 'w')
+        hintfile.write('hint={\n')
+        hintfile.write('"manifold" : %s,\n'%self.manifold)
+        hintfile.write('"radius" : %f,\n'%self.radius)
+        hintfile.write('"order" : %d,\n'%self.order)
+        hintfile.write('}\n')
+        hintfile.close()
 
     def track_satellite(self):
         """
@@ -329,10 +374,6 @@ class PECharVariety(object):
         self.base_dir = base_dir
         if isinstance(manifold, (Manifold, ManifoldHP)):
             self.manifold = manifold
-            saved_data = {}
-        elif not ignore_saved:
-            saved_data = self.get_saved_data(manifold)
-            self.manifold = Manifold(saved_data['manifold'])
         else:
             self.manifold = Manifold(manifold)
             saved_data = {}
@@ -340,16 +381,15 @@ class PECharVariety(object):
         self.order = order
         self.hint_dir = hint_dir
         if elevation is None:
-            self._check_dir(base_dir, 'I need a directory for storing base fibers.')
-            target = saved_data.get('H_meridian', None)
-            target_arg = log(target).imag if target else None
+            # self._check_dir(base_dir, 'I need a directory for storing base fibers.')
+            # target = saved_data.get('H_meridian', None)
+            # target_arg = log(target).imag if target else None
             self.elevation = CircleElevation(
-                self.manifold,
+                manifold=self.manifold,
                 order=order,
                 radius=radius,
-                target_arg=target_arg,
-                shapes=saved_data.get('shapes', None),
-                base_dir=base_dir)
+                base_dir=base_dir,
+                ignore_saved=ignore_saved)
         else:
             self.elevation = elevation
         self.elevation.tighten()
@@ -359,44 +399,6 @@ class PECharVariety(object):
         Return the indexed fiber or shape from this PECharVariety's elevation.
         """
         return self.elevation[index]
-
-    @staticmethod
-    def _check_dir(directory, message=''):
-        if not os.path.exists(directory):
-            cwd = os.path.abspath(os.path.curdir)
-            newdir = os.path.join(cwd, directory)
-            print('\n'+ message)
-            response = user_input("May I create a directory %s?(Y/n)"%newdir)
-            if response and response.lower()[0] != 'y':
-                sys.exit(0)
-            print()
-            os.mkdir(newdir)
-
-    def get_saved_data(self, manifold_name):
-        base_fiber_file=os.path.join(self.base_dir, manifold_name+'.base')
-        try:
-            with open(base_fiber_file) as datafile:
-                data = eval(datafile.read())
-            print('Loaded the starting fiber from %s'%base_fiber_file)
-        except IOError:
-            data = {'manifold': Manifold(manifold_name)}
-        return data
-        
-    def save_hint(self, basename=None, directory=None):
-        """Save the settings used to compute this variety."""
-        if directory == None:
-            directory = self.hint_dir
-        self._check_dir(directory, 'I need a directory for storing hint files.')
-        if basename == None:
-            basename = self.manifold.name()
-        hintfile_name = os.path.join(directory, basename + '.hint')
-        hintfile = open(hintfile_name, 'w')
-        hintfile.write('hint={\n')
-        hintfile.write('"manifold" : %s,\n'%self.manifold)
-        hintfile.write('"radius" : %f,\n'%self.radius)
-        hintfile.write('"order" : %d,\n'%self.order)
-        hintfile.write('}\n')
-        hintfile.close()
 
     def build_arcs(self, show_group=False):
         """Find the arcs in the pillowcase projection of this PE Character Variety."""
