@@ -20,7 +20,7 @@ from .fibrator import Fibrator
 from .point import PEPoint
 from .shape import PolishedShapeSet, U1Q
 from .input import user_input
-from .plot import MatplotPlot as Plot
+from .plot import Plot
 from .complex_reps import PSL2CRepOf3ManifoldGroup
 from .real_reps import PSL2RRepOf3ManifoldGroup
 from IPython import get_ipython

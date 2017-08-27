@@ -81,13 +81,6 @@ class Plot(object):
         return
 
     def start_plotter(self):
-        """Stub for starting up the plotting window."""
-
-    def create_plot(self, funcs):
-        """Stub for drawing the plot itself."""
-
-class MatplotPlot(Plot):
-    def start_plotter(self):
         self.figure = MF = MatplotFigure(add_subplot=False)
         MF.axis = axis = MF.figure.add_axes([0.07, 0.07, 0.8, 0.9])
         self.arcs = []
@@ -231,11 +224,11 @@ class MatplotPlot(Plot):
 if __name__ == "__main__":
     scattered = np.random.random((30, 2))
     zs = [complex(a, b) for a, b in scattered]
-    P = MatplotPlot(zs[:10])
+    P = Plot(zs[:10])
     data0 = [PEPoint(z, marker='D', index=i) for i, z in enumerate(zs[:10])]
     data1 = [PEPoint(z, marker='x', index=i) for i, z in enumerate(zs[10:])]
     data1[5].leave_gap = True
     data1[15].leave_gap = True
-    Q = MatplotPlot([data0, data1], show_group=True)
-    R = MatplotPlot(np.random.random(10))
+    Q = Plot([data0, data1], show_group=True)
+    R = Plot(np.random.random(10))
     Tk.mainloop()

@@ -1,5 +1,5 @@
 from __future__ import print_function
-from .plot import MatplotPlot as Plot
+from .plot import Plot
 from .real_reps import (PSL2RRepOf3ManifoldGroup,
                         CouldNotConjugateIntoPSL2R,
                         meridians_fixing_infinity_and_zero)
