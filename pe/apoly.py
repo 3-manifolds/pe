@@ -398,16 +398,7 @@ class Apoly:
         polyfile.write(';\n')
         polyfile.close()
         if with_hint:
-            hintfile = open(hintfile_name,'w')
-            hintfile.write('hint={\n')
-            hintfile.write('"radius" : %f,\n'%self.radius)
-            hintfile.write('"fft_size" : %d,\n'%self.fft_size)
-            if not self.multi:
-                hintfile.write('"multi" : %s,\n'%self.multi)
-            if self.denom:
-                hintfile.write('"denom" : "%s",\n'%self.denom)
-            hintfile.write('}\n')
-            hintfile.close()
+            self.elevation.save_hint()
             
     def boundary_slopes(self):
         print(self.newton_polygon.lower_slopes)
