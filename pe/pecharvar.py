@@ -49,8 +49,10 @@ class CircleElevation(object):
     the unit circle, and may prevent the transport. Such failures are
     reported on the console and then ignored.
     """
-    def __init__(self, manifold, order=128, radius=1.02, base_dir=None, ignore_saved=False):
+    def __init__(self, manifold, order=128, radius=1.02, base_dir=None,
+                 hint_dir='hints', ignore_saved=False):
         self.base_dir = base_dir
+        self.hint_dir = hint_dir
         self.order = order
         self.radius = radius
         self.manifold = manifold
@@ -379,7 +381,6 @@ class PECharVariety(object):
             saved_data = {}
         self.radius = radius
         self.order = order
-        self.hint_dir = hint_dir
         if elevation is None:
             # self._check_dir(base_dir, 'I need a directory for storing base fibers.')
             # target = saved_data.get('H_meridian', None)
@@ -389,6 +390,7 @@ class PECharVariety(object):
                 order=order,
                 radius=radius,
                 base_dir=base_dir,
+                hint_dir=hint_dir,
                 ignore_saved=ignore_saved)
         else:
             self.elevation = elevation
