@@ -413,7 +413,7 @@ class Apoly:
         self.elevation.show_R_longitude_evs()
 
     def show_T_longitude_evs(self):
-        if not self.tight:
+        if not self.elevation.T_circle:
             self.tighten()
         self.elevation.show_T_longitude_evs()
 

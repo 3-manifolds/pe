@@ -50,6 +50,11 @@ def real_part_of_matrices_with_error(matrices):
 
 
 def conjugate_into_PSL2R(rho, max_error, xxx_todo_changeme):
+    """Conjugate rho to a nice PSL(2, R) rep and return a list of the generators,
+    not including the first two.  The first generator will be diagonal and the
+    second will have fixed points on the real axis which are symmetric under
+    reflection through 0.
+    """
     # If all shapes are flat, or equivalently if the peripheral holonomy is
     # hyperbolic or parabolic, then there's nothing to do:
     (m_inf, m_0) = xxx_todo_changeme
@@ -66,7 +71,7 @@ def conjugate_into_PSL2R(rho, max_error, xxx_todo_changeme):
 
     # If A and B commute the we're in a degenerate situation and so use
     # a generic algorithm.
-    
+
     if abs((A*B*SL2C_inverse(A)*SL2C_inverse(B)).trace() - 2) < max_error:
         C = quadratic_form.conjugator_into_SL2R(gen_mats)
         Cinv = SL2C_inverse(C)
@@ -75,7 +80,7 @@ def conjugate_into_PSL2R(rho, max_error, xxx_todo_changeme):
         if error > max_error:
             raise CouldNotConjugateIntoPSL2R
         return curr_mats
-    
+
     # First conjugate so that A is diagonal.
     CC = A.base_ring()
     a0, a1 = A[0]
@@ -93,7 +98,7 @@ def conjugate_into_PSL2R(rho, max_error, xxx_todo_changeme):
     # its endpoints to lie on a common ray from the origin in the
     # complex plane.  We next rotate the complex plane so that B's
     # fixed points are on the real axis and are symmetric with respect
-    # to inversion in the unit circle.  This will cause rho will
+    # to inversion in the unit circle.  This will cause rho to
     # preserve the hyperplane over the unit circle about the origin.
 
     vec0, vec1 = eigenvectors(B)
@@ -161,6 +166,10 @@ def shift_of_central(A_til):
     return A_til.s
 
 def meridians_fixing_infinity_and_zero(manifold):
+    """Return two words of length less than 7 which represent peripheral
+    elements such that the first word fixes infinity and the second fixes
+    0.
+    """
     M = manifold.without_hyperbolic_structure()
     M.dehn_fill((0, 0))
     M = M.with_hyperbolic_structure()
@@ -239,7 +248,7 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
         """Construct and return a polished holonomy with values in PSL2(R)."""
         self._update_precision(precision)
         precision = self.precision
-        if precision == None:
+        if precision is None:
             raise ValueError("Need to have a nontrivial precision set")
         mangled = "polished_holonomy_%s" % precision
         if mangled not in self._cache:
@@ -254,7 +263,7 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
                 for A in new_mats:
                     A[0, 1], A[1, 0] = -A[0, 1], -A[1, 0]
             self._new_matrices(G, new_mats)
-            if not G.check_representation() < epsilon:
+            if G.check_representation() >= epsilon:
                 raise CheckRepresentationFailed
             self._cache[mangled] = G
         return self._cache[mangled]
@@ -289,7 +298,7 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
         ans = [self.thurston_class_of_relation(R, init_pt) for R in self.relators()]
         thurston, error = [x[0] for x in ans], min([x[1] for x in ans])
         return self.class_in_H2(thurston), error
-        
+
     def euler_cocycle_on_relations(self):
         """
         Evaluate the euler cocycle on each relation and return the list of values.
@@ -323,6 +332,10 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
                 return all(x == 0 for x in self.euler_class())
 
     def lift_on_cusped_manifold(self):
+        """Return a representation of the free group on the generators
+        of the domain of this rep which factors through a rep of the
+        cusped manifold associated with the domain of this rep.
+        """
         rel_cutoff = len(self.generators()) - 1
         euler_cocycle = self.euler_cocycle_on_relations()
         D = self.coboundary_1_matrix()[:rel_cutoff]
