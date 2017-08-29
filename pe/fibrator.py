@@ -37,15 +37,7 @@ class Fibrator(object):
         else:
             print('Computing the starting fiber ... ', end=' ')
             begin = time.time()
-            N = self.manifold.num_tetrahedra()
-            variables = (['X%s'%n for n in range(N)] + ['Y%s'%n for n in range(N)])
-            ring = PolyRing(variables + ['t'])
-            equations = self.build_equations()
-            equations += ['X%s + Y%s - 1'%(n, n) for n in range(N)]
-            parametrized_system = ParametrizedSystem(ring, 't',
-                                                     [PHCPoly(ring, e) for e in equations])
-            base_system = parametrized_system.start(self.target, self.tolerance)
-            result = Fiber(self.manifold, self.target, PHCsystem=base_system)
+            result = self.PHC_compute_fiber(self.target)
             print('done. (%.3f seconds)'%(time.time() - begin))
             if self.base_dir:
                 base_fiber_file=os.path.join(self.base_dir, self.manifold.name()+'.base')
@@ -60,6 +52,18 @@ class Fibrator(object):
                 print('Saved base fiber as %s'%base_fiber_file)
             return result
 
+    def PHC_compute_fiber(self, target):
+        target = complex(target) # in case we were passed a Sage number
+        N = self.manifold.num_tetrahedra()
+        variables = (['X%s'%n for n in range(N)] + ['Y%s'%n for n in range(N)])
+        ring = PolyRing(variables + ['t'])
+        equations = self.build_equations()
+        equations += ['X%s + Y%s - 1'%(n, n) for n in range(N)]
+        parametrized_system = ParametrizedSystem(ring, 't',
+                                                 [PHCPoly(ring, e) for e in equations])
+        base_system = parametrized_system.start(target, self.tolerance)
+        return Fiber(self.manifold, target, PHCsystem=base_system)
+        
     @staticmethod
     def rect_to_PHC(eqn, rhs=None):
         """Convert a system of gluing equations to PHC's format."""

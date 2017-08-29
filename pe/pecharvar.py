@@ -89,6 +89,7 @@ class CircleElevation(object):
         # isinstance(fiber, int)
         self.R_fibers = list(range(order))
         self.T_fibers = list(range(order))
+        self.T_circle = None
         self.dim = manifold.num_tetrahedra()
         self.rhs = []
         eqns = manifold.gluing_equations('rect')

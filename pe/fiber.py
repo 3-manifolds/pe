@@ -72,8 +72,9 @@ class Fiber(object):
 
     def collision(self):
         """
-        Are there two points in this fiber which are so close together as to
-        suggest that the fiber is very close to a singuarity?
+        Are there two points in this fiber which are so close together as to suggest
+        that the target holonomy of the fiber is close to a singular value of
+        the meridian holonomy map?
         """
         for n, p in enumerate(self.shapes):
             for q in self.shapes[n+1:]:
@@ -81,6 +82,27 @@ class Fiber(object):
                     return True
         return False
 
+    def match_to(self, other):
+        """
+        Sort the points of this fiber so that the nth point of this fiber is close to
+        the nth point of the other fiber.  (Useful if this fiber is computed with PHC
+        after a failed transport.)
+        """
+        other_shapes = list(enumerate(other.shapes))
+        result = list(range(len(self)))
+        
+        for s in self.shapes:
+            distance = float('inf')
+            nearest = -1
+            for m, S in enumerate(other_shapes):
+                next_distance = s.dist(S[1])
+                if next_distance < distance:
+                    nearest, nearest_index = S[0], m
+                    distance = next_distance
+            result[nearest] = s
+            other_shapes.pop(nearest_index)
+        self.shapes = result
+        
     def is_finite(self):
         """
         Check if any cross-ratios are 0 or 1

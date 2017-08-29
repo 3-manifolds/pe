@@ -86,6 +86,9 @@ class ShapeSet(object):
                 '>')
 
     def dist(self, other):
+        """
+        Return the L^2 distance from this shapeset to the other.
+        """
         return norm(self.array - other.array)
 
     def update(self, values):
@@ -264,7 +267,7 @@ class PolishedShapeSet(object):
 
         # Check to make sure things worked out ok.
         error = self._gluing_equation_error(init_equations, shapes, target)
-        total_change = infinity_norm(init_shapes - shapes)
+        #total_change = infinity_norm(init_shapes - shapes)
         if error > 1000*target_epsilon:
             raise GoodShapesNotFound('Failed to find solution')
         #if flag_initial_error and total_change > pari(0.0000001):
@@ -280,7 +283,7 @@ class PolishedShapeSet(object):
         last = [eval_gluing_equation(eqns[-1], shapes) - RHS_of_last_eqn]
         return [eval_gluing_equation(eqn, shapes) - 1
                 for eqn in eqns[:-1]] + last
-        
+
     def _gluing_equation_error(self, eqns, shapes, RHS_of_last_eqn):
         return infinity_norm(self._gluing_equation_errors(
             eqns, shapes, RHS_of_last_eqn))
