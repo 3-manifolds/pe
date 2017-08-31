@@ -72,13 +72,18 @@ class Fiber(object):
 
     def collision(self):
         """
-        Are there two points in this fiber which are so close together as to suggest
-        that the target holonomy of the fiber is close to a singular value of
-        the meridian holonomy map?
+        Does this fiber contain a point of multiplicity > 1?  This will occur when
+        the meridian holonomy has a singular point on the circle elevation, or when
+        the gluing variety has a singuarity on the circle elevation.  But those things
+        should not occur if the radius has been chosen generically.  The other cause
+        for a collision is that Newton's method converges to the same shapeset when
+        startied at two distinct points of the previously computed fiber.
         """
         for n, p in enumerate(self.shapes):
-            for q in self.shapes[n+1:]:
+            for m, q in enumerate(self.shapes[n+1:]):
                 if p.dist(q) < 1.0E-10:
+                    print("\nCollision of shapesets %s and %s at %s."%(
+                        n, n+m+1, self.H_meridian))  
                     return True
         return False
 
@@ -164,28 +169,44 @@ class Fiber(object):
             remaining.remove(n)
         return result
 
-    def transport(self, target_holonomy, allow_collision=False, debug=False):
+    def transport(self, target, allow_collision=False, debug=False):
         """
-        Transport this fiber to a different target holonomy.
+        Transport this fiber to a different target holonomy.  If the resulting
+        fiber has a collision, try jiggling the path.
         """
         shapes = []
-        dT = 1.0
-        while True:
-            if dT < 1.0/64:
-                raise ValueError('Collision unavoidable. Try a different radius.')
-            for shape in self.shapes:
-                Zn = self.gluing_system.track(shape.array,
-                                              target_holonomy,
-                                              dT=dT,
-                                              debug=debug)
+        for shape in self.shapes:
+            if debug:
+                print("transport: shape ", len(shapes))
+            Zn = self.gluing_system.track(shape.array, target, debug=debug)
+            shapes.append(Zn)
+        result = Fiber(self.manifold, target,
+                       gluing_system=self.gluing_system,
+                       shapes=shapes)
+        if result.collision() and not allow_collision:
+            print("Perturbing the path.")
+            return self.retransport(target, debug)
+        return result
+
+    def retransport(self, target, debug=False):
+        """
+        Transport this fiber to a different target holonomy following a
+        path which first expands the radius, then advances the
+        argument, then reduces the radius. If the resulting fiber has
+        a collision, raise an exception.
+        """
+        result = self
+        for T in (1.01*self.H_meridian, 1.01*target, target):
+            print('Transporting to %s.'%T)
+            shapes = []
+            for shape in result.shapes:
+                Zn = self.gluing_system.track(shape.array, T, debug=debug)
                 shapes.append(Zn)
-            result = Fiber(self.manifold, target_holonomy,
+            result = Fiber(self.manifold, target,
                            gluing_system=self.gluing_system,
                            shapes=shapes)
-            if not allow_collision and result.collision():
-                dT *= 0.5
-            else:
-                break
+            if result.collision():
+                raise ValueError('The collision recurred.  Perturbation failed.')
         return result
 
     def polished_shapelist(self, target_holonomy=None, precision=200):

@@ -97,8 +97,13 @@ class CircleElevation(object):
         self.rhs = [1.0]*(len(eqns) - 3)
         self.M_holo, self.L_holo = [Glunomial(A, B, c) for A, B, c in eqns[-2:]]
         self.glunomials.append(self.M_holo)
-        self.track_satellite()
-        self.R_longitude_holos, self.R_longitude_evs = self.longidata(self.R_fibers)
+        try:
+            self.track_satellite()
+            self.R_longitude_holos, self.R_longitude_evs = self.longidata(self.R_fibers)
+            self.failed = False
+        except Exception as e:
+            print(e)
+            self.failed = True
 
     def __call__(self, Z):
         return array([F(Z) for F in self.glunomials])
@@ -174,25 +179,12 @@ class CircleElevation(object):
         for n in range(base+1, self.order):
             print(' %-5s\r'%n, end=' ')
             sys.stdout.flush()
-            try:
-                self.R_fibers[n] = F = self.R_fibers[n-1].transport(circle[n])
-            except Exception as e:
-                print('\nfailure at index %d'%n)
-                raise e
-            # self.R_fibers[n].polish()
-            if not F.is_finite():
-                print('**', end=' ')
+            self.R_lift_step(n, 1)
         for n in range(base-1, -1, -1):
             print(' %-5s\r'%n, end=' ')
             sys.stdout.flush()
-            try:
-                self.R_fibers[n] = F = self.R_fibers[n+1].transport(circle[n])
-            except Exception as e:
-                print('\nfailure at index %d'%n)
-                raise e
-            if not F.is_finite():
-                print('**', end=' ')
-        print()
+            self.R_lift_step(n, -1)
+        print('\r', end='')
         self.last_R_fiber = self.R_fibers[-1].transport(circle[0])
         print('Polishing the end fibers ...')
         self.R_fibers[0].polish()
@@ -206,6 +198,26 @@ class CircleElevation(object):
             print('OK')
         print('Tracked in %s seconds.'%(time.time() - start))
 
+    def R_lift_step(self, n, step):
+        previous_fiber = self.R_fibers[n-step]
+        predictor = self.R_fibers[n-2*step]
+        if isinstance(predictor, int):
+            predictor = None
+        try:
+            # if previous_fiber.collision():
+            #     # Try to sidestep the singular point.
+            #     F = self.R_fibers[n-2*step].transport(1.01*self.R_circle[n-step])
+            #     F = F.transport(self.R_circle[n])
+            # else:
+            #     F = previous_fiber.transport(self.R_circle[n])
+            F = previous_fiber.transport(self.R_circle[n])#, predictor=predictor)
+            self.R_fibers[n] = F
+        except Exception as e:
+            print('\nFailed to compute fiber %s.'%n)
+            raise e
+        if not F.is_finite():
+            print('**')
+
     def tighten(self):
         """
         Radially transport each fiber over a point on the R-circle to a
@@ -216,14 +228,17 @@ class CircleElevation(object):
         Darg = 2*pi/self.order
         self.T_circle = circle = [T*exp(-n*Darg*1j) for n in range(self.order)]
         for n in range(self.order):
-            print(' %-5s\r'%n, end=' ')
+            print(' %-5s\r'%n, end='')
             sys.stdout.flush()
             try:
-                self.T_fibers[n] = self.R_fibers[n].transport(circle[n])
+                self.T_fibers[n] = self.R_fibers[n].transport(circle[n],
+                                                              allow_collision=True)
             except ValueError:
                 print('Tighten failed at %s'%n)
-        self.T_longitude_holos, self.T_longitude_evs = self.longidata(
-            self.T_fibers)
+        try:
+            self.T_longitude_holos, self.T_longitude_evs = self.longidata(self.T_fibers)
+        except:
+            print('Failed to compute longitude holonomies.')
 
     def longidata(self, fiber_list):
         """
@@ -334,7 +349,7 @@ class CircleElevation(object):
         preimage of the T-circle.
         """
         Plot([[complex(x) for _, x in track] for track in self.T_longitude_evs])
-
+               
 def solve_mod2_system(the_matrix, rhs):
     """Mod 2 linear algebra - used for lifting reps to SL2C"""
     M, N = the_matrix.shape
