@@ -201,7 +201,8 @@ class GluingSystem(object):
         T = 0.0
         Zn = Z
         if debug:
-            print('Z = %s; condition=%s'%(Z, [self.condition(x) for x in Z]))
+            print('tracking to target ', M_target)
+#            print('Z = %s; condition=%s'%(Z, [self.condition(x) for x in Z]))
         # First we try the cheap and easy method
         target = M_start + delta
         Zn, residual = self.newton1(Zn, target)

@@ -337,7 +337,7 @@ def bisection(H, low, high, s, target_slope, epsilon=1.0e-8):
         z = (low_fiber.H_meridian + high_fiber.H_meridian)/2
         target_holonomy = z/abs(z)
         target_holonomy_arg = CC(target_holonomy).log().imag()
-        new_fiber = F.transport2(low_fiber, complex(target_holonomy))
+        new_fiber = F.transport(low_fiber, complex(target_holonomy))
         shapes = new_fiber.shapes[s]
         new_slope = lifted_slope(M, target_holonomy_arg, shapes)
         if abs(new_slope - target_slope) < epsilon:

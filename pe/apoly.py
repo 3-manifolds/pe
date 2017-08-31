@@ -26,7 +26,7 @@ class Apoly:
                      if the coefficients seem to be wrapping.
     <denom>          Denominator for leading coefficient.  This should be
                      a string, representing a polynomial expression in H,
-                     the meridian holonomy.  e.g. denom='(H-1)*(H-1)'
+                     the meridian holonomy.  e.g. denom='(H*H-1)'
     <multi>          If true, multiple copies of lifts are not removed, so
                      multiplicities of factors of the polynomial are computed. 
 
@@ -87,6 +87,8 @@ class Apoly:
                 print("yes!")
                 exec(open(hintfile).read())
                 options.update(hint)
+                print('Using: radius=%f; order=%d; denom=%s.'%(
+                    hint['radius'], hint['order'], hint['denom']))  
             else:
                 print("nope.")
         self.order = N = options['order']
@@ -94,12 +96,15 @@ class Apoly:
         self.multi = options['multi']
         self.radius = options['radius']
         filename = self.manifold.name()+'.base'
-        saved_base_fiber = os.path.join(self.base_dir, filename) 
+        saved_base_fiber = os.path.join(self.base_dir, filename)
         self.elevation = CircleElevation(
             self.manifold,
             order=self.order,
             radius=self.radius,
             base_dir=self.base_dir)
+        if self.elevation.failed:
+            print("Warning: Failed to elevate the R-circle.  This Apoly is incomplete.")
+            return
         if self.tight:
             self.elevation.tighten()
             if self.gluing_form:
@@ -126,7 +131,7 @@ class Apoly:
             self.raw_coeffs = array([ifft(x*D) for x in self.sampled_coeffs])
         else:
             self.raw_coeffs = array([ifft(x) for x in self.sampled_coeffs])
-        # Renormalize, to account for R
+        # Renormalize the coefficients, to adjust for the circle radius
         if N%2 == 0:
             renorm = self.radius**(-array(list(range(1+N//2))+list(range(1-N//2, 0))))
         else:
@@ -136,7 +141,7 @@ class Apoly:
                                  for x in self.normalized_coeffs])
         self.noise = self.normalized_coeffs.real - self.int_coeffs
         self.max_noise = [max(abs(x)) for x in self.noise]
-        self.shift = self.old_find_shift()
+        self.shift = self.find_shift()
         print('Shift is %s'%self.shift)
         if self.shift is None:
             print ('Coefficients may be wrapping.  '
@@ -213,27 +218,7 @@ class Apoly:
                     multiplicities.append((i, multis[i]))
             return multiplicities, [ev_list[i] for i in sdr]
 
-    # this is the old version
-    def XXfind_shift(self, raw_coeffs):
-       rows, cols = raw_coeffs.shape
-       N = self.order
-       shifts = [0]
-       # Renormalize, since R != 1.
-       if N%2 == 0:
-           renorm = self.radius**(-array(list(range(1+N/2))+list(range(1-N/2, 0))))
-       else:
-           renorm = self.radius**(-array(list(range(1+N/2))+list(range(-(N/2), 0))))
-       coeffs = raw_coeffs*renorm
-       #start from the top and search for the last row above the middle
-       #whose left-most non-zero entry is 1.
-       for i in range(rows):
-          for j in range(1, 1+ cols//2):
-             if abs(abs(coeffs[i][-j]) - 1.) < .01:
-                 shifts.append(j)
-       print('shifts: ', shifts)
-       return max(shifts), coeffs
-
-    def old_find_shift(self):
+    def find_shift(self):
        rows, cols = self.normalized_coeffs.shape
        shifts = [0]
        #start from the top and search for the last row above the middle
@@ -242,25 +227,8 @@ class Apoly:
           for j in range(1, 1 + cols//2):
              if abs(abs(self.normalized_coeffs[i][-j]) - 1.) < .01:
                  shifts.append(j)
-       print('shifts (old method): ', shifts)
+       print('shifts: ', shifts)
        return max(shifts)
-
-    # This is the new one, which fails on 9_3!!!
-    def find_shift(self, cutoff=0.1):
-        """
-        Decide how many negative powers of M occur in the Laurent
-        polynomial coefficients a_n(M).
-        """
-        N = self.order
-        coeffs = self.normalized_coeffs.transpose()
-        # If the coefficients are large all the way to the middle, bail.
-        if max(abs(coeffs[N/2])) > 0.5:
-            return None
-        # start from the bottom and go up until we hit a small row.
-        for n in range(N-1, N/2, -1):
-            if max(abs(coeffs[n])) < cutoff:
-                return N-1-n 
-        return None
 
 # Should have a monomial class, and generate a list of monomials here not a string
     def monomials(self):
@@ -446,12 +414,13 @@ class Apoly:
         self.elevation.tighten()
 
     def verify(self):
-        result = True
+        noise_ok = True
+        symmetry = True
         sign = None
         print('Checking noise level ...', end=' ')
         print(max(self.max_noise))
         if max(self.max_noise) > .3:
-            result = False
+            noise_ok = False
             print('Failed')
         print('Checking for reciprocal symmetry ... ', end=' ')
         maxgap = 0
@@ -461,14 +430,17 @@ class Apoly:
             sign = 1.0
         else:
             print('Failed!')
-            result = False
+            symmetry = False
         if sign:
             for i in range(len(self.coefficients)):
                 maxgap = max(abs(self.coefficients[i] +
                               sign*self.coefficients[-i-1][-1::-1]))
                 if maxgap > 0:
                     print('Failed! gap = %d'%maxgap)
-                    result = False
+                    symmetry = False
+        if symmetry:
+            print('Symmetry holds')
+        result = noise_ok and symmetry 
         if result:
             print('Passed!')
         return result
