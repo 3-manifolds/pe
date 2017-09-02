@@ -6,9 +6,9 @@ from .pecharvar import CircleElevation
 from .input import user_input
 from .plot import Plot
 import numpy
-from numpy import (array, matrix, dot, prod, diag, transpose, zeros,
-                   ones, eye, log, exp, pi, sqrt, ceil, dtype, take,
-                   arange, sum, argmin, float64)
+from numpy import (array, matrix, dot, prod, diag, transpose, zeros, ones, eye,
+                   log, exp, pi, sqrt, ceil, dtype, take, arange, sum, argmin,
+                   float64, complex128, float128, complex256)
 from numpy.linalg import svd, norm, eig, solve, lstsq, matrix_rank
 from numpy.fft import ifft
 
@@ -20,8 +20,6 @@ class Apoly:
     <mfld>           is a manifold name recognized by SnapPy, or a Manifold instance.
     <gluing_form>    (True/False) indicates whether to find a "standard"
                      A-polynomial, or the gluing variety variant.
-    <tight>           (True/False) if set, try to get the elevation to 
-                     tighten to radius 1, and use those fibers.
     <order>       must be at least twice the M-degree.  Try doubling this
                      if the coefficients seem to be wrapping.
     <denom>          Denominator for leading coefficient.  This should be
@@ -55,7 +53,7 @@ class Apoly:
 
     An Apoly object prints itself as a matrix of coefficients.
   """
-    def __init__(self, mfld, order=128, gluing_form=False, tight=False,
+    def __init__(self, mfld, order=128, gluing_form=False,
                  radius=1.02, denom=None, multi=False, use_hints=True,
                  apoly_dir='apolys', gpoly_dir='gpolys',
                  base_dir='PE_base_fibers', hint_dir='hints'):
@@ -66,7 +64,6 @@ class Apoly:
             self.mfld_name = mfld
             self.manifold = Manifold(mfld)
         self.gluing_form = gluing_form
-        self.tight = tight
         self.apoly_dir = apoly_dir
         self.gpoly_dir = gpoly_dir
         self.base_dir = base_dir
@@ -105,65 +102,22 @@ class Apoly:
         if self.elevation.failed:
             print("Warning: Failed to elevate the R-circle.  This Apoly is incomplete.")
             return
-        if self.tight:
-            self.elevation.tighten()
-            if self.gluing_form:
-                vals = [array([x for n,x in track])
-                        for track in self.elevation.T_longitude_holos]
-            else:
-                vals = [array([x for n,x in track])
-                        for track in self.elevation.T_longitude_evs]
+        if self.gluing_form:
+            vals = array([[x for n,x in track]
+                    for track in self.elevation.R_longitude_holos])
         else:
-            if self.gluing_form:
-                vals = [array([x for n,x in track])
-                        for track in self.elevation.R_longitude_holos]
-            else:
-                vals = [array([x for n,x in track])
-                        for track in self.elevation.R_longitude_evs]
+            vals = array([[x for n,x in track]
+                           for track in self.elevation.R_longitude_evs])
         if multi == False:
             self.multiplicities, vals = self.demultiply(vals)
-        self.sampled_coeffs = self.symmetric_funcs(vals)
-        self.reduced_degree = len(self.sampled_coeffs)
-        if self.denom:
-            # denom is a polynomial in H = M^2 = holonomy of meridian.
-            H = array(self.elevation.R_circle)
-            exec('D = %s'%self.denom)
-            self.raw_coeffs = array([ifft(x*D) for x in self.sampled_coeffs])
-        else:
-            self.raw_coeffs = array([ifft(x) for x in self.sampled_coeffs])
-        # Renormalize the coefficients, to adjust for the circle radius
-        if N%2 == 0:
-            renorm = self.radius**(-array(list(range(1+N//2))+list(range(1-N//2, 0))))
-        else:
-            renorm = self.radius**(-array(list(range(1+N//2))+list(range(-(N//2), 0))))
-        self.normalized_coeffs = self.raw_coeffs*renorm
-        self.int_coeffs = array([list(map(round, x.real))
-                                 for x in self.normalized_coeffs])
-        self.noise = self.normalized_coeffs.real - self.int_coeffs
-        self.max_noise = [max(abs(x)) for x in self.noise]
-        self.shift = self.find_shift()
-        print('Shift is %s'%self.shift)
-        if self.shift is None:
-            print ('Coefficients may be wrapping.  '
-                   'If so, a larger fft size would help.')
-            return
-        self.height = max([max(abs(x)) for x in self.int_coeffs])
+        self._compute_all(vals)
         if self.height > float(2**52):
             print("Coefficients overflowed.")
-        C = self.int_coeffs.transpose()
-        coefficient_array =  take(C, arange(len(C))-self.shift, axis=0)
-        rows, cols = coefficient_array.shape
-        while rows > 0:
-            if max(abs(coefficient_array[rows-1])) > 0:
-                break
-            rows -= 1
-        # This failed on 9_39 -- needs to remove empty rows
-        self.coefficients = coefficient_array[:rows]
         print("Noise levels: ")
         for level in self.max_noise:
             print(level)
         if max(self.max_noise) > 0.1:
-            print('Failed to find integer coefficients')
+            print('Failed to find integer coefficients with tolerance 0.1')
             return
         print('Computing the Newton polygon.')
         power_scale = (1,1) if self.gluing_form else (1,2) 
@@ -191,10 +145,76 @@ class Apoly:
             result += format%tuple(row + 0.)
         return result
 
+    def _compute_all(self, vals):
+        """
+        Use a discrete Fourier transform to compute the A-polynomial from the
+        longitude eigenvalues (or holonomies).  We are viewing the A-polynomial
+        as a polynomial in L with coefficients in QQ[M].  For a number z on the
+        R-circle, we find a monic polynomial in L vanishing on the values taken
+        by L at those points of the A-curve where M takes the value z.  Thus we
+        get a polynomial in L whose coefficients are polynomials in M vanishing
+        on the A-curve.  To compute the integer coefficients of these
+        M-polynomials we renormalize to the unit circle and use the inverse FFT.
+        (Note: this produces a monic polynomial in L, but the A-polynomial is
+        not monic when there is an ideal point of the character variety which
+        is associated with a meridian boundary slope.  The denom parameter is
+        used to resolve this issue.)
+        """
+        self.sampled_roots = vals
+        self.sampled_coeffs = self.symmetric_funcs(vals)
+        self.reduced_degree = len(self.sampled_coeffs)
+        if self.denom:
+            # denom is a polynomial in H = M^2 = holonomy of meridian.
+            H = array(self.elevation.R_circle)
+            exec('D = %s'%self.denom)
+            self.raw_coeffs = array([ifft(x*D) for x in self.sampled_coeffs])
+        else:
+            self.raw_coeffs = array([ifft(x) for x in self.sampled_coeffs])
+        # Renormalize the coefficients, to adjust for the circle radius
+        N = self.order
+        if N%2 == 0:
+            renorm = self.radius**(-array(list(range(1+N//2))+list(range(1-N//2, 0))))
+        else:
+            renorm = self.radius**(-array(list(range(1+N//2))+list(range(-(N//2), 0))))
+        self.normalized_coeffs = self.raw_coeffs*renorm
+        self.int_coeffs = array([map(round, x.real) for x in self.normalized_coeffs])
+        self.height = max([max(abs(x)) for x in self.int_coeffs])
+        self.noise = self.normalized_coeffs.real - self.int_coeffs
+        self.max_noise = [max(abs(x)) for x in self.noise]
+        self.shift = self.find_shift()
+        print('Shift is %s'%self.shift)
+        if self.shift is None:
+            raise ValueError('Could not compute the shift. '
+                             'Coefficients may be wrapping.  '
+                             'If so, a larger order might help.')
+        C = self.int_coeffs.transpose()
+        coefficient_array =  take(C, arange(len(C))-self.shift, axis=0)
+        rows, cols = coefficient_array.shape
+        while rows > 0:
+            if max(abs(coefficient_array[rows-1])) > 0:
+                break
+            rows -= 1
+        self.coefficients = coefficient_array[:rows]
+        
     def help(self):
         print(self.__doc__)
 
     def symmetric_funcs(self, roots):
+        """
+        Given a numpyt 2D array whose rows are L-eigenvalues sampled on a circle,
+        return a 2D array whose rows are the elementary symmetric functions of
+        the roots.
+
+        Before computing the elementary symmetric functions, each column is
+        sorted in descending size, to avoid 'catastrophic cancellation'. This
+        means, for example (using decimal floating point with 3 digits) that
+        we want to compute
+           .101E3 - .100E3 - .999E0 = .1E-2 == .001
+        rather than
+           .101E3 - .999E0 - .100E3 "=" .1E1 == 1.0
+        """
+        for n in range(roots.shape[1]):
+            roots[:,n] = sorted(roots[:,n], key=lambda x: -abs(x))
         coeffs = [0, ones(roots[0].shape,'D')]
         for root in roots:
             for i in range(1, len(coeffs)):
@@ -202,21 +222,24 @@ class Apoly:
             coeffs.append(ones(roots[0].shape,'D'))
         return coeffs[1:]
 
-    def demultiply(self, ev_list):
+    def demultiply(self, eigenvalues):
             multiplicities = []
             sdr = [] #system of distinct representatives
-            multis = [1]*len(ev_list)
-            for i in range(len(ev_list)):
+            multis = [1]*len(eigenvalues)
+            for i in range(len(eigenvalues)):
                 unique = True
-                for j in range(i+1,len(ev_list)):
-                    if max(abs(ev_list[i] - ev_list[j])) < 1.0E-6:
+                for j in range(i+1,len(eigenvalues)):
+                    # If this row is the same as a lower row, do not
+                    # put it in the sdr.  Just increment the multiplicity
+                    # of the lower row.
+                    if max(abs(eigenvalues[i] - eigenvalues[j])) < 1.0E-6:
                         unique = False
                         multis[j] += multis[i]
                         break
                 if unique:
                     sdr.append(i)
                     multiplicities.append((i, multis[i]))
-            return multiplicities, [ev_list[i] for i in sdr]
+            return multiplicities, take(eigenvalues, sdr, 0)
 
     def find_shift(self):
        rows, cols = self.normalized_coeffs.shape
@@ -410,8 +433,8 @@ class Apoly:
         H = self.elevation
         Plot(H.compute_volumes(H.T_fibers))
 
-    def tighten(self):
-        self.elevation.tighten()
+    def tighten(self, T=1.0):
+        self.elevation.tighten(T)
 
     def verify(self):
         noise_ok = True
@@ -423,7 +446,6 @@ class Apoly:
             noise_ok = False
             print('Failed')
         print('Checking for reciprocal symmetry ... ', end=' ')
-        maxgap = 0
         if max(abs(self.coefficients[0] - self.coefficients[-1][-1::-1]))==0:
             sign = -1.0
         elif max(abs(self.coefficients[0] + self.coefficients[-1][-1::-1]))==0:
