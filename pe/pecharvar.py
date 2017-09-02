@@ -218,12 +218,11 @@ class CircleElevation(object):
         if not F.is_finite():
             print('**')
 
-    def tighten(self):
+    def tighten(self, T=1.0):
         """
         Radially transport each fiber over a point on the R-circle to a
         fiber over a point on the T-circle.
         """
-        T = 1.0
         print('Tightening the circle to radius %s ...'%T)
         Darg = 2*pi/self.order
         self.T_circle = circle = [T*exp(-n*Darg*1j) for n in range(self.order)]
