@@ -111,7 +111,6 @@ class ShapeSet(object):
         G = self.manifold.fundamental_group()
         return G.O31(word)
 
-
     def has_real_traces(self):
         """True if the holonomy rep associated to these shapes has a real character"""
         tolerance = self.reality_tolerance

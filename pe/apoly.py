@@ -3,6 +3,7 @@ from __future__ import print_function
 import os, tkinter
 from snappy import Manifold
 from .pecharvar import CircleElevation
+from .shape import U1Q, PolishedShapeSet
 from .input import user_input
 from .plot import Plot
 import numpy
@@ -20,7 +21,7 @@ class Apoly:
     <mfld>           is a manifold name recognized by SnapPy, or a Manifold instance.
     <gluing_form>    (True/False) indicates whether to find a "standard"
                      A-polynomial, or the gluing variety variant.
-    <order>       must be at least twice the M-degree.  Try doubling this
+    <order>          must be at least twice the M-degree.  Try doubling this
                      if the coefficients seem to be wrapping.
     <denom>          Denominator for leading coefficient.  This should be
                      a string, representing a polynomial expression in H,
@@ -108,8 +109,10 @@ class Apoly:
         else:
             vals = array([[x for n,x in track]
                            for track in self.elevation.R_longitude_evs])
+        self.degree = len(vals)
         if multi == False:
             self.multiplicities, vals = self.demultiply(vals)
+        self.reduced_degree = len(vals)
         self._compute_all(vals)
         if self.height > float(2**52):
             print("Coefficients overflowed.")
@@ -162,7 +165,6 @@ class Apoly:
         """
         self.sampled_roots = vals
         self.sampled_coeffs = self.symmetric_funcs(vals)
-        self.reduced_degree = len(self.sampled_coeffs)
         if self.denom:
             # denom is a polynomial in H = M^2 = holonomy of meridian.
             H = array(self.elevation.R_circle)
