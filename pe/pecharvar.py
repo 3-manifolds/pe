@@ -23,6 +23,7 @@ from .input import user_input
 from .plot import Plot
 from .complex_reps import PSL2CRepOf3ManifoldGroup
 from .real_reps import PSL2RRepOf3ManifoldGroup
+from sage.all import ComplexField
 from IPython import get_ipython
 
 get_ipython().magic("%gui tk")
@@ -99,7 +100,8 @@ class CircleElevation(object):
         self.glunomials.append(self.M_holo)
         try:
             self.track_satellite()
-            self.R_longitude_holos, self.R_longitude_evs = self.longidata(self.R_fibers)
+            self.R_longitude_holos, self.R_longitude_evs, self.R_flips = self.longidata(
+                self.R_fibers)
             self.failed = False
         except Exception as e:
             print(e)
@@ -235,7 +237,8 @@ class CircleElevation(object):
             except ValueError:
                 print('Tighten failed at %s'%n)
         try:
-            self.T_longitude_holos, self.T_longitude_evs = self.longidata(self.T_fibers)
+            self.T_longitude_holos, self.T_longitude_evs, self.T_flips = self.longidata(
+                self.T_fibers)
         except:
             print('Failed to compute longitude holonomies.')
 
@@ -270,22 +273,53 @@ class CircleElevation(object):
             print('Using %d as the starting index.'%index)
         longitude_traces = self.find_longitude_traces(fiber_list[index])
         longitude_eigenvalues = []
+        flips = []
         for m, L in enumerate(longitude_holonomies):
             tr = longitude_traces[m]
             n, holo = L[index]
             e = sqrt(holo)
             # Choose the sign for the eigenvalue at the starting fiber
-            E = [(n, e) if abs(e + 1/e - tr) < abs(e + 1/e + tr) else (n, -e)]
+            flip = abs(e + 1/e - tr) > abs(e + 1/e + tr)
+            E = [(n, -e) if flip else (n, e)]
+            Eflips = [flip]
             # Avoid discontinuities caused by the branch cut used by sqrt
             for n, holo in L[index+1:]:
                 e = sqrt(holo)
-                E.append((n, e) if abs(e - E[-1][1]) < abs(e + E[-1][1]) else (n, -e))
+                flip = abs(e - E[-1][1]) > abs(e + E[-1][1])
+                E.append((n, -e) if flip else (n, e))
+                Eflips.append(flip)
             if index > 0:
                 for n, holo in L[index-1::-1]:
                     e = sqrt(holo)
-                    E.insert(0, (n, e) if abs(e - E[0][1]) < abs(e + E[0][1]) else (n, -e))
+                    flip = abs(e - E[0][1]) < abs(e + E[0][1])
+                    E.insert(0, (n, -e) if flip else (n, e))
+                    Eflips.insert(0, flip)
             longitude_eigenvalues.append(E)
-        return longitude_holonomies, longitude_eigenvalues
+            flips.append(Eflips)
+        return longitude_holonomies, longitude_eigenvalues, flips
+
+    def polish_R_longitude_vals(self, bits_precision=200):
+        R = ComplexField(bits_precision)
+        L_holo = self.L_holo
+        # The minus sign is because the FFT circle is oriented clockwise.
+        circle = [R(self.radius)*U1Q(-n, self.order, precision=bits_precision)
+                  for n in range(self.order)]
+        holos = []
+        evs = []
+        for m in range(self.degree):
+            row = []
+            for n in range(self.order):
+                r = self.R_fibers[n].shapes[m]
+                s = PolishedShapeSet(rough_shapes=r,
+                                     target_holonomy=circle[n],
+                                     precision=bits_precision)
+                row.append(L_holo(array(list(s))))
+            holos.append(list(enumerate(row)))
+            row = [sqrt(z) for z in row]
+            row = [ -z if flip else z for flip, z in zip(self.R_flips[m], row)]
+            evs.append(list(enumerate(row)))
+        self.polished_R_longitude_holos = holos
+        self.polished_R_longitude_evs = evs
 
     def compute_volumes(self, fiber_list):
         """Return a list of the volumes of all the characters in a list of fibers."""

@@ -34,9 +34,17 @@ class Glunomial(object):
         return sign + '*'.join(Apowers+Bpowers)
 
     def __call__(self, Z):
-        W = 1 - Z
+        # Make this work when Z is a numpy array of sage ComplexField elements.
         try:
-            return self.sign*prod(Z**self.A)*prod(W**self.B)
+            R = Z[0].parent()
+            one = R(1)
+            sign = R(self.sign)
+        except AttributeError:
+            one = 1
+            sign = self.sign
+        W = one - Z
+        try:
+            return sign*prod(Z**self.A)*prod(W**self.B)
         except ValueError:
             print('Glunomial evaluation crashed on %s'%self)
             print('A =', self.A)
