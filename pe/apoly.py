@@ -8,16 +8,43 @@ from .input import user_input
 from .plot import Plot
 import numpy
 from numpy import (array, matrix, dot, prod, diag, transpose, zeros, ones, eye,
-                   log, exp, pi, sqrt, ceil, dtype, take, arange, sum, argmin,
-                   float64, complex128, float128, complex256)
+                   log, exp, pi, sqrt, ceil, dtype, take, arange, sum, argmin)
 from numpy.linalg import svd, norm, eig, solve, lstsq, matrix_rank
-from numpy.fft import ifft
 
+class Infinity(object):
+    def __repr__(self):
+        return '1/0'
+
+try:
+    from sage.all import PolynomialRing, IntegerRing, RationalField, RealField, ComplexField
+    from quadFFT import QuadFFT
+    ZZ = IntegerRing()
+    QQ = RationalField()
+    QuadC = ComplexField(114)
+    QuadR = RealField(114)
+    sage_poly_ring = PolynomialRing(IntegerRing(), ('M', 'L'))
+    def fraction(numerator, denominator):
+        if denominator:
+            return QQ(numerator)/QQ(denominator)
+        elif numerator:
+            return Infinity()
+        else:
+            raise RuntimeError('0/0 is undefined.')
+
+except ImportError:
+    def no_sage(*args):
+        print('Sage could not be imported')
+    sage_poly_ring = no_sage
+    def fraction(numerator, denominator):
+        return '%d/%d'%(numerator, denominator)
+    
 class Apoly:
     """
     The A-polynomial of a SnapPy manifold.  
 
-    Constructor: Apoly(mfld, order=128, gluing_form=False, denom=None, multi=False)
+    Constructor: Apoly(mfld, order=128, gluing_form=False, denom=None, multi=False,
+                       use_hints=True, verbose=True)
+
     <mfld>           is a manifold name recognized by SnapPy, or a Manifold instance.
     <gluing_form>    (True/False) indicates whether to find a "standard"
                      A-polynomial, or the gluing variety variant.
@@ -25,23 +52,27 @@ class Apoly:
                      if the coefficients seem to be wrapping.
     <denom>          Denominator for leading coefficient.  This should be
                      a string, representing a polynomial expression in H,
-                     the meridian holonomy.  e.g. denom='(H*H-1)'
-    <multi>          If true, multiple copies of lifts are not removed, so
-                     multiplicities of factors of the polynomial are computed. 
+                     the meridian holonomy.  e.g. denom='(H*H-1)
+    <multi>          If True, multiple copies of lifts are not removed, so
+                     multiplicities of factors of the polynomial are computed.
+    <use_hints>      Whether to check for and use hints from a hint file.
+    <verbose>        Whether to print information about the computation.
+    <use_quad_fft>   Whether to use 128 bit floats for the FFT.
 
-  Methods:
+    Methods:
+
     An Apoly object A is callable:  A(x,y) returns the value at (x,y).
-    A.as_polynomial() returns a string suitable for input to a symbolic
-                      algebra program.
-    A.show_R_longitude_evs() uses matplotlib to graph the L-projections
-                      of components of the inverse image of the satellite
-                      circle of radius R in the M-plane.
+    A.as_string(exp='^') returns a string suitable for input to a generic symbolic
+                      algebra program which uses the symbol exp for exponentiation.
+    A.sage()          returns a Sage polynomial with parent ring ZZ['M', 'L']
+    A.show_R_longitude_evs() uses matplotlib to graph the L-projections of 
+                      arcs of the elevation of the circle of radius R in the M-plane.
     A.show_T_longitude_evs() uses matplotlib to graph the L-projections
                       of components of the inverse image of the tightened
                       circle of radius T in the M-plane.
     A.show_newton(text=False) shows the newton polygon with dots.  The text
                       flag shows the coefficients.
-    A.boundary_slopes() prints the boundary slopes detected by the character
+    A.boundary_slopes() returns the boundary slopes detected by the character
                       variety.
     A.save(basename=None, dir='polys', with_hint=True, twist=0)
                       Saves the polynomial in a .apoly or .gpoly text file for
@@ -55,9 +86,9 @@ class Apoly:
     An Apoly object prints itself as a matrix of coefficients.
   """
     def __init__(self, mfld, order=128, gluing_form=False,
-                 radius=1.02, denom=None, multi=False, use_hints=True,
-                 apoly_dir='apolys', gpoly_dir='gpolys',
-                 base_dir='PE_base_fibers', hint_dir='hints'):
+                 radius=1.02, denom=None, multi=False, use_hints=True, verbose=True,
+                 apoly_dir='apolys', gpoly_dir='gpolys', base_dir='PE_base_fibers',
+                 hint_dir='hints', use_quad_fft=False):
         if isinstance(mfld, Manifold):
             self.manifold = mfld
             self.mfld_name = mfld.name()
@@ -65,50 +96,62 @@ class Apoly:
             self.mfld_name = mfld
             self.manifold = Manifold(mfld)
         self.gluing_form = gluing_form
+        self.verbose = verbose
         self.apoly_dir = apoly_dir
         self.gpoly_dir = gpoly_dir
         self.base_dir = base_dir
         self.hint_dir = hint_dir
-        options = {'order'    : order,
-                   'denom'       : denom,
-                   'multi'       : multi,
-                   'radius'      : radius
+        self.use_quad_fft = use_quad_fft
+        options = {'order'        : order,
+                   'denom'        : denom,
+                   'multi'        : multi,
+                   'radius'       : radius,
+                   'use_quad_fft' : use_quad_fft
                    }
                    # 'apoly_dir'   : apoly_dir,
                    # 'gpoly_dir'   : gpoly_dir,
                    # 'base_dir'    : base_dir,
                    # 'hint_dir'    : hint_dir}
         if use_hints:
-            print("Checking for hints ... ", end='')
+            self._print("Checking for hints ... ", end='')
             hintfile = os.path.join(self.hint_dir, self.mfld_name+'.hint')
             if os.path.exists(hintfile):
-                print("yes!")
+                self._print("yes!")
                 exec(open(hintfile).read())
                 options.update(hint)
-                print('Using: radius=%f; order=%d; denom=%s.'%(
-                    hint['radius'], hint['order'], hint['denom']))  
+                self._print('Using: radius=%f; order=%d; denom=%s%s.'%(
+                    hint['radius'], hint['order'], hint['denom'],
+                    ' with quad precision' if hint['use_quad_fft'] else ''))
             else:
                 print("nope.")
         self.order = N = options['order']
         self.denom = options['denom']
+        if self.denom:
+            exec('f = lambda H : %s'%self.denom)
+            self.denom_function = f
         self.multi = options['multi']
         self.radius = options['radius']
+        if use_quad_fft:
+            self.quad_fft = QuadFFT(self.order)
         filename = self.manifold.name()+'.base'
         saved_base_fiber = os.path.join(self.base_dir, filename)
         self.elevation = CircleElevation(
             self.manifold,
             order=self.order,
             radius=self.radius,
-            base_dir=self.base_dir)
+            base_dir=self.base_dir,
+            verbose=self.verbose)
         if self.elevation.failed:
             print("Warning: Failed to elevate the R-circle.  This Apoly is incomplete.")
             return
         if self.gluing_form:
-            vals = array([[x for n,x in track]
-                    for track in self.elevation.R_longitude_holos])
+            vals = array([track for track in self.elevation.R_longitude_holos])
         else:
-            vals = array([[x for n,x in track]
-                           for track in self.elevation.R_longitude_evs])
+            if self.use_quad_fft:
+                self.elevation.polish_R_longitude_vals()
+                vals = array(self.elevation.polished_R_longitude_evs)
+            else:
+                vals = array(self.elevation.R_longitude_evs)
         self.degree = len(vals)
         if multi == False:
             self.multiplicities, vals = self.demultiply(vals)
@@ -116,16 +159,16 @@ class Apoly:
         self._compute_all(vals)
         if self.height > float(2**52):
             print("Coefficients overflowed.")
-        print("Noise levels: ")
+        self._print("Noise levels: ")
         for level in self.max_noise:
-            print(level)
+            self._print(level)
         if max(self.max_noise) > 0.1:
-            print('Failed to find integer coefficients with tolerance 0.1')
+            self._print('Failed to find integer coefficients with tolerance 0.1')
             return
-        print('Computing the Newton polygon.')
-        power_scale = (1,1) if self.gluing_form else (1,2) 
-        self.newton_polygon = NewtonPolygon(self.as_dict(), power_scale)
-            
+        self._print('Computing the Newton polygon ... ', end='')
+        self.compute_newton_polygon()
+        self._print('done.')
+        
     def __call__(self, M, L):
         result = 0
         rows, cols = self.coefficients.shape
@@ -148,6 +191,10 @@ class Apoly:
             result += format%tuple(row + 0.)
         return result
 
+    def _print(self, *args, **kwargs):
+        if self.verbose:
+            print(*args, **kwargs)
+
     def _compute_all(self, vals):
         """
         Use a discrete Fourier transform to compute the A-polynomial from the
@@ -165,26 +212,39 @@ class Apoly:
         """
         self.sampled_roots = vals
         self.sampled_coeffs = self.symmetric_funcs(vals)
+        if self.use_quad_fft:
+            radius = QuadR(self.radius)
+            ifft = self.quad_fft.ifft
+            def real(A):
+                return array([z.real() for z in A])
+        else:
+            radius = self.radius
+            ifft = numpy.fft.ifft
+            def real(A):
+                return array([z.real for z in A])
         if self.denom:
-            # denom is a polynomial in H = M^2 = holonomy of meridian.
-            H = array(self.elevation.R_circle)
-            exec('D = %s'%self.denom)
+            if self.use_quad_fft:
+                circle = [radius*U1Q(-n, self.order, precision=114) for n in range(self.order)]
+                self.D = D = array([self.denom_function(z) for z in circle])
+            else:
+                self.D = D = array([self.denom_function(z) for z in self.elevation.R_circle])
             self.raw_coeffs = array([ifft(x*D) for x in self.sampled_coeffs])
         else:
             self.raw_coeffs = array([ifft(x) for x in self.sampled_coeffs])
         # Renormalize the coefficients, to adjust for the circle radius
         N = self.order
         if N%2 == 0:
-            renorm = self.radius**(-array(list(range(1+N//2))+list(range(1-N//2, 0))))
+            powers = -array(list(range(1+N//2))+list(range(1-N//2, 0)))
         else:
-            renorm = self.radius**(-array(list(range(1+N//2))+list(range(-(N//2), 0))))
+            powers = -array(list(range(1+N//2))+list(range(-(N//2), 0)))
+        renorm = array([radius**n for n in powers])
         self.normalized_coeffs = self.raw_coeffs*renorm
-        self.int_coeffs = array([map(round, x.real) for x in self.normalized_coeffs])
+        self.int_coeffs = array([map(round, real(x)) for x in self.normalized_coeffs])
         self.height = max([max(abs(x)) for x in self.int_coeffs])
         self.noise = self.normalized_coeffs.real - self.int_coeffs
         self.max_noise = [max(abs(x)) for x in self.noise]
         self.shift = self.find_shift()
-        print('Shift is %s'%self.shift)
+        self._print('Shift is %s'%self.shift)
         if self.shift is None:
             raise ValueError('Could not compute the shift. '
                              'Coefficients may be wrapping.  '
@@ -198,12 +258,23 @@ class Apoly:
             rows -= 1
         self.coefficients = coefficient_array[:rows]
         
+    def compute_newton_polygon(self):
+        power_scale = (1,1) if self.gluing_form else (1,2) 
+        self.newton_polygon = NewtonPolygon(self.as_dict(), power_scale)
+
+    def recompute(self):
+        """
+        Recompute A after changing attributes.
+        """
+        self._compute_all(array(self.elevation.R_longitude_evs))    
+        self.compute_newton_polygon()
+
     def help(self):
         print(self.__doc__)
 
-    def symmetric_funcs(self, roots):
+    def symmetric_funcs(self, evs):
         """
-        Given a numpyt 2D array whose rows are L-eigenvalues sampled on a circle,
+        Given a numpy 2D array whose rows are L-eigenvalues sampled on a circle,
         return a 2D array whose rows are the elementary symmetric functions of
         the roots.
 
@@ -215,13 +286,13 @@ class Apoly:
         rather than
            .101E3 - .999E0 - .100E3 "=" .1E1 == 1.0
         """
-        for n in range(roots.shape[1]):
-            roots[:,n] = sorted(roots[:,n], key=lambda x: -abs(x))
-        coeffs = [0, ones(roots[0].shape,'D')]
-        for root in roots:
+        for n in range(evs.shape[1]):
+            evs[:,n] = sorted(evs[:,n], key=lambda x: -abs(x))
+        coeffs = [0, ones(evs[0].shape, evs.dtype)]
+        for root in evs:
             for i in range(1, len(coeffs)):
                 coeffs[-i] = -root*coeffs[-i] + coeffs[-1-i]
-            coeffs.append(ones(roots[0].shape,'D'))
+            coeffs.append(ones(evs[0].shape, evs.dtype))
         return coeffs[1:]
 
     def demultiply(self, eigenvalues):
@@ -252,7 +323,6 @@ class Apoly:
           for j in range(1, 1 + cols//2):
              if abs(abs(self.normalized_coeffs[i][-j]) - 1.) < .01:
                  shifts.append(j)
-       print('shifts: ', shifts)
        return max(shifts)
 
 # Should have a monomial class, and generate a list of monomials here not a string
@@ -310,11 +380,14 @@ class Apoly:
         lines.append(line[marks[-1]:])
         return '\n    '.join(lines)
     
-    def as_polynomial(self):
-        polynomial = ('+'.join(self.monomials())).replace('+-','-')
-        return polynomial
+    def as_string(self, exp='^'):
+        polynomial_string = ('+'.join(self.monomials())).replace('+-','-')
+        return polynomial_string.replace('^', exp)
 
-# could do this by sorting the monomials
+    def sage(self):
+        return sage_poly_ring(self.as_string())
+    
+    # could do this by sorting the monomials
     def as_Lpolynomial(self, name='A', twist=0):
         terms = []
         rows, cols = self.coefficients.shape
@@ -396,11 +469,12 @@ class Apoly:
                 directory=self.hint_dir,
                 extra_options={
                     'denom': self.denom,
-                    'multi': self.multi
+                    'multi': self.multi,
+                    'use_quad_fft': self.use_quad_fft
                 })
             
     def boundary_slopes(self):
-        print(self.newton_polygon.lower_slopes)
+        return [s.sage() for s in self.newton_polygon.lower_slopes]
         
     def show_R_longitude_evs(self):
         self.elevation.show_R_longitude_evs()
@@ -442,31 +516,31 @@ class Apoly:
         noise_ok = True
         symmetry = True
         sign = None
-        print('Checking noise level ...', end=' ')
-        print(max(self.max_noise))
+        self._print('Checking max noise level: ', end=' ')
+        self._print(max(self.max_noise))
         if max(self.max_noise) > .3:
             noise_ok = False
-            print('Failed')
-        print('Checking for reciprocal symmetry ... ', end=' ')
+            self._print('Failed')
+        self._print('Checking for reciprocal symmetry ... ', end=' ')
         if max(abs(self.coefficients[0] - self.coefficients[-1][-1::-1]))==0:
             sign = -1.0
         elif max(abs(self.coefficients[0] + self.coefficients[-1][-1::-1]))==0:
             sign = 1.0
         else:
-            print('Failed!')
+            self._print('Failed!')
             symmetry = False
         if sign:
             for i in range(len(self.coefficients)):
                 maxgap = max(abs(self.coefficients[i] +
                               sign*self.coefficients[-i-1][-1::-1]))
                 if maxgap > 0:
-                    print('Failed! gap = %d'%maxgap)
+                    self._print('Failed! gap = %d'%maxgap)
                     symmetry = False
         if symmetry:
-            print('Symmetry holds')
+            self._print('OK.')
         result = noise_ok and symmetry 
         if result:
-            print('Passed!')
+            self._print('Passed!')
         return result
 
 # This won't work with bad fibers.    
@@ -507,6 +581,9 @@ class Slope:
     def __repr__(self):
         return '%d/%d'%(self.y, self.x)
 
+    def sage(self):
+        return fraction(self.y, self.x)
+    
 class NewtonPolygon:
       def __init__(self, coeff_dict, power_scale=(1,1)):
           # Clean up weird sage tuples
@@ -578,8 +655,6 @@ class NewtonPolygon:
               m, n = slope
               result.append(P(t**n,t**m))
 
-
-
 class PolyViewer:
       def __init__(self, newton_poly, title=None, scale=None, margin=50):
           self.NP = newton_poly
@@ -599,7 +674,7 @@ class PolyViewer:
                                   bg='white',
                                   height=self.height,
                                   width=self.width)
-          self.canvas.pack()
+          self.canvas.pack(expand=True, fill=tkinter.BOTH)
           self.font = ('Helvetica','18','bold')
           self.dots=[]
           self.text=[]
