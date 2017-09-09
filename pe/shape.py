@@ -232,9 +232,11 @@ class PolishedShapeSet(object):
         """Use Newton's method to compute precise shapes from rough ones."""
         precision = self._precision
         manifold = self.manifold
-        working_prec = precision + 32
+        #working_prec = precision + 32
+        working_prec = precision + 64
         target_epsilon = pari_set_precision(2.0, working_prec)**-precision
-        det_epsilon = pari_set_precision(2.0, working_prec)**-(10 + precision//32)
+        #det_epsilon = pari_set_precision(2.0, working_prec)**-(10 + precision//32)
+        det_epsilon = pari_set_precision(2.0, working_prec)**(32 - precision)
         init_shapes = pari_column_vector([pari_complex(z, working_prec) for z in init_shapes])
         init_equations = manifold.gluing_equations('rect')
         target = pari_complex(self.target_holonomy, precision)
