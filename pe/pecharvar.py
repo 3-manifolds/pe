@@ -74,7 +74,7 @@ class CircleElevation(object):
         if target_arg:
             target = radius*exp(target_arg*1j)
         else:
-            base_index = randint(0, order-1)
+            base_index = randint(0, order-2)
             self._print('Choosing random base index: %d'%base_index)
             target = radius*exp(-2*pi*1j*base_index/self.order)
         shapes = saved_data.get('shapes', None)
