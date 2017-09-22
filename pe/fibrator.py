@@ -17,7 +17,7 @@ class Fibrator(object):
     A factory for Fibers, used to construct an initial Fiber.  Either loads
     a pre-computed Fiber from a file, or uses PHC to construct one.
     """
-    def __init__(self, manifold, target=None, shapes=None, tolerance=1.0E-5, base_dir=None):
+    def __init__(self, manifold, target=None, shapes=None, tolerance=1.0E-6, base_dir=None):
         # The tolerance is used to decode when PHC solutions are regarded
         # as being at infinity.
         self.base_dir = base_dir
@@ -52,7 +52,9 @@ class Fibrator(object):
                 print('Saved base fiber as %s'%base_fiber_file)
             return result
 
-    def PHC_compute_fiber(self, target):
+    def PHC_compute_fiber(self, target, tolerance=None):
+        if tolerance is None:
+            tolerance = self.tolerance
         target = complex(target) # in case we were passed a Sage number
         N = self.manifold.num_tetrahedra()
         variables = (['X%s'%n for n in range(N)] + ['Y%s'%n for n in range(N)])
@@ -61,7 +63,7 @@ class Fibrator(object):
         equations += ['X%s + Y%s - 1'%(n, n) for n in range(N)]
         parametrized_system = ParametrizedSystem(ring, 't',
                                                  [PHCPoly(ring, e) for e in equations])
-        base_system = parametrized_system.start(target, self.tolerance)
+        base_system = parametrized_system.start(target, tolerance)
         return Fiber(self.manifold, target, PHCsystem=base_system)
         
     @staticmethod

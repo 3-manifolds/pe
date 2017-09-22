@@ -51,12 +51,14 @@ class CircleElevation(object):
     reported on the console and then ignored.
     """
     def __init__(self, manifold, order=128, radius=1.02, base_dir=None,
-                 hint_dir='hints', ignore_saved=False, verbose=True):
+                 hint_dir='hints', ignore_saved=False, phc_rescue=False,
+                 verbose=True):
         self.base_dir = base_dir
         self.hint_dir = hint_dir
         self.manifold = manifold
         self.order = order
         self.radius = radius
+        self.phc_rescue = phc_rescue
         self.verbose = verbose
         self.hp_manifold = self.manifold.high_precision()
         self.betti2 = [c % 2 for c in manifold.homology().coefficients].count(0)
@@ -83,6 +85,9 @@ class CircleElevation(object):
         arg = log(base_fiber.H_meridian).imag%(2*pi)
         self.base_index = (self.order - int(arg*self.order/(2*pi)))%self.order
         if not base_fiber.is_finite():
+            for n, s in enumerate(base_fiber.shapes):
+                if s.is_degenerate():
+                    print(n, s)
             raise RuntimeError('The starting fiber contains Tillmann points.')
         self.degree = len(base_fiber)
         self._print('Degree is %s.'%self.degree)
@@ -101,7 +106,7 @@ class CircleElevation(object):
         self.glunomials.append(self.M_holo)
         try:
             self.track_satellite()
-            self.R_longitude_holos, self.R_longitude_evs, self.R_flips = self.longidata(
+            self.R_longitude_holos, self.R_longitude_evs, self.R_choices = self.longidata(
                 self.R_fibers)
             self.failed = False
         except Exception as e:
@@ -184,47 +189,51 @@ class CircleElevation(object):
         # Move to the R-circle, if necessary.
         self.R_fibers[base] = self.base_fiber.transport(circle[base])
         for n in range(base+1, self.order):
-            self._print(' %-5s\r'%n, end=' ')
+            self._print(' %-5s\r'%n, end='')
             sys.stdout.flush()
-            self.R_lift_step(n, 1)
+            try:
+                self.R_lift_step(n, 1)
+            except:
+                break
         for n in range(base-1, -1, -1):
-            self._print(' %-5s\r'%n, end=' ')
+            self._print(' %-5s\r'%n, end='')
             sys.stdout.flush()
             self.R_lift_step(n, -1)
         self._print('Done.')
-        self.last_R_fiber = self.R_fibers[-1].transport(circle[0])
-        self._print('Polishing the end fibers ... ', end='')
-        self.R_fibers[0].polish()
-        self.last_R_fiber.polish()
-        self._print('done.')
-        self._print('Checking for completeness ... ', end='')
-        if not self.last_R_fiber == self.R_fibers[0]:
-            self._print('The end fibers did not agree!')
-            self._print('It might help to use a larger radius, or you might')
-            self._print('have been unlucky in your choice of base fiber.')
-        else:
-            self._print('OK.')
+        try:
+            self.last_R_fiber = self.R_fibers[-1].transport(circle[0])
+            self._print('Polishing the end fibers ... ', end='')
+            self.R_fibers[0].polish()
+            self.last_R_fiber.polish()
+            self._print('done.')
+            self._print('Checking for completeness ... ', end='')
+            if not self.last_R_fiber == self.R_fibers[0]:
+                self._print('The end fibers did not agree!')
+                self._print('This probably indicates that the base fiber is incorrect.')
+            else:
+                self._print('OK.')
+        except:
+            self._print('Could not check for completeness.')
         self._print('Tracked in %s seconds.'%(time.time() - start))
 
     def R_lift_step(self, n, step):
         previous_fiber = self.R_fibers[n-step]
-        predictor = self.R_fibers[n-2*step]
-        if isinstance(predictor, int):
-            predictor = None
         try:
-            # if previous_fiber.collision():
-            #     # Try to sidestep the singular point.
-            #     F = self.R_fibers[n-2*step].transport(1.01*self.R_circle[n-step])
-            #     F = F.transport(self.R_circle[n])
-            # else:
-            #     F = previous_fiber.transport(self.R_circle[n])
-            F = previous_fiber.transport(self.R_circle[n])#, predictor=predictor)
+            F = previous_fiber.transport(self.R_circle[n])
             self.R_fibers[n] = F
         except Exception as e:
             self._print('\nFailed to compute fiber %s.'%n)
-            raise e
+            print(e)
+            if self.phc_rescue:
+                self._print('Attempting to compute fiber from scratch with PHC ... ', end='')
+                F = self.fibrator.PHC_compute_fiber(self.R_circle[n])
+                self._print('done.')
+                F.match_to(previous_fiber)
+                self.R_fibers[n] = F
+            else:
+                raise e
         if not F.is_finite():
-            self._print('**')
+            self._print('Degenerate shape! ')
 
     def tighten(self, T=1.0):
         """
@@ -243,7 +252,7 @@ class CircleElevation(object):
             except ValueError:
                 self._print('Tighten failed at %s'%n)
         try:
-            self.T_longitude_holos, self.T_longitude_evs, self.T_flips = self.longidata(
+            self.T_longitude_holos, self.T_longitude_evs, self.T_choices = self.longidata(
                 self.T_fibers)
         except:
             self._print('Failed to compute longitude holonomies.')
@@ -277,32 +286,56 @@ class CircleElevation(object):
             self._print('Using %d as the starting index.'%index)
         longitude_traces = self.find_longitude_traces(fiber_list[index])
         longitude_eigenvalues = []
-        flips = []
+        choices = []
         for m, L in enumerate(longitude_holonomies):
             tr = longitude_traces[m]
             e = sqrt(L[index])
             # Choose the sign for the eigenvalue at the starting fiber
             flip = abs(e + 1/e - tr) > abs(e + 1/e + tr)
             E = [-e if flip else e]
-            Eflips = [flip]
+            Echoices = [self.ev_choice(E[0])]
             # Fix discontinuities caused by the branch cut used by sqrt
             for holo in L[index+1:]:
                 e = sqrt(holo)
                 flip = abs(e - E[-1]) > abs(e + E[-1])
                 E.append(-e if flip else e)
-                Eflips.append(flip)
+                Echoices.append(self.ev_choice(E[-1]))
             if index > 0:
                 for holo in L[index-1::-1]:
                     e = sqrt(holo)
                     flip = abs(e - E[0]) < abs(e + E[0])
                     E.insert(0, -e if flip else e)
-                    Eflips.insert(0, flip)
+                    Echoices.insert(0, self.ev_choice(E[0]))
             longitude_eigenvalues.append(E)
-            flips.append(Eflips)
+            choices.append(Echoices)
         self._print('done.')
-        return longitude_holonomies, longitude_eigenvalues, flips
+        return longitude_holonomies, longitude_eigenvalues, choices
 
-    def polish_R_longitude_vals(self, precision=200):
+    def ev_choice(self, ev):
+        absreal, absimag = abs(ev.real), abs(ev.imag)
+        if absreal >= absimag:
+            part = 0
+            pos = ev.real > 0
+        else:
+            part = 1
+            pos = ev.imag > 0
+        return part, pos
+
+    def set_sign(self, choice, ev):
+        # Assumes that ev is a sage ComplexNumber
+        part, pos = choice
+        if part == 0:
+            if ev.real() > 0:
+                return ev if pos else -ev
+            else:
+                return -ev if pos else ev
+        else:
+            if ev.imag() > 0:
+                return ev if pos else -ev
+            else:
+                return -ev if pos else ev
+                 
+    def polish_R_longitude_vals(self, precision=196):
         R = ComplexField(precision)
         L_holo = self.L_holo
         # The minus sign is because the FFT circle is oriented clockwise.
@@ -310,11 +343,11 @@ class CircleElevation(object):
                   for n in range(self.order)]
         holos = []
         evs = []
+        self._print('Polishing shapes to %d bits precision:'%precision)
         for m in range(self.degree):
-            self._print('point %d'%m)
             row = []
             for n in range(self.order):
-                self._print('\r%d    '%n, end='')
+                self._print('\rlift %d %d   '%(m,n), end='')
                 r = self.R_fibers[n].shapes[m]
                 s = PolishedShapeSet(rough_shapes=r,
                                      target_holonomy=circle[n],
@@ -323,7 +356,7 @@ class CircleElevation(object):
             holos.append(row)
             self._print('\r', end='')
             row = [sqrt(z) for z in row]
-            row = [ -z if flip else z for flip, z in zip(self.R_flips[m], row)]
+            row = [self.set_sign(choice, z) for choice, z in zip(self.R_choices[m], row)]
             evs.append(row)
         self.polished_R_circle = circle
         self.polished_R_longitude_holos = holos
