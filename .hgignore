@@ -1,11 +1,13 @@
 syntax: glob
 build
 dist
-pe.egg-info
+*.egg-info
 .DS_Store
 PE_base_fibers
 apolys
+apoly_dicts
 hints
+saved_hints
 plots
 slurm*
 *.pyc

@@ -98,9 +98,12 @@ class ShapeSet(object):
     def is_degenerate(self):
         """True if any shape in this ShapeSet is degenerate."""
         moduli = abs(self.array)
+        dist_to_1 = abs(self.array - 1.0)
         return ((moduli < 1.0E-6).any() or
-                (moduli < 1.0E-6).any() or
+                (dist_to_1 < 1.0E-6).any() or
                 (moduli > 1.0E6).any())
+    
+
     def _SL2C(self, word):
         self.manifold.set_tetrahedra_shapes(self.array, None, [(0, 0)])
         G = self.manifold.fundamental_group()

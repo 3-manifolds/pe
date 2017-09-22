@@ -17,7 +17,9 @@ class Infinity(object):
 
 try:
     from sage.all import PolynomialRing, IntegerRing, RationalField, RealField, ComplexField
+    from sage.rings.complex_number import is_ComplexNumber
     from quadFFT import QuadFFT
+    from .mpfft import ComplexFFT
     ZZ = IntegerRing()
     QQ = RationalField()
     QuadC = ComplexField(114)
@@ -57,7 +59,7 @@ class Apoly:
                      multiplicities of factors of the polynomial are computed.
     <use_hints>      Whether to check for and use hints from a hint file.
     <verbose>        Whether to print information about the computation.
-    <use_quad_fft>   Whether to use 128 bit floats for the FFT.
+    <precision>      Specify 'double'(default), 'quad', or a number of bits.
 
     Methods:
 
@@ -88,7 +90,8 @@ class Apoly:
     def __init__(self, mfld, order=128, gluing_form=False,
                  radius=1.02, denom=None, multi=False, use_hints=True, verbose=True,
                  apoly_dir='apolys', gpoly_dir='gpolys', base_dir='PE_base_fibers',
-                 hint_dir='hints', use_quad_fft=False):
+                 hint_dir='hints', dict_dir='apoly_dicts', precision='double',
+                 phc_rescue=False):
         if isinstance(mfld, Manifold):
             self.manifold = mfld
             self.mfld_name = mfld.name()
@@ -101,17 +104,19 @@ class Apoly:
         self.gpoly_dir = gpoly_dir
         self.base_dir = base_dir
         self.hint_dir = hint_dir
-        self.use_quad_fft = use_quad_fft
+        self.dict_dir = dict_dir
         options = {'order'        : order,
                    'denom'        : denom,
                    'multi'        : multi,
                    'radius'       : radius,
-                   'use_quad_fft' : use_quad_fft
+                   'precision'    : precision,
+                   'phc_rescue'   : phc_rescue
                    }
                    # 'apoly_dir'   : apoly_dir,
                    # 'gpoly_dir'   : gpoly_dir,
                    # 'base_dir'    : base_dir,
                    # 'hint_dir'    : hint_dir}
+                   # 'dict_dir'    : dict_dir}
         if use_hints:
             self._print("Checking for hints ... ", end='')
             hintfile = os.path.join(self.hint_dir, self.mfld_name+'.hint')
@@ -119,9 +124,16 @@ class Apoly:
                 self._print("yes!")
                 exec(open(hintfile).read())
                 options.update(hint)
-                self._print('Using: radius=%f; order=%d; denom=%s%s.'%(
-                    hint['radius'], hint['order'], hint['denom'],
-                    ' with quad precision' if hint['use_quad_fft'] else ''))
+                prec = options['precision']
+                if prec == 'double':
+                    msg = ''
+                elif prec == 'quad':
+                    msg = 'with quad precision'
+                else:
+                    msg = 'with %d bits precision'%precision
+                self._print('Using: radius=%f; order=%d; denom=%s %s.'%(
+                    options['radius'], options['order'], options['denom'],
+                    msg))
             else:
                 print("nope.")
         self.order = N = options['order']
@@ -131,8 +143,13 @@ class Apoly:
             self.denom_function = f
         self.multi = options['multi']
         self.radius = options['radius']
-        if use_quad_fft:
-            self.quad_fft = QuadFFT(self.order)
+        self.precision = precision = options['precision']
+        if precision == 'quad':
+            self.fft_obj = QuadFFT(self.order)
+        elif precision != 'double':
+            self.precision = int(precision) # avoid Sage Integers
+            self.fft_obj = ComplexFFT(self.order)
+        self.phc_rescue = phc_rescue
         filename = self.manifold.name()+'.base'
         saved_base_fiber = os.path.join(self.base_dir, filename)
         self.elevation = CircleElevation(
@@ -140,15 +157,20 @@ class Apoly:
             order=self.order,
             radius=self.radius,
             base_dir=self.base_dir,
-            verbose=self.verbose)
+            phc_rescue=self.phc_rescue,
+            verbose=self.verbose,
+        )
         if self.elevation.failed:
             print("Warning: Failed to elevate the R-circle.  This Apoly is incomplete.")
             return
         if self.gluing_form:
             vals = array([track for track in self.elevation.R_longitude_holos])
         else:
-            if self.use_quad_fft:
+            if self.precision == 'quad':
                 self.elevation.polish_R_longitude_vals()
+                vals = array(self.elevation.polished_R_longitude_evs)
+            elif isinstance(self.precision, int):
+                self.elevation.polish_R_longitude_vals(precision=self.precision)
                 vals = array(self.elevation.polished_R_longitude_evs)
             else:
                 vals = array(self.elevation.R_longitude_evs)
@@ -158,12 +180,12 @@ class Apoly:
         self.reduced_degree = len(vals)
         self._compute_all(vals)
         if self.height > float(2**52):
-            print("Coefficients overflowed.")
+            print("Some coefficients exceed double precision -- try the quad precision FFT.")
         self._print("Noise levels: ")
         for level in self.max_noise:
             self._print(level)
-        if max(self.max_noise) > 0.1:
-            self._print('Failed to find integer coefficients with tolerance 0.1')
+        if max(self.max_noise) > 0.2:
+            self._print('Failed to find integer coefficients with tolerance 0.2')
             return
         self._print('Computing the Newton polygon ... ', end='')
         self.compute_newton_polygon()
@@ -195,6 +217,22 @@ class Apoly:
         if self.verbose:
             print(*args, **kwargs)
 
+    @staticmethod
+    def _rounded_real(z):
+        if is_ComplexNumber(z):
+            return z.real().round()
+        elif isinstance(z, complex):
+            return round(z.real)
+        else:
+            raise ValueError('Unknown type %s.'%type(z))
+        
+    @staticmethod
+    def realpart(z):
+        if is_ComplexNumber(z):
+            return z.real()
+        else:
+            return z.real
+        
     def _compute_all(self, vals):
         """
         Use a discrete Fourier transform to compute the A-polynomial from the
@@ -212,26 +250,36 @@ class Apoly:
         """
         self.sampled_roots = vals
         self.sampled_coeffs = self.symmetric_funcs(vals)
-        if self.use_quad_fft:
+        if self.precision == 'quad':
             radius = QuadR(self.radius)
-            ifft = self.quad_fft.ifft
-            def real(A):
-                return array([z.real() for z in A])
+            ifft = self.fft_obj.ifft
+            def real(z):
+                return z.real()
+        elif isinstance(self.precision, int):
+            radius = RealField(self.precision)(self.radius)
+            ifft = self.fft_obj.ifft
+            def real(z):
+                return z.real()
         else:
             radius = self.radius
             ifft = numpy.fft.ifft
-            def real(A):
-                return array([z.real for z in A])
+            def real(z):
+                return z.real
         if self.denom:
-            if self.use_quad_fft:
-                circle = [radius*U1Q(-n, self.order, precision=114) for n in range(self.order)]
-                self.D = D = array([self.denom_function(z) for z in circle])
+            if self.precision == 'quad':
+                circle = [radius*U1Q(-n, self.order, precision=114)
+                          for n in range(self.order)]
+                D = array([self.denom_function(z) for z in circle])
+            elif isinstance(self.precision, int):
+                circle = [radius*U1Q(-n, self.order, precision=self.precision)
+                          for n in range(self.order)]
+                D = array([self.denom_function(z) for z in circle])
             else:
-                self.D = D = array([self.denom_function(z) for z in self.elevation.R_circle])
+                D = array([self.denom_function(z) for z in self.elevation.R_circle])
             self.raw_coeffs = array([ifft(x*D) for x in self.sampled_coeffs])
         else:
             self.raw_coeffs = array([ifft(x) for x in self.sampled_coeffs])
-        # Renormalize the coefficients, to adjust for the circle radius
+        # Renormalize the coefficients, to adjust for the circle radius.
         N = self.order
         if N%2 == 0:
             powers = -array(list(range(1+N//2))+list(range(1-N//2, 0)))
@@ -239,12 +287,18 @@ class Apoly:
             powers = -array(list(range(1+N//2))+list(range(-(N//2), 0)))
         renorm = array([radius**n for n in powers])
         self.normalized_coeffs = self.raw_coeffs*renorm
-        self.int_coeffs = array([map(round, real(x)) for x in self.normalized_coeffs])
+        self.int_coeffs = array([map(self._rounded_real, x) for x in self.normalized_coeffs],
+                                dtype='O')
+        #self.int_coeffs = array([[self. for z in row]
+        #                              for row in self.normalized_coeffs], dtype='O')
         self.height = max([max(abs(x)) for x in self.int_coeffs])
-        self.noise = self.normalized_coeffs.real - self.int_coeffs
+        self.bits_height = int(ceil(float(log(self.height)/log(2))))
+        #self.bits_height = log(self.height, 2)
+        self.noise = (array([[real(z) for z in row] for row in self.normalized_coeffs], dtype='O') -
+                      self.int_coeffs)
         self.max_noise = [max(abs(x)) for x in self.noise]
         self.shift = self.find_shift()
-        self._print('Shift is %s'%self.shift)
+        self._print('Shift is %d.'%self.shift)
         if self.shift is None:
             raise ValueError('Could not compute the shift. '
                              'Coefficients may be wrapping.  '
@@ -433,7 +487,7 @@ class Apoly:
                 term = self.break_line(term)
                 terms.append(term.replace('+ -','- '))
         return name + ' :=\n' + '\n'.join(terms)
-
+            
     def save(self, basename=None, dir=None, with_hint=True, twist=0):
         if dir == None:
             if self.gluing_form:
@@ -444,7 +498,8 @@ class Apoly:
                 poly_dir = self.apoly_dir
                 hint_dir = self.hint_dir
                 ext = '.apoly'
-        for dir in (poly_dir, hint_dir):
+        dict_dir = self.dict_dir
+        for dir in (poly_dir, hint_dir, dict_dir):
             if not os.path.exists(dir):
                 cwd = os.path.abspath(os.path.curdir)
                 newdir = os.path.join(cwd,dir)
@@ -456,21 +511,27 @@ class Apoly:
             basename = self.mfld_name
         polyfile_name = os.path.join(poly_dir, basename + ext)
         hintfile_name = os.path.join(hint_dir, basename + '.hint')
-        polyfile = open(polyfile_name,'w')
+        dictfile_name = os.path.join(dict_dir, basename + '.dict')
         if self.gluing_form:
             lhs = 'G_%s'%basename
         else:
             lhs = 'A_%s'%basename
-        polyfile.write(self.as_Lpolynomial(name=lhs, twist=twist))
-        polyfile.write(';\n')
-        polyfile.close()
+        with open(polyfile_name,'wb') as polyfile:
+            polyfile.write(self.as_Lpolynomial(name=lhs, twist=twist))
+            polyfile.write(';\n')
+        with open(dictfile_name, 'wb') as dictfile:
+            dictfile.write('%s = {\n'%lhs)
+            polydict = self.as_dict()
+            for key in sorted(polydict.keys()):
+                dictfile.write(' %s : %s,\n'%(key, polydict[key]))
+            dictfile.write('}\n')
         if with_hint:
             self.elevation.save_hint(
                 directory=self.hint_dir,
                 extra_options={
                     'denom': self.denom,
                     'multi': self.multi,
-                    'use_quad_fft': self.use_quad_fft
+                    'precision': self.precision
                 })
             
     def boundary_slopes(self):
@@ -485,7 +546,8 @@ class Apoly:
         self.elevation.show_T_longitude_evs()
 
     def show_coefficients(self):
-        plot = Plot(self.normalized_coeffs.real)
+        plot = Plot([[self.realpart(z) for z in row]
+                     for row in self.normalized_coeffs.real])
 
     def show_noise(self):
         plot = Plot(self.noise)
@@ -518,7 +580,7 @@ class Apoly:
         sign = None
         self._print('Checking max noise level: ', end=' ')
         self._print(max(self.max_noise))
-        if max(self.max_noise) > .3:
+        if max(self.max_noise) > 0.2:
             noise_ok = False
             self._print('Failed')
         self._print('Checking for reciprocal symmetry ... ', end=' ')
@@ -542,13 +604,6 @@ class Apoly:
         if result:
             self._print('Passed!')
         return result
-
-# This won't work with bad fibers.    
-#    def tighten(self, T=1.0):
-#      self.elevation.tighten(T)
-#      roots = [array(x) for x in self.elevation.T_longitude_evs]
-#      self.T_sampled_coeffs = self.symmetric_funcs(roots)
-#      self.T_raw_coeffs = array([ifft(x) for x in self.T_sampled_coeffs])
 
 class Slope:
     def __init__(self, xy, power_scale=(1,1)):

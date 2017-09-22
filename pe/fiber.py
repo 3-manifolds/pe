@@ -21,7 +21,7 @@ class Fiber(object):
 
     """
     def __init__(self, manifold, H_meridian, gluing_system=None,
-                 PHCsystem=None, shapes=None, tolerance=1.0E-05):
+                 PHCsystem=None, shapes=None, tolerance=1.0E-06):
         # The tolerance is used to determine which of the PHC solutions
         # are at infinity.
         self.manifold = manifold
