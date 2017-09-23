@@ -40,7 +40,7 @@ except ImportError:
     def fraction(numerator, denominator):
         return '%d/%d'%(numerator, denominator)
     
-class Apoly:
+class Apoly(object):
     """
     The A-polynomial of a SnapPy manifold.  
 
@@ -54,7 +54,7 @@ class Apoly:
                      if the coefficients seem to be wrapping.
     <denom>          Denominator for leading coefficient.  This should be
                      a string, representing a polynomial expression in H,
-                     the meridian holonomy.  e.g. denom='(H*H-1)
+                     the meridian holonomy.  e.g. denom='((H-1)**3)*((H+1)**4)'
     <multi>          If True, multiple copies of lifts are not removed, so
                      multiplicities of factors of the polynomial are computed.
     <use_hints>      Whether to check for and use hints from a hint file.
@@ -137,10 +137,7 @@ class Apoly:
             else:
                 print("nope.")
         self.order = N = options['order']
-        self.denom = options['denom']
-        if self.denom:
-            exec('f = lambda H : %s'%self.denom)
-            self.denom_function = f
+        self._denom = options['denom']
         self.multi = options['multi']
         self.radius = options['radius']
         self.precision = precision = options['precision']
@@ -232,7 +229,20 @@ class Apoly:
             return z.real()
         else:
             return z.real
-        
+
+    @property
+    def denom(self):
+        return self._denom
+
+    @denom.setter
+    def denom(self, denom_string):
+        assert isinstance(denom_string, str)
+        self._denom = denom_string
+        if self.precision != 'double':
+            self._compute_all(array(self.elevation.polished_R_longitude_evs))
+        else:
+            self._compute_all(array(self.elevation.R_longitude_evs))
+            
     def _compute_all(self, vals):
         """
         Use a discrete Fourier transform to compute the A-polynomial from the
@@ -265,17 +275,18 @@ class Apoly:
             ifft = numpy.fft.ifft
             def real(z):
                 return z.real
-        if self.denom:
+        if self._denom:
+            exec('denom_function = lambda H : %s'%self._denom)
             if self.precision == 'quad':
                 circle = [radius*U1Q(-n, self.order, precision=114)
                           for n in range(self.order)]
-                D = array([self.denom_function(z) for z in circle])
+                D = array([denom_function(z) for z in circle])
             elif isinstance(self.precision, int):
                 circle = [radius*U1Q(-n, self.order, precision=self.precision)
                           for n in range(self.order)]
-                D = array([self.denom_function(z) for z in circle])
+                D = array([denom_function(z) for z in circle])
             else:
-                D = array([self.denom_function(z) for z in self.elevation.R_circle])
+                D = array([denom_function(z) for z in self.elevation.R_circle])
             self.raw_coeffs = array([ifft(x*D) for x in self.sampled_coeffs])
         else:
             self.raw_coeffs = array([ifft(x) for x in self.sampled_coeffs])
@@ -529,7 +540,7 @@ class Apoly:
             self.elevation.save_hint(
                 directory=self.hint_dir,
                 extra_options={
-                    'denom': self.denom,
+                    'denom': self._denom,
                     'multi': self.multi,
                     'precision': self.precision
                 })
