@@ -35,7 +35,7 @@ class Fibrator(object):
         if self.shapes:
             return Fiber(self.manifold, self.target, shapes=self.shapes) 
         else:
-            print('Computing the starting fiber ... ', end=' ')
+            print('Computing the base fiber ... ', end=' ')
             begin = time.time()
             result = self.PHC_compute_fiber(self.target)
             print('done. (%.3f seconds)'%(time.time() - begin))
