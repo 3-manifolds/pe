@@ -88,7 +88,7 @@ class CircleElevation(object):
             for n, s in enumerate(base_fiber.shapes):
                 if s.is_degenerate():
                     print(n, s)
-            raise RuntimeError('The starting fiber contains Tillmann points.')
+            raise RuntimeError('The base fiber contains Tillmann points.')
         self.degree = len(base_fiber)
         self._print('Degree is %s.'%self.degree)
         # pre-initialize by just inserting an integer for each fiber
@@ -151,7 +151,7 @@ class CircleElevation(object):
         try:
             with open(base_fiber_file) as datafile:
                 data = eval(datafile.read())
-            self._print('Loaded the starting fiber from %s'%base_fiber_file)
+            self._print('Loaded the base fiber from %s'%base_fiber_file)
         except IOError:
             data = {}
         return data
@@ -191,10 +191,7 @@ class CircleElevation(object):
         for n in range(base+1, self.order):
             self._print(' %-5s\r'%n, end='')
             sys.stdout.flush()
-            try:
-                self.R_lift_step(n, 1)
-            except:
-                break
+            self.R_lift_step(n, 1)
         for n in range(base-1, -1, -1):
             self._print(' %-5s\r'%n, end='')
             sys.stdout.flush()

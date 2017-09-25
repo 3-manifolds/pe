@@ -176,14 +176,6 @@ class Apoly(object):
             self.multiplicities, vals = self.demultiply(vals)
         self.reduced_degree = len(vals)
         self._compute_all(vals)
-        if self.height > float(2**52):
-            print("Some coefficients exceed double precision -- try the quad precision FFT.")
-        self._print("Noise levels: ")
-        for level in self.max_noise:
-            self._print(level)
-        if max(self.max_noise) > 0.2:
-            self._print('Failed to find integer coefficients with tolerance 0.2')
-            return
         self._print('Computing the Newton polygon ... ', end='')
         self.compute_newton_polygon()
         self._print('done.')
@@ -322,6 +314,13 @@ class Apoly(object):
                 break
             rows -= 1
         self.coefficients = coefficient_array[:rows]
+        self._print('log_2(height) is %s'%self.bits_height)
+        self._print("Noise levels: ")
+        for level in self.max_noise:
+            self._print(level)
+        if max(self.max_noise) > 0.2:
+            self._print('Failed to find integer coefficients with tolerance 0.2')
+            return
         
     def compute_newton_polygon(self):
         power_scale = (1,1) if self.gluing_form else (1,2) 

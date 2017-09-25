@@ -246,7 +246,7 @@ class GluingSystem(object):
                 if debug:
                     print('Track step reduced to %.17f; condition = %s'%(dT, self.condition(prev_Z)))
                 if dT < 2.0**(-16):
-                    print('Longitude holonomy:', self.L_holonomy(Zn))
+                    print('\nLongitude holonomy:', self.L_holonomy(Zn))
                     print('Track parameter:', Tn)
                     print('Shapes:', Zn)
                     raise ValueError('Track failed: step size limit reached.')
