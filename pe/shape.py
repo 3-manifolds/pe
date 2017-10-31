@@ -13,13 +13,6 @@ from numpy.linalg import svd, norm
 real_array = vectorize(float)
 from .sage_helper import _within_sage
 
-# def eval_gluing_equation(eqn, shapes):
-#     a, b, c = eqn
-#     ans = int(c)
-#     for i , z in enumerate(shapes):
-#         ans = ans * ( z**int(a[i])   *  (1 - z) ** int(b[i]) )
-#     return ans
-
 if _within_sage:
     from sage.all import ComplexField, Matrix, pari
     from sage.libs.mpmath.utils import mpmath_to_sage
