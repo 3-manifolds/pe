@@ -6,20 +6,29 @@ complex numbers, while those in a PolishedShapeSet have arbitrary precision.
 """
 
 from __future__ import print_function
-from snappy.snap.shapes import (pari, pari_column_vector, infinity_norm,
-                                pari_matrix, pari_vector_to_list,
-                                enough_gluing_equations, eval_gluing_equation,
-                                prec_bits_to_dec)
+from snappy.snap.shapes import (enough_gluing_equations, infinity_norm,
+                                gluing_equation_errors, eval_gluing_equation)
 from numpy import array, matrix, complex128, zeros, eye, transpose, vectorize
 from numpy.linalg import svd, norm
 real_array = vectorize(float)
 from .sage_helper import _within_sage
 
+# def eval_gluing_equation(eqn, shapes):
+#     a, b, c = eqn
+#     ans = int(c)
+#     for i , z in enumerate(shapes):
+#         ans = ans * ( z**int(a[i])   *  (1 - z) ** int(b[i]) )
+#     return ans
+
 if _within_sage:
-    from sage.all import ComplexField, pari
+    from sage.all import ComplexField, Matrix, pari
+    from sage.libs.mpmath.utils import mpmath_to_sage
+    import mpmath
     def Number(z, precision=212):
         """In sage we use Sage numbers."""
         R = ComplexField(precision)
+        if isinstance(z, mpmath.mpc):
+            z = mpmath_to_sage(z, precision)
         return R(z)
 else:
     from snappy.number import Number
@@ -237,37 +246,35 @@ class PolishedShapeSet(object):
         manifold = self.manifold
         #working_prec = precision + 32
         working_prec = precision + 64
-        target_epsilon = pari_set_precision(2.0, working_prec)**-precision
-        #det_epsilon = pari_set_precision(2.0, working_prec)**-(10 + precision//32)
-        det_epsilon = pari_set_precision(2.0, working_prec)**(32 - precision)
-        init_shapes = pari_column_vector([pari_complex(z, working_prec) for z in init_shapes])
+        mpmath.mp.prec = working_prec 
+        target_epsilon = mpmath.mpmathify(2.0)**-precision
+        det_epsilon = mpmath.mpmathify(2.0)**(32 - precision)
+        #shapes = [mpmath.mpmathify(z) for z in init_shapes]
+        shapes = mpmath.matrix(init_shapes)
         init_equations = manifold.gluing_equations('rect')
-        target = pari_complex(self.target_holonomy, precision)
-        error = self._gluing_equation_error(init_equations, init_shapes, target)
-        if flag_initial_error and error > pari(0.000001):
+        target = mpmath.mpmathify(self.target_holonomy)
+        error = self._gluing_equation_error(init_equations, shapes, target)
+        if flag_initial_error and error > 0.000001:
             raise GoodShapesNotFound('Initial solution not very good: error=%s'%error)
 
         # Now begin the actual computation
 
         eqns = enough_gluing_equations(manifold)
         assert eqns[-1] == manifold.gluing_equations('rect')[-1]
-
-        shapes = init_shapes
         for i in range(100):
             errors = self._gluing_equation_errors(eqns, shapes, target)
             if infinity_norm(errors) < target_epsilon:
                 break
-            shape_list = pari_vector_to_list(shapes)
-            derivative = [[eqn[0][i]/z  - eqn[1][i]/(1 - z)
-                           for i, z in enumerate(shape_list)] for eqn in eqns]
+            derivative = [[int(eqn[0][i])/z  - int(eqn[1][i])/(1 - z)
+                           for i, z in enumerate(shapes)] for eqn in eqns]
             derivative[-1] = [target*x for x in derivative[-1]]
-            derivative = pari_matrix(derivative)
-
-            det = derivative.matdet().abs()
+            derivative = mpmath.matrix(derivative)
+            #det = derivative.matdet().abs()
+            det = abs(mpmath.det(derivative))
             if min(det, 1/det) < det_epsilon:
                 raise GoodShapesNotFound('Gluing system is too singular (|det| = %s).'%det)
-            gauss = derivative.matsolve(pari_column_vector(errors))
-            shapes = shapes - gauss
+            delta = mpmath.lu_solve(derivative, errors)
+            shapes = shapes - delta
 
         # Check to make sure things worked out ok.
         error = self._gluing_equation_error(init_equations, shapes, target)
@@ -276,7 +283,6 @@ class PolishedShapeSet(object):
             raise GoodShapesNotFound('Failed to find solution')
         #if flag_initial_error and total_change > pari(0.0000001):
         #    raise GoodShapesNotFound('Moved too far finding a good solution')
-        shapes = pari_vector_to_list(shapes)
         self.shapelist = [Number(z, precision=precision) for z in shapes]
 
     def __getitem__(self, index):
@@ -285,8 +291,11 @@ class PolishedShapeSet(object):
     @staticmethod
     def _gluing_equation_errors(eqns, shapes, RHS_of_last_eqn):
         last = [eval_gluing_equation(eqns[-1], shapes) - RHS_of_last_eqn]
-        return [eval_gluing_equation(eqn, shapes) - 1
-                for eqn in eqns[:-1]] + last
+        result = []
+        for eqn in eqns[:-1]:
+            val = eval_gluing_equation(eqn, shapes)
+            result.append( val - 1)
+        return result + last
 
     def _gluing_equation_error(self, eqns, shapes, RHS_of_last_eqn):
         return infinity_norm(self._gluing_equation_errors(

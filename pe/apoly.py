@@ -228,7 +228,7 @@ class Apoly(object):
 
     @denom.setter
     def denom(self, denom_string):
-        assert isinstance(denom_string, str)
+        assert denom_string is None or isinstance(denom_string, str)
         self._denom = denom_string
         if self.precision != 'double':
             self._compute_all(array(self.elevation.polished_R_longitude_evs))
