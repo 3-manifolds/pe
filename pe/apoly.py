@@ -130,7 +130,7 @@ class Apoly(object):
                 elif prec == 'quad':
                     msg = 'with quad precision'
                 else:
-                    msg = 'with %d bits precision'%precision
+                    msg = 'with %d bits precision'%prec
                 self._print('Using: radius=%f; order=%d; denom=%s %s.'%(
                     options['radius'], options['order'], options['denom'],
                     msg))
