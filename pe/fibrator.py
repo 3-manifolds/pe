@@ -7,7 +7,7 @@ then be transported around a circle.
 from __future__ import print_function
 import os, time
 try:
-    from phc import PolyRing, PHCPoly, ParametrizedSystem
+    from cyphc import PolyRing, PHCPoly, ParametrizedSystem
 except ImportError:
     print('No phc module, so will only work with precomputed fibers')
 from .fiber import Fiber
