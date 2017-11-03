@@ -18,12 +18,9 @@ class Infinity(object):
 try:
     from sage.all import PolynomialRing, IntegerRing, RationalField, RealField, ComplexField
     from sage.rings.complex_number import is_ComplexNumber
-    from quadFFT import QuadFFT
     from .mpfft import ComplexFFT
     ZZ = IntegerRing()
     QQ = RationalField()
-    QuadC = ComplexField(114)
-    QuadR = RealField(114)
     sage_poly_ring = PolynomialRing(IntegerRing(), ('M', 'L'))
     def fraction(numerator, denominator):
         if denominator:
@@ -59,7 +56,7 @@ class Apoly(object):
                      multiplicities of factors of the polynomial are computed.
     <use_hints>      Whether to check for and use hints from a hint file.
     <verbose>        Whether to print information about the computation.
-    <precision>      Specify 'double'(default), 'quad', or a number of bits.
+    <precision>      Specify 'double'(default), or a number of bits.
 
     Methods:
 
@@ -127,8 +124,6 @@ class Apoly(object):
                 prec = options['precision']
                 if prec == 'double':
                     msg = ''
-                elif prec == 'quad':
-                    msg = 'with quad precision'
                 else:
                     msg = 'with %d bits precision'%prec
                 self._print('Using: radius=%f; order=%d; denom=%s %s.'%(
@@ -141,9 +136,7 @@ class Apoly(object):
         self.multi = options['multi']
         self.radius = options['radius']
         self.precision = precision = options['precision']
-        if precision == 'quad':
-            self.fft_obj = QuadFFT(self.order)
-        elif precision != 'double':
+        if precision != 'double':
             self.precision = int(precision) # avoid Sage Integers
             self.fft_obj = ComplexFFT(self.order)
         self.phc_rescue = phc_rescue
@@ -163,10 +156,7 @@ class Apoly(object):
         if self.gluing_form:
             vals = array([track for track in self.elevation.R_longitude_holos])
         else:
-            if self.precision == 'quad':
-                self.elevation.polish_R_longitude_vals()
-                vals = array(self.elevation.polished_R_longitude_evs)
-            elif isinstance(self.precision, int):
+            if isinstance(self.precision, int):
                 self.elevation.polish_R_longitude_vals(precision=self.precision)
                 vals = array(self.elevation.polished_R_longitude_evs)
             else:
@@ -252,12 +242,7 @@ class Apoly(object):
         """
         self.sampled_roots = vals
         self.sampled_coeffs = self.symmetric_funcs(vals)
-        if self.precision == 'quad':
-            radius = QuadR(self.radius)
-            ifft = self.fft_obj.ifft
-            def real(z):
-                return z.real()
-        elif isinstance(self.precision, int):
+        if isinstance(self.precision, int):
             radius = RealField(self.precision)(self.radius)
             ifft = self.fft_obj.ifft
             def real(z):
@@ -269,11 +254,7 @@ class Apoly(object):
                 return z.real
         if self._denom:
             exec('denom_function = lambda H : %s'%self._denom)
-            if self.precision == 'quad':
-                circle = [radius*U1Q(-n, self.order, precision=114)
-                          for n in range(self.order)]
-                D = array([denom_function(z) for z in circle])
-            elif isinstance(self.precision, int):
+            if isinstance(self.precision, int):
                 circle = [radius*U1Q(-n, self.order, precision=self.precision)
                           for n in range(self.order)]
                 D = array([denom_function(z) for z in circle])
