@@ -1,0 +1,231 @@
+\documentclass[12pt, letter, oneside]{amsart}
+\usepackage{amsfonts, amsmath, amsthm, amssymb}
+\usepackage[width=6.5in, height=9.0in]{geometry}
+\usepackage{kpfonts}
+
+% Numbering and "theorems"
+\theoremstyle{definition}
+\newtheorem{para}{}[section]
+\newtheorem{subpara}{}[para]
+\newtheorem{observation}[para]{Observation}
+\newtheorem{definition}[para]{Definition}
+
+\theoremstyle{plain}
+\newtheorem{theorem}[para]{Theorem}
+\newtheorem{lemma}[para]{Lemma}
+\newtheorem{proposition}[para]{Proposition}
+\newtheorem{corollary}[para]{Corollary}
+\newtheorem{conjecture}[para]{Conjecture}
+\newtheorem{claim}[subpara]{}
+
+\numberwithin{equation}{para}
+\numberwithin{figure}{section}
+
+\parindent=0pt
+\parskip=10pt
+
+\newcommand{\CC}{\mathbb{C}}
+\newcommand{\FFT}{\text{FFT}}
+\newcommand{\IFFT}{\text{IFFT}}
+\renewcommand{\th}{\text{th}}
+
+\begin{document}
+\centerline{\Large\bf The FFT}
+\bigskip
+\section{Introduction}
+\section{Definition of the FFT}
+Let $N$ be an integer and fix a field $F\subset\CC$.  We assume that the
+polynomial $z^N - 1$ splits over $F$, i.e. that $F$ contains all of
+the $N^\th$ roots of $1$.
+
+We will consider the quotient $L_N$ of the ring of polynomials in $z$
+over $F$ by its principal ideal with generator $z^N - 1$:
+$$L_N = F[z]/(z^N-1).$$
+
+We shall use the symbol $\star$ to denote the multiplication operator
+in $L_N$.  The ring $L_N$ has the structure of an $N$-dimensional
+vector space over $F$, so $\langle L, \star\rangle$ forms an
+$N$-dimensional algebra over $F$.  For notational simplicity we will
+start by thinking of elements of $L_N$ as (cosets of) polynomials of
+degree less than $N$, although later on, in order to comply with the
+standard notation, we will switch to thinking of them as Laurent
+polynomials; hence the name $L$.  From this point of view, the
+multiplication operation $\star$ is carried out by performing ordinary
+polynomial multiplication and then reducing as much as possible using
+the relation $z^N = 1$.
+
+We will also consider the ring $$A_N = F^N$$ in which we shall denote
+the coordinate-wise multiplication operator by $\circ$.  Clearly
+$\langle A_N, \circ\rangle$ also forms an $N$-dimensional algebra over
+$F$.
+
+\begin{lemma}\label{lemma:evaluation}
+For each root $\omega$ of $z^N - 1$ there is a unique algebra
+homomorphism
+$$\phi_\omega:L_N \to F$$
+such that $\phi_\omega(z) = \omega$.
+\end{lemma}
+\proof Since $L_N$ is generated as an algebra by $z$, uniqueness
+follows once it is shown that $\phi_\omega$ is an algebra
+homomorphism.  With the caveat that evaluation of a ``polynomial''
+$f\in L_N$ is only well-defined when the value of the variable is an
+$N^\th$ root of 1, we have $\phi_\omega(f) = f(\omega)$.  It is a
+tautology that an evaluation map is a homomorphism whenever it is
+well-defined.
+\endproof
+
+\begin{definition}\label{definition:fft}
+  Let $\FFT_N:L_N \to A_N$ be the function
+ $$\FFT_N = \phi_1 \times \phi_\xi \times \phi_{\xi^2} \times \cdots
+ \times \phi_{\xi^{N-1}}$$
+ where $\xi$ is a primitive $N^\th$ root of 1.  It follows from
+ Lemma \ref{lemma:evaluation} that $\FFT_N$ is an algebra homomorphism.
+\end{definition}
+
+If $f\in L_N$ is represented by a polynomial $f(z)$ of
+degree less than $N$, and if we write elements of $A_N$ as row vectors
+using the usual basis, then
+$$\FFT_N(f) = [ f(1), f(\xi), \ldots, f(\xi^{N-1}) ].$$
+That is, $FFT_n(f)$ is the vector obtained by evaluating the polynomial $f(z)$
+at the $N^\th$ roots of 1.
+
+Next we will derive a matrix which represents the linear
+transformation $\FFT_N$.  People familiar with Vandermonde matrices
+will have already recognized from Definition \ref{definition:fft} that
+we are simply constructing the Vandermonde matrix of the polynomial
+$z^N - 1$.  But we will do the derivation from first principles.
+
+Implicitly we have already fixed standard bases for $L_n$ and $A_n$,
+namely $(z^n)_{n=0}^{N-1}$ for $L_N$ and $(e_n)_{n=0}^{N-1}$ for
+$A_n$, where $e_i^j = \delta_{ij}$.  We will write vectors in $L_N$ or
+$A_N$ as rows, so the linear tranformation represented by a matrix
+acts by right multiplication.  The rows of the matrix $[\FFT_N]$ which
+represents $\FFT_N$ are the images of the basis elements of the
+domain, expressed in terms of the basis elements of the target.  Thus,
+setting $\xi^N = 1$, we have
+$$
+[\FFT_N] = \left [
+\begin{matrix}
+1      & 1         & 1     & \cdots  & 1\\
+1      & \xi       & \xi^2 & \cdots  & \xi^{N-1}\\
+1      & \xi^2     & \xi^4 & \cdots  & \xi^{N-2}\\ 
+\vdots & \vdots    &       & \ddots  & \vdots\\
+1      & \xi^{N-1}  &       & \cdots  & \xi
+\end{matrix}
+\right ]. \eqno{(*)}
+$$
+In other words, $[FFT_N]_{i,j} = \xi^{(i-1)(j-1)}$.  In particular,
+the complex matrix $[\FFT_N]$ is symmetric, which makes it a very
+special Vandermonde matrix.  We claim that it is also orthogonal with
+respect to the Hermitian inner product.
+
+To compute the Hermitian inner product of row $j$ with row $k$, for
+$j > k$, we let $d$ denote the greatest common divisor of $N$ and $j-k$
+and set $M = N/d$.  Then we have
+$$\langle\FFT_N(z^j),\; \FFT_N(z^k)\rangle = \sum_{n=0}^{N-1} \xi^{nj}\overline{\xi^{nk}}
+= \sum_{n=0}^{N-1}\xi^{n(j-k)} = d\sum_{n=0}^M\xi^n.$$
+The sum on the right hand side above is the sum of all of the roots of
+$z^M - 1$, which must be $0$ because it equals the linear term of
+$z^M - 1$ for $M > 1$.  This shows that the rows of $[\FFT_N]$ are orthogonal.
+
+On the other hand, each term of
+$\sum_{n=0}^{N-1} \xi^{nj}\overline{\xi^{nj}}$ is equal to $1$, which
+implies that the Hermitian norm of each row of $[\FFT_N]$ is
+$\sqrt{N}$.  Thus $\frac{1}{\sqrt{N}}[\FFT_N]$ is unitary, from which
+we deduce that $[\FFT_N][\FFT_N]^* = NI$ and that the inverse of
+$[\FFT_N]$ is $\frac{1}{N}[\FFT_N]^*$.  It is clear from the formula
+$[FFT_N]_{i,j} = \xi^{(i-1)(j-1)}$ that $[FFT_N]^*_{i,j} = \xi^{-(i-1)(j-1)}$
+and $[\FFT_N]^{-1}_{i,j} = \frac{1}{N}\xi^{-(i-1)(j-1)}$.  This provides
+the matrix for the inverse transform $\IFFT_N$.
+
+\section{The F in FFT}
+
+The acronym $\FFT$ stands for ``Fast Fourier Transform''.  The second and
+third letters reflect both the fact that $\FFT$ is indeed a Fourier Transform
+for the cyclic group of order $N$ and that a primary domain of application
+for the $\FFT$ is digital signal processing.  But here we will explain why
+it is fast to compute, and how to compute it quickly.
+
+We need two simple observations.  First, let us commit the atrocity of
+reindexing our matrix entries so that rows and columns are counted
+from $0$ to $N-1$ instead of from $1$ to $N$.  With this $0$-based
+indexing scheme the element of $[\FFT_N]$ with index $(i,j)$ is
+$\xi^{ij}$.  Next suppose that $k$ is a divisor of $N$ and consider
+the $i^\th$ row of the matrix $[FFT_N]$ for $i$ a multiple of $k$.
+Observe that
+$$[FFT_N]_{i,j+N/k} = \xi^{ij + iN/k} = \xi^{ij} = [FFT_N]_{i,j}$$
+where the second equality follows because $i$ is divisible by $k$, making
+$iN/k$ a multiple of $N$.
+
+In terms of the matrix, this means that each row having index divisible
+by $k$ consists of $k$ identical blocks of length $N/k$.  A tiny bit of
+inspection reveals that the blocks themselves are familiar.  Specifically
+
+\begin{observation}\label{observation:block}
+Using $0$-based indexing for the rows and columns, if $k|N$ then the
+$kn^\th$ row of the matrix $[\FFT_N]$ consists of $k$ blocks of length
+$N/k$, and each block is equal to the $n^\th$ row of the matrix
+$[\FFT_{N/k}]$.
+\end{observation}
+
+As an immediate consequence we obtain 
+\begin{proposition}
+Suppose that $k|N$ and that $f\in L_{N/k}$.  Represent $f$ as a
+polynomial $f(z)$ of degree at most $N/k$ and consider the element
+$\widetilde f$ of $L_N$ which is represented by the polynomial
+$f(z^k)$.  Then the vector $\FFT_N(\widetilde f)$ consists of $k$
+blocks of length $N/k$ each of which is equal to the vector
+$\FFT_{N/k}(f)$.
+\end{proposition}
+\proof Set $m = N/k$ and write
+$f(z) = a_0 + a_1z + \cdots a_{m-1}z^{m-1}$.  When we multiply the row
+vector representing $\widetilde f$ times the matrix $[\FFT_N]$, the
+result is a sum of scalar multiples of rows of $[\FFT_N]$ by
+coefficients of $f(z^k)$.  These coefficients are $0$ in degrees not
+divisible by $k$.  So the non-zero terms are obtained by multiplying
+the $kn^\th$ row of $[\FFT_N]$ by $a_n$ for $n=0, \ldots, N/k-1$.  But
+the $kn^\th$ row of $[\FFT_N]$ has a block form in which each block is
+equal to the $n^\th$ row of $[\FFT_{N/k}]$.  Thus the row vector
+representing $\FFT_N(\widetilde f)$ has a block form in which each
+block is the sum of $a_n$ times the $n^th$ row of $[\FFT_{N/k}]$.
+This implies that each block is equal to $\FFT_{N/k}(f)$, as claimed.
+\endproof
+
+The second observation is even simpler.
+\begin{observation}\label{observation:decomposition}
+If $k|N$ then each polynomial $f(z)$ of degree less than $N$ can be
+written uniquely as
+$$f(z) = f_0(z^k)+ zf_1(z^k) + \cdots + z^{k-1}f_{k-1}(z^k),$$
+where each $f_i(z)$ has degree less than $N/k$.  In particular, any
+element $f$ of $L_N$ can be uniquely decomposed as
+$$f = f_0+ Z\star f_1 + \cdots + Z^{k-1}\star f_{k-1}$$
+where $Z\in L_N$ is represented by the polynomial $z$ and each $f_i$
+is represented by a polynomial of the form $f_i(z^k)$, where $f_i(z)$
+has degree less than $N/k$.
+\end{observation}
+
+We now have everything we need to use the ``divide and conquer''
+strategy to describe an efficient recursive algorithm for computing
+$\FFT_N(f)$, when $N$ is a product of powers of small primes.  For For
+simplicity, we will give the description for $N = 2^k$. We will
+identify elements of $L_N$ with their polynomial representatives.
+Then the algorithm is:
+
+\begin{enumerate}
+\item write $f(z) = f_0(z^2)+ zf_1(z^2)$ where $f_i(z)$ has degree less than $N/2$.
+\item write $\FFT_N(f_i(z^2)) = [\FFT_{N/2}(f_i(z)) | \FFT_{N/2}(f_i(z))]$.
+\item $\FFT_N(f) = \FFT_{N}(f_0(z^2)) + \FFT_{N}(z)\circ\FFT_{N}(f_1(z^2))$.
+\end{enumerate}
+
+The vector $\FFT_N(z)$, which is the second row of the matrix $[\FFT_N]$ can
+be precomputed and $\FFT_{2^j}(z)$, for $j < k$ is obtained as a subsequence
+of $\FFT_N(z)$ with stride $2^{k-j}$.  Thus the $k^\th$ stage of the recursion
+essentially involves two evaluations of $\FFT_{2^{k-1}}$ and one $k$-dimensional
+dot product, meaning that the running time is not much worse than $O(log N)$.
+
+For more details, see the actual python code in the file {\tt mpfft.py}, which
+is about 100 lines long including comments.
+
+\section{Conventions}
+  
+\end{document}

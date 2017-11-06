@@ -14,7 +14,8 @@ class BaseFFT:
         self._initialize()
         
     def _initialize(self):
-        # Subclasses override this method to compute roots of unity.
+        # Subclasses override this method to compute rows 2 and 3 of the
+        # matrix [FFT_N] and rows 2 and 3 of 
         # Remember that the FFT world orients the unit circle clockwise.
         pass
     

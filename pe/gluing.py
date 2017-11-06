@@ -249,6 +249,7 @@ class GluingSystem(object):
                     print('\nLongitude holonomy:', self.L_holonomy(Zn))
                     print('Track parameter:', Tn)
                     print('Shapes:', Zn)
+                    print('Condition:', self.condition(Z))
                     raise ValueError('Track failed: step size limit reached.')
         return Zn
 
