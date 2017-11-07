@@ -33,6 +33,35 @@
 \centerline{\Large\bf The FFT}
 \bigskip
 \section{Introduction}
+
+The PE module needed to be able to compute a discrete Fourier Transform with
+multiprecision floating point arithmetic for its polynomial interpolation step.
+
+A google search for Fast Fourier Transform on the arXiv.org site returns about
+65,500 results.  The arXiv search engine returns 766 papers. A MathSciNet search
+finds 2450 papers.  There are many software projects devoted to implementations
+of the FFT, including FFTW, FFTPACK, FFTE, KISSFFT, CUFFT, ACML, ESSL, and
+implementations embedded in numpy, ESSL, MKL.  Yet none of these packages provided
+an easy path to providing a multi-precision FFT for PE.  And none of the many
+discussions of the mathematical background for the FFT proved to be particularly
+cogent.  The best discussion that I found was some unpublished notes for a course
+given by Richard Fateman at Berkeley. XXreferenceXX
+
+The vast size of the literature and the enormous complexity and inflexibility of
+existing implementations was intimidating.  But we eventually learned how simple
+the ideas were, and wrote a short simple Python module which computes an FFT
+using either Python's complex arithmetic or Sage's multiprecision complex number
+class, and allowing arrays whose size has prime factors $2$ or $3$.  These sizes
+provide adequate flexibility, and the time required to compute the FFT is so small
+compared to the time spent running Newton's method for path lifting that there
+was no need for complicated optimizations.  The module is about 100 lines of
+code, including comments.
+
+This document is my attempt to write a simple, coherent description of the
+mathematical ideas that underly the FFT algorithm.  I attempted to make the
+discussion as straightforward as possible, to use only standard mathematical
+constructions, to avoid jargon and to describe the main ideas clearly.
+
 \section{Definition of the FFT}
 Let $N$ be an integer and fix a field $F\subset\CC$.  We assume that the
 polynomial $z^N - 1$ splits over $F$, i.e. that $F$ contains all of
@@ -75,11 +104,11 @@ well-defined.
 \endproof
 
 \begin{definition}\label{definition:fft}
-  Let $\FFT_N:L_N \to A_N$ be the function
- $$\FFT_N = \phi_1 \times \phi_\xi \times \phi_{\xi^2} \times \cdots
- \times \phi_{\xi^{N-1}}$$
- where $\xi$ is a primitive $N^\th$ root of 1.  It follows from
- Lemma \ref{lemma:evaluation} that $\FFT_N$ is an algebra homomorphism.
+We define $\FFT_N:L_N \to A_N$ be the function
+$$\FFT_N = \phi_1 \times \phi_\xi \times \phi_{\xi^2} \times \cdots
+\times \phi_{\xi^{N-1}}$$
+where $\xi$ is a primitive $N^\th$ root of 1.  It follows from
+Lemma \ref{lemma:evaluation} that $\FFT_N$ is an algebra homomorphism.
 \end{definition}
 
 If $f\in L_N$ is represented by a polynomial $f(z)$ of
@@ -223,9 +252,31 @@ of $\FFT_N(z)$ with stride $2^{k-j}$.  Thus the $k^\th$ stage of the recursion
 essentially involves two evaluations of $\FFT_{2^{k-1}}$ and one $k$-dimensional
 dot product, meaning that the running time is not much worse than $O(log N)$.
 
-For more details, see the actual python code in the file {\tt mpfft.py}, which
-is about 100 lines long including comments.
+For more details, see the actual python code in the file {\tt mpfft.py}.
 
 \section{Conventions}
-  
+
+The actual values produced by the $\FFT$ depend on some choices.  If an
+implementer wants to obtain the same results as existing implementations
+then the same choices must be made.  The choices are
+
+\begin{itemize}
+\item Which primitive $N^\th$ root of $1$ to choose for $\xi$.  The standard
+choice is $\xi = e^{-2\pi i/N}$; in FFTland, the circle is oriented clockwise.
+Presumably this seemingly odd choice is designed to make the FFT model the
+continuous Fourier transform as closely as possible.
+
+\item Which ordered basis to choose for $L_N$.  The standard answer is to use
+powers of $z$ as the basis elements, but to use both positive and negative
+powers.  So the elements of $L_n$ are represented as Laurent polynomials
+rather than standard polynomials.  Presumably this is because digital filtering
+involves taking the transform of rational functions.  The powers are ordered
+so that non-negative powers appear before negative powers and so that the
+nonnegative values increase while the negative values decrease. The number
+of non-negative powers is $\lfloor \frac{N}{2}\rfloor$.  Thus the standard ordered
+basis is
+$$(1, z, z^2, \ldots, z^{\lfloor \frac{N}{2} - 1\rfloor}, z^{-1}, z^{-2},
+\ldots, z^{-\lfloor \frac{N}{2}\rfloor}).$$
+\end{itemize}
+
 \end{document}
