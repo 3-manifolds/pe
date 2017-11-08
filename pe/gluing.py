@@ -6,7 +6,7 @@ monomials in the equations are represented by Glunomial objects.
 """
 from __future__ import print_function
 from numpy import dtype, array, matrix, prod, ones
-from numpy.linalg import svd, norm, solve, lstsq
+from numpy.linalg import svd, norm, solve, lstsq, matrix_rank
 from snappy.snap.shapes import enough_gluing_equations
 # The numpy type for our complex arrays
 DTYPE = dtype('c16')
@@ -109,6 +109,18 @@ class GluingSystem(object):
         system = D[0]/D[-1]
         return curve, system
 
+    def coranks(self, Z):
+        """
+        Return the coranks of the Jacobians for the defining
+        equations of the gluing variety and of the entire system
+        at the point Z.
+        """
+        jacobian = self.jacobian(Z)
+        num_vars = self.manifold.num_tetrahedra()
+        variety = num_vars - matrix_rank(jacobian[:-1])
+        system = num_vars - matrix_rank(jacobian)
+        return variety, system
+
     def newton_step(self, Z, M_target):
         """
         Do one iteration of Newton's method, starting at Z and aiming
@@ -210,11 +222,11 @@ class GluingSystem(object):
         Zn = Z
         if debug:
             print('tracking to target ', M_target)
-#            print('Z = %s; condition=%s'%(Z, [self.condition(x) for x in Z]))
+            print('Coranks:', self.coranks(Z))
         # First we try the cheap and easy method
         target = M_start + delta
         Zn, residual = self.newton1(Zn, target)
-        if residual < 1.0E-14: # What is a good threshold here?
+        if residual < 1.0E-12: # What is a good threshold here?
             return Zn
         # If that fails, try taking baby steps.
         if debug:
@@ -249,7 +261,7 @@ class GluingSystem(object):
                     print('\nLongitude holonomy:', self.L_holonomy(Zn))
                     print('Track parameter:', Tn)
                     print('Shapes:', Zn)
-                    print('Condition:', self.condition(Z))
+                    print('Coranks:', self.coranks(Z))
                     raise ValueError('Track failed: step size limit reached.')
         return Zn
 
