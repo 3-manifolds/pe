@@ -2,6 +2,7 @@
 \usepackage{amsfonts, amsmath, amsthm, amssymb}
 \usepackage[width=6.5in, height=9.0in]{geometry}
 \usepackage{kpfonts}
+\usepackage{url}
 
 % Numbering and "theorems"
 \theoremstyle{definition}
@@ -23,6 +24,7 @@
 
 \parindent=0pt
 \parskip=10pt
+\linespread{1.1}
 
 \newcommand{\CC}{\mathbb{C}}
 \newcommand{\FFT}{\text{FFT}}
@@ -30,8 +32,10 @@
 \renewcommand{\th}{\text{th}}
 
 \begin{document}
-\centerline{\Large\bf The FFT}
-\bigskip
+\title{The FFT with multiprecision arithmetic}
+\author{Marc Culler}
+\date{2017}
+\maketitle
 \section{Introduction}
 
 The PE module needed to be able to compute a discrete Fourier Transform with
@@ -41,52 +45,58 @@ A google search for Fast Fourier Transform on the arXiv.org site returns about
 65,500 results.  The arXiv search engine returns 766 papers. A MathSciNet search
 finds 2450 papers.  There are many software projects devoted to implementations
 of the FFT, including FFTW, FFTPACK, FFTE, KISSFFT, CUFFT, ACML, ESSL, and
-implementations embedded in numpy, ESSL, MKL.  Yet none of these packages provided
-an easy path to providing a multi-precision FFT for PE.  And none of the many
-discussions of the mathematical background for the FFT proved to be particularly
-cogent.  The best discussion that I found was some unpublished notes for a course
-given by Richard Fateman at Berkeley. XXreferenceXX
+implementations embedded in numpy, ESSL, MKL.  Yet, as far as I could tell, none
+of these packages provided an easy path to providing a multi-precision FFT for
+PE.  And none of the many discussions of the mathematical background for the FFT
+that I found proved to be particularly cogent.  The best discussion that I found
+was some notes for a course given by Richard Fateman at
+Berkeley:\break
+\url{https://inst.eecs.berkeley.edu/~cs282/sp02/readings/fftnotes.pdf}.
 
 The vast size of the literature and the enormous complexity and inflexibility of
 existing implementations was intimidating.  But we eventually learned how simple
 the ideas were, and wrote a short simple Python module which computes an FFT
 using either Python's complex arithmetic or Sage's multiprecision complex number
-class, and allowing arrays whose size has prime factors $2$ or $3$.  These sizes
-provide adequate flexibility, and the time required to compute the FFT is so small
-compared to the time spent running Newton's method for path lifting that there
-was no need for complicated optimizations.  The module is about 100 lines of
-code, including comments.
+class, allowing input arrays whose size has prime factors $2$ or $3$.  This
+limitation on array sizes provide adequate flexibility for our purposes.  A
+glance at the code in {\tt mpfft.py} shows that it would be trivial to adapt to
+other choices of arithmetical systems, as one would expect from an object
+oriented implementation.  The time required to compute an FFT with this code is
+so small compared to the time spent in PE solving linear systems for Newton's
+method that there was no need for complicated optimizations to compensate for
+the speed of python.  The entire module is about 100 lines of code, including
+comments.
 
 This document is my attempt to write a simple, coherent description of the
 mathematical ideas that underly the FFT algorithm.  I attempted to make the
-discussion as straightforward as possible, to use only standard mathematical
-constructions, to avoid jargon and to describe the main ideas clearly.
+discussion as straightforward as possible using standard mathematical
+concepts, to avoid jargon and to emphasize the main ideas.
 
 \section{Definition of the FFT}
-Let $N$ be an integer and fix a field $F\subset\CC$.  We assume that the
-polynomial $z^N - 1$ splits over $F$, i.e. that $F$ contains all of
-the $N^\th$ roots of $1$.
+Let $N > 1$ be an integer and fix a field $F\subset\CC$ such that the polynomial
+$z^N - 1$ splits over $F$, i.e. assume that $F$ contains all of the $N^\th$
+roots of $1$.  (Our assumption that $F$ is a subfield of $\CC$ fits our intended
+application and simplifies this discussion, but could easily be relaxed.)
 
-We will consider the quotient $L_N$ of the ring of polynomials in $z$
-over $F$ by its principal ideal with generator $z^N - 1$:
+We will consider the quotient $L_N$ of the ring of polynomials in $z$ over $F$
+by its principal ideal with generator $z^N - 1$:
 $$L_N = F[z]/(z^N-1).$$
 
-We shall use the symbol $\star$ to denote the multiplication operator
-in $L_N$.  The ring $L_N$ has the structure of an $N$-dimensional
-vector space over $F$, so $\langle L, \star\rangle$ forms an
-$N$-dimensional algebra over $F$.  For notational simplicity we will
-start by thinking of elements of $L_N$ as (cosets of) polynomials of
-degree less than $N$, although later on, in order to comply with the
-standard notation, we will switch to thinking of them as Laurent
-polynomials; hence the name $L$.  From this point of view, the
-multiplication operation $\star$ is carried out by performing ordinary
-polynomial multiplication and then reducing as much as possible using
-the relation $z^N = 1$.
+We shall use the symbol $\star$ to denote the multiplication operator in $L_N$
+as a reminder that polynomial multiplication can also be viewed as convolution.
+The ring $L_N$ has the structure of an $N$-dimensional vector space over $F$, so
+$\langle L, \star\rangle$ forms an $N$-dimensional algebra over $F$.  For
+notational simplicity we will start by thinking of elements of $L_N$ as (cosets
+of) polynomials of degree less than $N$, although later on, in order to comply
+with the standard notation, we will switch to thinking of them as Laurent
+polynomials; hence the name $L$.  From this point of view, the multiplication
+operation $\star$ is carried out by performing ordinary polynomial
+multiplication and then reducing as much as possible using the relation
+$z^N = 1$.
 
-We will also consider the ring $$A_N = F^N$$ in which we shall denote
-the coordinate-wise multiplication operator by $\circ$.  Clearly
-$\langle A_N, \circ\rangle$ also forms an $N$-dimensional algebra over
-$F$.
+We will also consider the ring $$A_N = F^N$$ in which we shall denote the
+coordinate-wise multiplication operator by $\circ$.  Clearly
+$\langle A_N, \circ\rangle$ also forms an $N$-dimensional algebra over $F$.
 
 \begin{lemma}\label{lemma:evaluation}
 For each root $\omega$ of $z^N - 1$ there is a unique algebra
@@ -104,7 +114,7 @@ well-defined.
 \endproof
 
 \begin{definition}\label{definition:fft}
-We define $\FFT_N:L_N \to A_N$ be the function
+We define $\FFT_N:L_N \to A_N$ to be the function
 $$\FFT_N = \phi_1 \times \phi_\xi \times \phi_{\xi^2} \times \cdots
 \times \phi_{\xi^{N-1}}$$
 where $\xi$ is a primitive $N^\th$ root of 1.  It follows from
@@ -143,15 +153,16 @@ $$
 \end{matrix}
 \right ]. \eqno{(*)}
 $$
-In other words, $[FFT_N]_{i,j} = \xi^{(i-1)(j-1)}$.  In particular,
-the complex matrix $[\FFT_N]$ is symmetric, which makes it a very
-special Vandermonde matrix.  We claim that it is also orthogonal with
+In other words, $[FFT_N]_{i, j} = \xi^{(i-1)(j-1)}$.  In particular,
+the complex matrix $[\FFT_N]$ is symmetric (so we would have gotten
+the same matrix by using column vectors).  This makes it a very
+special Vandermonde matrix.  We claim that it is orthogonal with
 respect to the Hermitian inner product.
 
 To compute the Hermitian inner product of row $j$ with row $k$, for
-$j > k$, we let $d$ denote the greatest common divisor of $N$ and $j-k$
+$j \not= k$, we let $d$ denote the greatest common divisor of $N$ and $|k-j|$
 and set $M = N/d$.  Then we have
-$$\langle\FFT_N(z^j),\; \FFT_N(z^k)\rangle = \sum_{n=0}^{N-1} \xi^{nj}\overline{\xi^{nk}}
+$$\big\langle\FFT_N(z^j),\; \FFT_N(z^k)\big\rangle = \sum_{n=0}^{N-1} \xi^{nj}\overline{\xi^{nk}}
 = \sum_{n=0}^{N-1}\xi^{n(j-k)} = d\sum_{n=0}^M\xi^n.$$
 The sum on the right hand side above is the sum of all of the roots of
 $z^M - 1$, which must be $0$ because it equals the linear term of
@@ -163,9 +174,9 @@ implies that the Hermitian norm of each row of $[\FFT_N]$ is
 $\sqrt{N}$.  Thus $\frac{1}{\sqrt{N}}[\FFT_N]$ is unitary, from which
 we deduce that $[\FFT_N][\FFT_N]^* = NI$ and that the inverse of
 $[\FFT_N]$ is $\frac{1}{N}[\FFT_N]^*$.  It is clear from the formula
-$[FFT_N]_{i,j} = \xi^{(i-1)(j-1)}$ that $[FFT_N]^*_{i,j} = \xi^{-(i-1)(j-1)}$
-and $[\FFT_N]^{-1}_{i,j} = \frac{1}{N}\xi^{-(i-1)(j-1)}$.  This provides
-the matrix for the inverse transform $\IFFT_N$.
+$[FFT_N]_{i, j} = \xi^{(i-1)(j-1)}$ that $[FFT_N]^*_{i, j} = \xi^{-(i-1)(j-1)}$.
+Letting $\IFFT_N$ denote the inverse of $\FFT_N$ we thus have
+$[\IFFT_N]_{i, j} = \frac{1}{N}\xi^{-(i-1)(j-1)}$.
 
 \section{The F in FFT}
 
@@ -235,7 +246,7 @@ has degree less than $N/k$.
 
 We now have everything we need to use the ``divide and conquer''
 strategy to describe an efficient recursive algorithm for computing
-$\FFT_N(f)$, when $N$ is a product of powers of small primes.  For For
+$\FFT_N(f)$, when $N$ is a product of powers of small primes.  For
 simplicity, we will give the description for $N = 2^k$. We will
 identify elements of $L_N$ with their polynomial representatives.
 Then the algorithm is:
@@ -252,19 +263,23 @@ of $\FFT_N(z)$ with stride $2^{k-j}$.  Thus the $k^\th$ stage of the recursion
 essentially involves two evaluations of $\FFT_{2^{k-1}}$ and one $k$-dimensional
 dot product, meaning that the running time is not much worse than $O(log N)$.
 
-For more details, see the actual python code in the file {\tt mpfft.py}.
+For more details about the algorithm see the actual python code in {\tt
+  mpfft.py}, which is as easy to read as pseudocode would be.
 
 \section{Conventions}
 
 The actual values produced by the $\FFT$ depend on some choices.  If an
 implementer wants to obtain the same results as existing implementations
 then the same choices must be made.  The choices are
-
 \begin{itemize}
+\setlength\itemsep{1em}
+
 \item Which primitive $N^\th$ root of $1$ to choose for $\xi$.  The standard
 choice is $\xi = e^{-2\pi i/N}$; in FFTland, the circle is oriented clockwise.
-Presumably this seemingly odd choice is designed to make the FFT model the
-continuous Fourier transform as closely as possible.
+This seemingly odd choice, which is also made when defining the abstract Fourier
+Transform of a finite abelian group, reflects the profound fact that in the
+standard definition of the Hermitian inner product it is the second factor that
+gets conjugated.
 
 \item Which ordered basis to choose for $L_N$.  The standard answer is to use
 powers of $z$ as the basis elements, but to use both positive and negative
