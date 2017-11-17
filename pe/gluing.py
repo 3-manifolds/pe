@@ -67,15 +67,28 @@ class GluingSystem(object):
     in z_i and (1-z_i), where z_i are the shape paremeters.  The
     right hand side of the system is [1,...,1,Hm] where Hm is the
     the meridian holonomy (i.e. the first eigenvalue squared).
+
+    If a GluingSystem is initialized with a list of shapesets that solve
+    the gluing equations then it will numerically compute the dimension
+    of the tangent cone of the component of the gluing variety through
+    each solution and generate random linear equations to be added to
+    the gluing system in order to cut the dimension of the component down
+    to 1.  The dimensions and extra equations are stored for use when
+    computing fibers of the meridian holonomy.  If no shapes are provided
+    then it is assumed that each component has dimension 1.
     """
-    def __init__(self, manifold):
+    def __init__(self, manifold, shapesets=None):
         assert manifold.num_cusps() == 1, 'Manifold must be one-cusped.'
         self.manifold = manifold
+        N = manifold.num_tetrahedra()
         eqns = enough_gluing_equations(manifold)
         self.glunomials = [Glunomial(A, B, c) for A, B, c in eqns]
         rect_eqns = manifold.gluing_equations('rect')
         self.M_nomial, self.L_nomial = [Glunomial(A, B, c) for A, B, c in rect_eqns[-2:]]
-
+        if shapesets:
+            self.degree = len(shapesets)
+            self.dimensions = [self.corank(S.array) for S in shapesets]
+            
     def __repr__(self):
         return '\n'.join([str(G) for G in self.glunomials])
 
@@ -97,29 +110,18 @@ class GluingSystem(object):
         """Evaluate the holonomy function of the longitude at a point Z in shape space."""
         return complex(self.L_nomial(Z))
 
-    def condition(self, Z):
+    def corank(self, Z):
         """
-        Return the condition numbers of the Jacobians for the defining
-        equations of the gluing curve and of the entire system
-        at the point Z.
-        """
-        D = svd(self.jacobian(Z)[:-1])[1]
-        curve = D[0]/D[-1]
-        D = svd(self.jacobian(Z))[1]
-        system = D[0]/D[-1]
-        return curve, system
-
-    def coranks(self, Z):
-        """
-        Return the coranks of the Jacobians for the defining
-        equations of the gluing variety and of the entire system
-        at the point Z.
+        Return the corank of the Jacobians at the point Z for the
+        defining equations of the gluing variety.  Raise an assertion
+        error if the augmented system, with the equation H_M = target
+        added, does not have corank one less.
         """
         jacobian = self.jacobian(Z)
         num_vars = self.manifold.num_tetrahedra()
-        variety = num_vars - matrix_rank(jacobian[:-1])
-        system = num_vars - matrix_rank(jacobian)
-        return variety, system
+        rank = matrix_rank(jacobian[:-1])
+        assert rank == matrix_rank(jacobian) - 1
+        return num_vars - rank
 
     def newton_step(self, Z, M_target):
         """
@@ -222,7 +224,7 @@ class GluingSystem(object):
         Zn = Z
         if debug:
             print('tracking to target ', M_target)
-            print('Coranks:', self.coranks(Z))
+            print('Corank:', self.corank(Z))
         # First we try the cheap and easy method
         target = M_start + delta
         Zn, residual = self.newton1(Zn, target)
@@ -256,12 +258,12 @@ class GluingSystem(object):
                 success = 0
                 dT /= 2
                 if debug:
-                    print('Track step reduced to %.17f; condition = %s'%(dT, self.condition(prev_Z)))
+                    print('Track step reduced to %.17f; corank = %s'%(dT, self.corank(prev_Z)))
                 if dT < 2.0**(-16):
                     print('\nLongitude holonomy:', self.L_holonomy(Zn))
                     print('Track parameter:', Tn)
                     print('Shapes:', Zn)
-                    print('Coranks:', self.coranks(Z))
+                    print('Corank:', self.corank(Z))
                     raise ValueError('Track failed: step size limit reached.')
         return Zn
 

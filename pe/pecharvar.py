@@ -105,7 +105,7 @@ class CircleElevation(object):
         self.M_holo, self.L_holo = [Glunomial(A, B, c) for A, B, c in eqns[-2:]]
         self.glunomials.append(self.M_holo)
         try:
-            self.track_satellite()
+            self.elevate()
             self.R_longitude_holos, self.R_longitude_evs, self.R_choices = self.longidata(
                 self.R_fibers)
             self.failed = False
@@ -176,9 +176,9 @@ class CircleElevation(object):
         with open(hintfile_name, 'w') as hintfile:
             hintfile.write('hint=' + str_rep)
 
-    def track_satellite(self):
+    def elevate(self):
         """
-        Construct the fibers over the circle of radius R.
+        Construct the elevation of the circle of radius R.
         """
         self._print('Elevating the circle of radius %s '%self.radius, end='')
         start = time.time()
