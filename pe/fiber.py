@@ -49,7 +49,7 @@ class Fiber(object):
         else:
             raise ValueError('Fiber object requires a PHC system or a list of shapes.')
         if gluing_system is None:
-            self.gluing_system = GluingSystem(manifold, self.shapes)
+            self.gluing_system = GluingSystem(manifold, self)
         else:
             self.gluing_system = gluing_system
 
@@ -80,6 +80,24 @@ class Fiber(object):
             if p not in self.shapes:
                 return False
         return True
+
+    def _random_vector(self):
+        return [exp(2*random()*pi*1j) for n in xrange(self.num_shapes)]
+    
+    def clean(self, coranks):
+        """
+        This should only be called for the random base fiber.
+
+        Given a list of coranks of the gluing system at each of our shapes, we
+        could try to augment the shapeset with a set of enough random extra
+        linear equations to cut the dimension of the component containing that
+        shape point down to 1.
+
+        For now, though, we just raise an exception if high-dimensional components
+        are found.
+        """
+        if set(coranks) != set([0]):
+            raise RuntimeError("Found high dimensional components of the gluing variety.")
 
     def collision(self):
         """
@@ -150,7 +168,7 @@ class Fiber(object):
             except GoodShapesNotFound:
                 precision *= 2
         if polished is None:
-            raise GoodShapesNotFound                    
+            raise GoodShapesNotFound('Failed to polish shapeset') 
         for shapes, polished_shapes in zip(self, polished):
             shapes.update([complex128(z) for z in polished_shapes])
 
