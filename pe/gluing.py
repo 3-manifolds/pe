@@ -5,14 +5,15 @@ A GluingSystem object represents a system of gluing equations.  The
 monomials in the equations are represented by Glunomial objects.
 """
 from __future__ import print_function
-from numpy import dtype, array, matrix, prod, ones
+from numpy import dtype, array, matrix, prod, ones, pi, exp
 from numpy.linalg import svd, norm, solve, lstsq, matrix_rank
+from numpy.random import random
 from snappy.snap.shapes import enough_gluing_equations
 # The numpy type for our complex arrays
 DTYPE = dtype('c16')
 # Constants for Newton's method
 RESIDUAL_BOUND = 1.0E-14
-STEPSIZE_BOUND = 1.0E-14
+STEPSIZE_BOUND = 1.0E-15
 
 class Glunomial(object):
     """
@@ -77,17 +78,17 @@ class GluingSystem(object):
     computing fibers of the meridian holonomy.  If no shapes are provided
     then it is assumed that each component has dimension 1.
     """
-    def __init__(self, manifold, shapesets=None):
+    def __init__(self, manifold, fiber):
         assert manifold.num_cusps() == 1, 'Manifold must be one-cusped.'
         self.manifold = manifold
-        N = manifold.num_tetrahedra()
+        self.num_shapes = manifold.num_tetrahedra()
         eqns = enough_gluing_equations(manifold)
         self.glunomials = [Glunomial(A, B, c) for A, B, c in eqns]
         rect_eqns = manifold.gluing_equations('rect')
         self.M_nomial, self.L_nomial = [Glunomial(A, B, c) for A, B, c in rect_eqns[-2:]]
-        if shapesets:
-            self.degree = len(shapesets)
-            self.dimensions = [self.corank(S.array) for S in shapesets]
+        if fiber:
+            self.clean_fiber(fiber)
+            self.degree = len(fiber.shapes)
             
     def __repr__(self):
         return '\n'.join([str(G) for G in self.glunomials])
@@ -98,6 +99,16 @@ class GluingSystem(object):
     def __len__(self):
         return len(self.glunomials)
 
+    def clean_fiber(self, fiber):
+        """
+        PHC will find solutions which lie on high dimensional components, if any exist.
+        But the mixed volume count assumes a 0-dimensional solution variety.  So
+        solutions on high dimensional components lead to incomplete base fibers. 
+        Currently this checks numerically for high dimesional components and raises
+        an exception if they appear to exist.
+        """
+        fiber.clean([self.corank(shapeset.array) for shapeset in fiber.shapes])
+            
     def jacobian(self, Z):
         """Return the Jacobian matrix for the system at a point Z in shape space."""
         return matrix([G.gradient(Z) for G in self.glunomials])
@@ -118,11 +129,23 @@ class GluingSystem(object):
         added, does not have corank one less.
         """
         jacobian = self.jacobian(Z)
-        num_vars = self.manifold.num_tetrahedra()
-        rank = matrix_rank(jacobian[:-1])
-        assert rank == matrix_rank(jacobian) - 1
-        return num_vars - rank
+        gluing_rank = matrix_rank(jacobian[:-1])
+        system_rank = matrix_rank(jacobian)
+        if gluing_rank != system_rank - 1:
+            print('gluing rank:', gluing_rank, 'system rank:', system_rank,
+                  'dimension:', self.num_shapes - system_rank)
+            jacobian[-1] = self.L_nomial.gradient(Z)
+            print('G + long rank:', matrix_rank(jacobian))
+            return -1
+        return self.num_shapes - system_rank
 
+    def newton_error(self, Z):
+        """
+        This is meant to bound the change in the Meridian holonomy within
+        a ball of radius STEPSIZE_BOUND around the shape vector Z.
+        """
+        return self.num_shapes*norm(self.M_nomial.gradient(Z), 1)*STEPSIZE_BOUND
+        
     def newton_step(self, Z, M_target):
         """
         Do one iteration of Newton's method, starting at Z and aiming
@@ -159,18 +182,18 @@ class GluingSystem(object):
         solve the linear system.  Does not adjust step sizes.
         The iteration is terminated if:
           * the residual does not decrease; or
-          * the step size is smaller than 1.0E-15
+          * the step size is smaller than STEPSIZE_BOUND
           * more than 10 iterations have been attempted
         """
         prev_residual = step_size = 1.0E5
-        prev_Z, count = Z, 1
+        prev_Z, count, res_bound = Z, 1, self.newton_error(Z)
         while True:
             Zn, step_size, residual = self.newton_step(prev_Z, M_target)
             if debug:
                 print(count, residual, step_size)
             if residual > prev_residual:
                 return prev_Z, prev_residual
-            if step_size < STEPSIZE_BOUND or residual < RESIDUAL_BOUND or count > 10:
+            if step_size < STEPSIZE_BOUND or residual < res_bound or count > 10:
                 return Zn, residual
             prev_Z, prev_residual = Zn, residual
             count += 1
@@ -187,7 +210,7 @@ class GluingSystem(object):
           * more than 10 iterations have been attempted
         """
         prev_residual = step_size = 1.0E5
-        prev_Z, count = Z, 1
+        prev_Z, count, res_bound = Z, 1, self.newton_error(Z)
         while True:
             dZ, target = self.newton_step_ls(prev_Z, M_target)
             t = 1.0
@@ -198,6 +221,8 @@ class GluingSystem(object):
                     break
                 else:
                     t *= 0.5
+                    if debug:
+                        print('reducing t to %s'%t)
             if debug:
                 print('scaled dZ by %s; residual: %s'%(t, residual))
             if residual > prev_residual:
@@ -205,7 +230,7 @@ class GluingSystem(object):
                     print('Armijo failed with t=%s'%t)
                 return prev_Z, prev_residual
             step_size = norm(t*dZ)
-            if step_size < STEPSIZE_BOUND or residual < RESIDUAL_BOUND or count > 10:
+            if step_size < STEPSIZE_BOUND or residual < res_bound or count > 10:
                 return Zn, residual
             prev_Z, prev_residual = Zn, residual
             count += 1
@@ -228,7 +253,7 @@ class GluingSystem(object):
         # First we try the cheap and easy method
         target = M_start + delta
         Zn, residual = self.newton1(Zn, target)
-        if residual < 1.0E-12: # What is a good threshold here?
+        if residual < 1.0E-8: # What is a good threshold here?  Was 1.0E-12
             return Zn
         # If that fails, try taking baby steps.
         if debug:
@@ -242,7 +267,7 @@ class GluingSystem(object):
                 print('trying T = %.17f'%Tn)
             baby_target = M_start + Tn*delta
             Zn, residual = self.newton2(prev_Z, baby_target, debug=debug)
-            if residual < 1.0E-12:
+            if residual < 1.0E-8: # was 1.0E-12
                 # After 3 successful baby steps, double the step size.
                 prev_Z = Zn
                 if success > 3:
@@ -259,11 +284,13 @@ class GluingSystem(object):
                 dT /= 2
                 if debug:
                     print('Track step reduced to %.17f; corank = %s'%(dT, self.corank(prev_Z)))
-                if dT < 2.0**(-16):
+                if dT < STEPSIZE_BOUND:
                     print('\nLongitude holonomy:', self.L_holonomy(Zn))
                     print('Track parameter:', Tn)
                     print('Shapes:', Zn)
                     print('Corank:', self.corank(Z))
+                    print('Newton bound:', self.newton_error(prev_Z))
+                    print('residual:', residual)
                     raise ValueError('Track failed: step size limit reached.')
         return Zn
 
