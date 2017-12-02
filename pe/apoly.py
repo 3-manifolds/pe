@@ -430,7 +430,7 @@ class Apoly(object):
         return polynomial_string.replace('^', exp)
 
     def sage(self):
-        return sage_poly_ring(self.as_string())
+        return sage_poly_ring(self.as_dict())
     
     # could do this by sorting the monomials
     def as_Lpolynomial(self, name='A', twist=0):
@@ -668,12 +668,11 @@ class NewtonPolygon:
               slopes = [(self.slope(B[n], B[k]), -k) for k in range(n+1,len(B))]
               slope, m = min(slopes)
               self.lower_slopes.append(slope)
-              if slope.y < 0:
-                  newton_side = [B[n]]
-                  for s, j in slopes:
-                      if s == slope and -j <= -m:
-                          newton_side.append(B[-j])
-                  self.newton_sides[(slope.x,slope.y)] = newton_side
+              newton_side = [B[n]]
+              for s, j in slopes:
+                  if s == slope and -j <= -m:
+                      newton_side.append(B[-j])
+              self.newton_sides[(slope.x,slope.y)] = newton_side
               n = -m
           n = 0
           while n < len(T) - 1:
@@ -696,10 +695,12 @@ class NewtonPolygon:
     
       def puiseux_expansion(self):
           result = []
-          for slope, side_dict in list(self.side_dicts().items()):
-              P = sage_2poly(dict)
+          for slope, side_dict in self.side_dicts().items():
+              P = sage_poly_ring(side_dict)
               m, n = slope
+              t = PolynomialRing(ZZ, 't').gen()
               result.append(P(t**n,t**m))
+          return result
 
 class PolyViewer:
       def __init__(self, newton_poly, title=None, scale=None, margin=50):
