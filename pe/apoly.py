@@ -216,19 +216,22 @@ class Apoly(object):
     def denom(self):
         return self._denom
 
-    def find_denom(self, base_index=None):
+    def find_denom(self, base_index=None, row=None):
         # Look for a short integer vector K such that the convolution
-        # of the normalized coefficients with K is zero at the base_index.
-        # By default, the base index is the middle, and we actually want
-        # the convolution to have a long block of zeros starting at the
-        # middle.
+        # of a row of normalized coefficients with K has a long block
+        # of zeros starting at the base index.  This function only
+        # looks for one zero, but it could be used with different base
+        # indices or rows to corroborate the result. Also note that
+        # the denominator should be a product of cyclotomic
+        # polynomials.
+        # The base index and row default to the middle.
         if base_index is None:
             assert self.order%2 == 0
             base_index = self.order // 2
             max_size = self.order - base_index
-        # take the middle row of the normalized coefficients
-        r = self.normalized_coeffs.shape[0] // 2
-        X = self.normalized_coeffs[r].real
+        if row is None:
+            row = self.normalized_coeffs.shape[0] // 2
+        X = self.normalized_coeffs[row].real
         # Find the shortest block with a non-trivial relation.
         for n in range(max_size):
             M = array([X[base_index+i:base_index+i+n] for i in range(n)])
@@ -236,10 +239,12 @@ class Apoly(object):
                 break
         if n == max_size - 1:
             raise RuntimeError('find_denom failed')
-        # M is square, with rank 1 kernel
+        # Now M should be square with a null space of dimension 1.
         U, S, V = svd(M)
         K = V[-1] # unit vector in the null space of M
-        coeffs = [int(x) for x in K/K[0]]
+        coeffs = [int(round(x)) for x in K/K[0]]
+        # Perhaps we should remove powers of H and verify that we
+        # are left with a product of cyclotomics.
         return PolynomialRing(ZZ, 'H')(coeffs)
         
     @denom.setter
