@@ -216,6 +216,32 @@ class Apoly(object):
     def denom(self):
         return self._denom
 
+    def find_denom(self, base_index=None):
+        # Look for a short integer vector K such that the convolution
+        # of the normalized coefficients with K is zero at the base_index.
+        # By default, the base index is the middle, and we actually want
+        # the convolution to have a long block of zeros starting at the
+        # middle.
+        if base_index is None:
+            assert self.order%2 == 0
+            base_index = self.order // 2
+            max_size = self.order - base_index
+        # take the middle row of the normalized coefficients
+        r = self.normalized_coeffs.shape[0] // 2
+        X = self.normalized_coeffs[r].real
+        # Find the shortest block with a non-trivial relation.
+        for n in range(max_size):
+            M = array([X[base_index+i:base_index+i+n] for i in range(n)])
+            if matrix_rank(M) == n - 1:
+                break
+        if n == max_size - 1:
+            raise RuntimeError('find_denom failed')
+        # M is square, with rank 1 kernel
+        U, S, V = svd(M)
+        K = V[-1] # unit vector in the null space of M
+        coeffs = [int(x) for x in K/K[0]]
+        return PolynomialRing(ZZ, 'H')(coeffs)
+        
     @denom.setter
     def denom(self, denom_string):
         assert denom_string is None or isinstance(denom_string, str)
