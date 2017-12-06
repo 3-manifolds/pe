@@ -503,7 +503,7 @@ class PECharVariety(object):
         for m, track in enumerate(self.elevation.T_longitude_evs):
             arc, info = PEArc(), []
             marker = ''
-            for n, ev in track:
+            for n, ev in enumerate(track):
                 if 0.99999 < abs(ev) < 1.00001:
                     if show_group:
                         shape = H.T_fibers[n].shapes[m]
