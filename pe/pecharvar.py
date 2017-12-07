@@ -243,11 +243,8 @@ class CircleElevation(object):
         for n in range(self.order):
             self._print(' %-5s\r'%n, end='')
             sys.stdout.flush()
-            try:
-                self.T_fibers[n] = self.R_fibers[n].transport(circle[n],
-                                                              allow_collision=True)
-            except ValueError:
-                self._print('Tighten failed at %s'%n)
+            self.T_fibers[n] = self.R_fibers[n].transport(
+                circle[n], allow_collision=True, fail_quietly=True)
         try:
             self.T_longitude_holos, self.T_longitude_evs, self.T_choices = self.longidata(
                 self.T_fibers)
