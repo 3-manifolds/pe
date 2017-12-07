@@ -233,12 +233,16 @@ class Apoly(object):
             row = self.normalized_coeffs.shape[0] // 2
         X = array([float(self.realpart(z)) for z in self.normalized_coeffs[row]])
         # Find the shortest block with a non-trivial relation.
+        M = None
         for n in range(max_size):
-            M = array([X[base_index+i:base_index+i+n] for i in range(n)])
-            if matrix_rank(M) == n - 1:
+            N = array([X[base_index+i:base_index+i+n] for i in range(n)])
+            r = matrix_rank(N)
+            if r == n - 1:
+                M = N
+            if n > r + 5: # looks like the rank has stabilized ...
                 break
-            if n == max_size - 1:
-                raise RuntimeError('find_denom failed')
+        if M is None:
+            raise RuntimeError("Failed to find a denominator.")
         # Now M should be square with a null space of dimension 1.
         U, S, V = svd(M)
         K = V[-1] # unit vector in the null space of M
