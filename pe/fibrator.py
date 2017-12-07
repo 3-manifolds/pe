@@ -105,3 +105,24 @@ class Fibrator(object):
             result.append(self.rect_to_PHC(eqn))
         result.append(self.rect_to_PHC(meridian, rhs='t'))
         return result
+
+    def write_phc_file(self, filename):
+        """
+        Save the system of equations defining the entire gluing variety
+        in PHC format.
+        """
+        if self.manifold.num_cusps() != 1 or not self.manifold.is_orientable():
+            raise ValueError('Manifold must be orientable with one cusp.')
+        N = self.manifold.num_tetrahedra()
+        eqns = self.manifold.gluing_equations('rect')
+        system = []
+        for eqn in eqns[:-3]:
+            system.append(self.rect_to_PHC(eqn))
+        system += ['X%s + Y%s - 1'%(n, n) for n in range(N)]
+        with open(filename, 'wb') as output:
+            output.write('%d %d\n'%(2*N - 1, 2*N))
+            for equation in system:
+                output.write(equation + ';\n')
+
+
+    
