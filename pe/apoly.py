@@ -228,21 +228,21 @@ class Apoly(object):
         if base_index is None:
             assert self.order%2 == 0
             base_index = self.order // 2
-            max_size = self.order - base_index
+        max_size = self.order - base_index
         if row is None:
             row = self.normalized_coeffs.shape[0] // 2
-        X = self.normalized_coeffs[row].real
+        X = array([float(self.realpart(z)) for z in self.normalized_coeffs[row]])
         # Find the shortest block with a non-trivial relation.
         for n in range(max_size):
             M = array([X[base_index+i:base_index+i+n] for i in range(n)])
             if matrix_rank(M) == n - 1:
                 break
-        if n == max_size - 1:
-            raise RuntimeError('find_denom failed')
+            if n == max_size - 1:
+                raise RuntimeError('find_denom failed')
         # Now M should be square with a null space of dimension 1.
         U, S, V = svd(M)
         K = V[-1] # unit vector in the null space of M
-        coeffs = [int(round(x)) for x in K/K[0]]
+        coeffs = [int(round(x)) for x in K/K[-1]]
         # Perhaps we should remove powers of H and verify that we
         # are left with a product of cyclotomics.
         return PolynomialRing(ZZ, 'H')(coeffs)

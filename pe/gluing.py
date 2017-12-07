@@ -235,7 +235,7 @@ class GluingSystem(object):
             prev_Z, prev_residual = Zn, residual
             count += 1
 
-    def track(self, Z, M_target, dT=1.0, debug=False):
+    def track(self, Z, M_target, dT=1.0, debug=False, fail_quietly=False):
         """
         Track solutions of the gluing system starting at Z and
         ending at a solution where the meridian holonomy takes the
@@ -285,12 +285,16 @@ class GluingSystem(object):
                 if debug:
                     print('Track step reduced to %.17f; corank = %s'%(dT, self.corank(prev_Z)))
                 if dT < STEPSIZE_BOUND:
-                    print('\nLongitude holonomy:', self.L_holonomy(Zn))
-                    print('Track parameter:', Tn)
-                    print('Shapes:', Zn)
-                    print('Corank:', self.corank(Z))
-                    print('Newton bound:', self.newton_error(prev_Z))
-                    print('residual:', residual)
-                    raise ValueError('Track failed: step size limit reached.')
+                    if fail_quietly:
+                        print('Track failed: step size limit reached.')
+                        return Zn
+                    else:
+                        print('\nLongitude holonomy:', self.L_holonomy(Zn))
+                        print('Track parameter:', Tn)
+                        print('Shapes:', Zn)
+                        print('Corank:', self.corank(Z))
+                        print('Newton bound:', self.newton_error(prev_Z))
+                        print('residual:', residual)
+                        raise ValueError('Track failed: step size limit reached.')
         return Zn
 
