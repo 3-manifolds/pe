@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
-import os, tkinter
+import os, tkinter, colorsys
 from snappy import Manifold
 from .pecharvar import CircleElevation
 from .shape import U1Q, PolishedShapeSet
@@ -36,7 +36,14 @@ except ImportError:
     sage_poly_ring = no_sage
     def fraction(numerator, denominator):
         return '%d/%d'%(numerator, denominator)
-    
+
+def color_string(h, s, v):
+    """
+    Return an html style color string from HSV values in [0.0, 1.0]
+    """
+    r, g, b = colorsys.hsv_to_rgb(h, s, v)
+    return "#%.2x%.2x%.2x"%(int(223*r), int(223*g), int(223*b))
+
 class Apoly(object):
     """
     The A-polynomial of a SnapPy manifold.  
@@ -583,11 +590,11 @@ class Apoly(object):
 
     def show_newton(self, text=False):
         V = PolyViewer(self.newton_polygon, title=self.mfld_name)
-        V.show_sides()
         if text:
             V.show_text()
         else:
             V.show_dots()
+        V.show_sides()
 
     def show_R_volumes(self):
         H = self.elevation
@@ -666,178 +673,182 @@ class Slope:
         return fraction(self.y, self.x)
     
 class NewtonPolygon:
-      def __init__(self, coeff_dict, power_scale=(1,1)):
-          # Clean up weird sage tuples
-          self.coeff_dict = {}
-          for (degree, coefficient) in list(coeff_dict.items()):
-              self.coeff_dict[tuple(degree)] = coefficient
-          # The X-power is the y-coordinate!
-          self.support = [(x[1], x[0]) for x in list(coeff_dict.keys())]
-          self.support.sort()
-          self.lower_slopes = []
-          self.upper_slopes = []
-          self.lower_vertices = []
-          self.upper_vertices = []
-          self.newton_sides = {}
-          self.find_vertices()
+    def __init__(self, coeff_dict, power_scale=(1,1)):
+        # Clean up weird sage tuples
+        self.coeff_dict = coeffs = {}
+        for (degree, coefficient) in coeff_dict.items():
+            coeffs[tuple(degree)] = coefficient
+        logmax = max(log(1 + abs(c)) for c in coeffs.values())
+        self.color_dict = dict((key, color_string(log(1+abs(value))/logmax, 1.0, 1.0))
+                                for key, value in coeffs.items())
+        # The X-power is the y-coordinate!
+        self.support = [(x[1], x[0]) for x in coeffs.keys()]
+        self.support.sort()
+        self.lower_slopes = []
+        self.upper_slopes = []
+        self.lower_vertices = []
+        self.upper_vertices = []
+        self.newton_sides = {}
+        self.find_vertices()
 
-      def slope(self, v, w):
-          return Slope((w[0]-v[0], w[1]-v[1]))
+    def slope(self, v, w):
+        return Slope((w[0]-v[0], w[1]-v[1]))
 
-      def find_vertices(self):
-          last = self.support[0]
-          T = []
-          B = [last]
-          for e in self.support[1:]:
-              if e[0] != last[0]:
-                  T.append(last)
-                  B.append(e)
-              last = e
-          T.append(last)
-          if T[0] != B[0]:
-              self.lower_slopes.append(Slope((0,1)))
-              self.upper_vertices.append(T[0])
-          n = 0
-          while n < len(B) - 1:
-              self.lower_vertices.append(B[n])
-              slopes = [(self.slope(B[n], B[k]), -k) for k in range(n+1,len(B))]
-              slope, m = min(slopes)
-              self.lower_slopes.append(slope)
-              newton_side = [B[n]]
-              for s, j in slopes:
-                  if s == slope and -j <= -m:
-                      newton_side.append(B[-j])
-              self.newton_sides[(slope.x,slope.y)] = newton_side
-              n = -m
-          n = 0
-          while n < len(T) - 1:
-              slope, m = max([(self.slope(T[n], T[k]), k) for k in range(n+1,len(T))])
-              self.upper_slopes.append(slope)
-              self.upper_vertices.append(T[m])
-              n = m
-          if T[-1] != B[-1]:
-              self.upper_slopes.append(Slope((0,1)))
-              self.lower_vertices.append(B[-1])
+    def find_vertices(self):
+        last = self.support[0]
+        T = []
+        B = [last]
+        for e in self.support[1:]:
+            if e[0] != last[0]:
+                T.append(last)
+                B.append(e)
+            last = e
+        T.append(last)
+        if T[0] != B[0]:
+            self.lower_slopes.append(Slope((0,1)))
+            self.upper_vertices.append(T[0])
+        n = 0
+        while n < len(B) - 1:
+            self.lower_vertices.append(B[n])
+            slopes = [(self.slope(B[n], B[k]), -k) for k in range(n+1,len(B))]
+            slope, m = min(slopes)
+            self.lower_slopes.append(slope)
+            newton_side = [B[n]]
+            for s, j in slopes:
+                if s == slope and -j <= -m:
+                    newton_side.append(B[-j])
+            self.newton_sides[(slope.x,slope.y)] = newton_side
+            n = -m
+        n = 0
+        while n < len(T) - 1:
+            slope, m = max([(self.slope(T[n], T[k]), k) for k in range(n+1,len(T))])
+            self.upper_slopes.append(slope)
+            self.upper_vertices.append(T[m])
+            n = m
+        if T[-1] != B[-1]:
+            self.upper_slopes.append(Slope((0,1)))
+            self.lower_vertices.append(B[-1])
 
-      def side_dicts(self):
-          result = {}
-          for slope, side in list(self.newton_sides.items()):
-              side_dict = {}
-              for i, j in side:
-                  side_dict[(j,i)] = self.coeff_dict[(j,i)]
-              result[slope] = side_dict
-          return result
+    def side_dicts(self):
+        result = {}
+        for slope, side in list(self.newton_sides.items()):
+            side_dict = {}
+            for i, j in side:
+                side_dict[(j,i)] = self.coeff_dict[(j,i)]
+            result[slope] = side_dict
+        return result
     
-      def puiseux_expansion(self):
-          result = []
-          for slope, side_dict in self.side_dicts().items():
-              P = sage_poly_ring(side_dict)
-              m, n = slope
-              t = PolynomialRing(ZZ, 't').gen()
-              result.append(P(t**n,t**m))
-          return result
+    def puiseux_expansion(self):
+        result = []
+        for slope, side_dict in self.side_dicts().items():
+            P = sage_poly_ring(side_dict)
+            m, n = slope
+            t = PolynomialRing(ZZ, 't').gen()
+            result.append(P(t**n,t**m))
+        return result
 
 class PolyViewer:
-      def __init__(self, newton_poly, title=None, scale=None, margin=50):
-          self.NP = newton_poly
-          self.columns = 1 + self.NP.support[-1][0]
-          self.rows = 1 + max([d[1] for d in self.NP.support])
-          if scale == None:
-                scale = 600/max(self.rows, self.columns)
-          self.scale = scale
-          self.margin = margin
-          self.width = (self.columns - 1)*self.scale + 2*self.margin
-          self.height = (self.rows - 1)*self.scale + 2*self.margin
-          self.window = tkinter.Tk()
-          if title:
-              self.window.title(title)
-          self.window.wm_geometry('+400+20')
-          self.canvas = tkinter.Canvas(self.window,
-                                  bg='white',
-                                  height=self.height,
-                                  width=self.width)
-          self.canvas.pack(expand=True, fill=tkinter.BOTH)
-          self.font = ('Helvetica','18','bold')
-          self.dots=[]
-          self.text=[]
-          self.sides=[]
+    def __init__(self, newton_poly, title=None, scale=None, margin=50):
+        self.NP = newton_poly
+        self.columns = 1 + self.NP.support[-1][0]
+        self.rows = 1 + max([d[1] for d in self.NP.support])
+        if scale == None:
+            scale = 800/max(self.rows, self.columns)
+        self.scale = scale
+        self.margin = margin
+        self.width = (self.columns - 1)*self.scale + 2*self.margin
+        self.height = (self.rows - 1)*self.scale + 2*self.margin
+        self.window = tkinter.Tk()
+        if title:
+            self.window.title(title)
+        self.window.wm_geometry('+400+20')
+        self.canvas = tkinter.Canvas(self.window,
+                                     bg='white',
+                                     height=self.height,
+                                     width=self.width)
+        self.canvas.pack(expand=True, fill=tkinter.BOTH)
+        self.font = ('Helvetica','18','bold')
+        self.dots=[]
+        self.text=[]
+        self.sides=[]
 
-          self.grid = (
-              [ self.canvas.create_line(
-              0, self.height - self.margin - i*scale,
-              self.width, self.height - self.margin - i*scale,
-              fill=self.gridfill(i))
-                        for i in range(self.rows)] +
-              [ self.canvas.create_line(
-              self.margin + i*scale, 0,
-              self.margin + i*scale, self.height,
-              fill=self.gridfill(i))
-                        for i in range(self.columns)])
-#          self.window.mainloop()
+        self.grid = (
+            [ self.canvas.create_line(
+                0, self.height - self.margin - i*scale,
+                self.width, self.height - self.margin - i*scale,
+                fill=self.gridfill(i))
+              for i in range(self.rows)] +
+            [ self.canvas.create_line(
+                self.margin + i*scale, 0,
+                self.margin + i*scale, self.height,
+                fill=self.gridfill(i))
+              for i in range(self.columns)])
+        #self.window.mainloop()
 
-      def write_psfile(self, filename):
-            self.canvas.postscript(file=filename)
+    def write_psfile(self, filename):
+        self.canvas.postscript(file=filename)
             
-      def gridfill(self, i):
-          if i:
-              return '#f0f0f0'
-          else:
-              return '#d0d0d0'
+    def gridfill(self, i):
+        if i:
+            return '#f0f0f0'
+        else:
+            return '#d0d0d0'
           
-      def point(self, pair):
-          i,j = pair
-          return (self.margin+i*self.scale,
-                  self.height - self.margin - j*self.scale)
+    def point(self, pair):
+        i,j = pair
+        return (self.margin+i*self.scale,
+                self.height - self.margin - j*self.scale)
       
-      def show_dots(self):
-          r = 1 + self.scale/20
-          for i, j in self.NP.support:
-              x,y = self.point((i,j))
-              self.dots.append(self.canvas.create_oval(
-                  x-r, y-r, x+r, y+r, fill='black'))
+    def show_dots(self):
+        r = 2 + self.scale/20
+        for i, j in self.NP.support:
+            x,y = self.point((i,j))
+            color = self.NP.color_dict[(j, i)]
+            self.dots.append(self.canvas.create_oval(
+                x-r, y-r, x+r, y+r, fill=color, outline=color))
 
-      def erase_dots(self):
-          for dot in self.dots:
-              self.canvas.delete(dot)
-          self.dots = []
+    def erase_dots(self):
+        for dot in self.dots:
+            self.canvas.delete(dot)
+        self.dots = []
 
-      def show_text(self):
-          r = 2 + self.scale/20
-          for i, j in self.NP.support:
-              x,y = self.point((i,j))
-              self.sides.append(self.canvas.create_oval(
-                  x-r, y-r, x+r, y+r, fill='black'))
-              self.text.append(self.canvas.create_text(
-                  2*r+x,-2*r+y,
-                  text=str(self.NP.coeff_dict[(j,i)]),
-                  font=self.font,
-                  anchor='c'))
+    def show_text(self):
+        r = 2 + self.scale/20
+        for i, j in self.NP.support:
+            x,y = self.point((i,j))
+            self.sides.append(self.canvas.create_oval(
+                x-r, y-r, x+r, y+r, fill='black'))
+            self.text.append(self.canvas.create_text(
+                2*r+x,-2*r+y,
+                text=str(self.NP.coeff_dict[(j,i)]),
+                font=self.font,
+                anchor='c'))
               
-      def erase_text(self):
-            for coeff in self.text:
-                  self.canvas.delete(coeff)
-            self.text=[]
+    def erase_text(self):
+        for coeff in self.text:
+            self.canvas.delete(coeff)
+        self.text=[]
 
-      def show_sides(self):
-            r = 2 + self.scale/20
-            first = self.NP.lower_vertices[0]
-            x1, y1 = self.point(first)
-            upper = list(self.NP.upper_vertices)
-            upper.reverse()
-            vertices = self.NP.lower_vertices + upper + [first]
-            for vertex in vertices:
-                  self.sides.append(self.canvas.create_oval(
-                        x1-r, y1-r, x1+r, y1+r, fill='red'))
-                  x2, y2 = self.point(vertex)
-                  self.sides.append(self.canvas.create_line(
-                        x1, y1, x2, y2,
-                        fill='red'))
-                  x1, y1 = x2, y2
+    def show_sides(self):
+        r = 3 + self.scale/20
+        first = self.NP.lower_vertices[0]
+        x1, y1 = self.point(first)
+        upper = list(self.NP.upper_vertices)
+        upper.reverse()
+        vertices = self.NP.lower_vertices + upper + [first]
+        for vertex in vertices:
+            self.sides.append(self.canvas.create_oval(
+                x1-r, y1-r, x1+r, y1+r, fill='black', outline='black'))
+            x2, y2 = self.point(vertex)
+            self.sides.append(self.canvas.create_line(
+                x1, y1, x2, y2,
+                fill='black'))
+            x1, y1 = x2, y2
 
-      def erase_sides(self):
-            for object in self.sides:
-                  self.canvas.delete(object)
-            self.sides=[]
+    def erase_sides(self):
+        for object in self.sides:
+            self.canvas.delete(object)
+        self.sides=[]
 
 class Permutation(dict):
     def orbits(self):
