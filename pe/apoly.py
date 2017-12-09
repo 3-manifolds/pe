@@ -41,8 +41,110 @@ def color_string(h, s, v):
     """
     Return an html style color string from HSV values in [0.0, 1.0]
     """
-    r, g, b = colorsys.hsv_to_rgb(h, s, v)
-    return "#%.2x%.2x%.2x"%(int(223*r), int(223*g), int(223*b))
+    r, g, b = colorsys.hsv_to_rgb((.03125 + h)%1.0, s, v)
+    return "#%.2x%.2x%.2x"%(int(255*r), int(255*g), int(255*b))
+
+class ComputedApoly(object) :
+    def __init__(self, mfld_name, dict_dir='apoly_dicts'):
+        self.mfld_name = mfld_name
+        with open(os.path.join(dict_dir, mfld_name + '.dict')) as datafile:
+            data = datafile.read()
+        exec('D = ' + data)
+        self.coeff_dict = D
+        self.degree = max(deg[1] for deg in D.keys())
+        Mdegree = max(deg[0] for deg in D.keys())
+        self.coefficients = coeffs = zeros((Mdegree//2 + 1, self.degree + 1), dtype=object)
+        for m, n in D.keys():
+            coeffs[m//2][n] = D[(m, n)]
+        self.height = max([max(abs(x)) for x in self.coefficients])
+        self.bits_height = int(ceil(log(float(self.height))/log(2)))
+        self.newton_polygon = NewtonPolygon(D, (1,2))
+
+    def __call__(self, M, L):
+        result = 0
+        rows, cols = self.coefficients.shape
+        for i in range(rows):
+            Lresult = 0
+            for j in range(cols):
+                Lresult = Lresult*L + self.coefficients[-1-i][-1-j]
+            result = result*M + Lresult
+        return result
+    
+    def __repr__(self):
+        return 'A-polynomial of %s'%self.mfld_name
+
+    def __str__(self):
+        digits = 2 + int(ceil(log(self.height)/log(10)))
+        width = len(self.coefficients[0])
+        format = '[' + ('%' + str(digits) + '.0f')*width + ']\n'
+        result = ''
+        for row in self.coefficients:
+            result += format%tuple(row + 0.)
+        return result
+    
+    def show_newton(self, text=False):
+        V = PolyViewer(self.newton_polygon, title=self.mfld_name)
+        if text:
+            V.show_text()
+        else:
+            V.show_dots()
+        V.show_sides()
+
+    def as_string(self, exp='^'):
+        polynomial_string = ('+'.join(self.monomials())).replace('+-','-')
+        return polynomial_string.replace('^', exp)
+
+    def sage(self):
+        return sage_poly_ring(self.as_dict())
+
+    def boundary_slopes(self):
+        return [s.sage() for s in self.newton_polygon.lower_slopes]
+
+    def as_Lpolynomial(self, name='A', twist=0):
+        terms = []
+        rows, cols = self.coefficients.shape
+        #We are taking the true longitude to be L*M^twist.
+        #So we change variables by L -> M^(-twist)*L.
+        #Then renormalize so the minimal power of M is 0.
+        minexp = 2*rows
+        for j in range(cols):
+            for i in range(rows):
+                if self.coefficients[i][j]:
+                    break
+            minexp = min(2*i - j*twist, minexp)
+        for j in range(cols):
+            if self.gluing_form:
+                n = 2*j
+            else:
+                n = j
+            monomials = []
+            for i in range(rows):
+                m = 2*i
+                a = int(self.coefficients[i][j])
+                if a != 0:
+                    if i > 0:
+                        monomial = '%d*M^%d'%(a,m)
+                    else:
+                        monomial = '%d'%a
+                    monomials.append(monomial.replace('^1 ',' '))
+            if monomials:
+                p = - n*twist - minexp
+                if p:
+                    P = '%d'%p
+                    if p < 0:
+                        P = '('+P+')'
+                    if n > 0:
+                        term = '+ (L^%d*M^%s)*('%(n,P) + ' + '.join(monomials) + ')'
+                    else:
+                        term = '(M^%s)*('%P + ' + '.join(monomials) + ')'
+                else:
+                    if n > 0:
+                        term = '+ (L^%d)*('%n + ' + '.join(monomials) + ')'
+                    else:
+                        term = '(' + ' + '.join(monomials) + ')'
+                term = self.break_line(term)
+                terms.append(term.replace('+ -','- '))
+        return name + ' :=\n' + '\n'.join(terms)
 
 class Apoly(object):
     """
@@ -188,7 +290,7 @@ class Apoly(object):
         return result
     
     def __repr__(self):
-        return 'A-polynomial of %s'%self.manifold
+        return 'A-polynomial of %s'%self.mfld_name
 
     def __str__(self):
         digits = 2 + int(ceil(log(self.height)/log(10)))
@@ -317,7 +419,7 @@ class Apoly(object):
                                 dtype='O')
         #self.int_coeffs = array([[self. for z in row]
         #                              for row in self.normalized_coeffs], dtype='O')
-        self.height = max([max(abs(x)) for x in self.int_coeffs])
+        self.height = int(max([max(abs(x)) for x in self.int_coeffs]))
         self.bits_height = int(ceil(float(log(self.height)/log(2))))
         #self.bits_height = log(self.height, 2)
         self.noise = (array([[real(z) for z in row] for row in self.normalized_coeffs], dtype='O') -
@@ -678,8 +780,8 @@ class NewtonPolygon:
         self.coeff_dict = coeffs = {}
         for (degree, coefficient) in coeff_dict.items():
             coeffs[tuple(degree)] = coefficient
-        logmax = max(log(1 + abs(c)) for c in coeffs.values())
-        self.color_dict = dict((key, color_string(log(1+abs(value))/logmax, 1.0, 1.0))
+        logmax = max(log(1 + abs(float(c))) for c in coeffs.values())
+        self.color_dict = dict((key, color_string(log(1+abs(float(value)))/logmax, 1.0, 1.0))
                                 for key, value in coeffs.items())
         # The X-power is the y-coordinate!
         self.support = [(x[1], x[0]) for x in coeffs.keys()]
@@ -748,12 +850,12 @@ class NewtonPolygon:
         return result
 
 class PolyViewer:
-    def __init__(self, newton_poly, title=None, scale=None, margin=50):
+    def __init__(self, newton_poly, title=None, scale=None, margin=10):
         self.NP = newton_poly
         self.columns = 1 + self.NP.support[-1][0]
         self.rows = 1 + max([d[1] for d in self.NP.support])
         if scale == None:
-            scale = 800/max(self.rows, self.columns)
+            scale = 1000/max(self.rows, self.columns)
         self.scale = scale
         self.margin = margin
         self.width = (self.columns - 1)*self.scale + 2*self.margin
