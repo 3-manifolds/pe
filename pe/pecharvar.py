@@ -180,11 +180,11 @@ class CircleElevation(object):
         """
         Construct the elevation of the circle of radius R.
         """
-        self._print('Elevating the circle of radius %s '%self.radius, end='')
+        self._print('Elevating the circle of radius %g '%self.radius, end='')
         start = time.time()
         circle = self.R_circle
         base = self.base_index
-        self._print('with base index %s:'%base)
+        self._print('with base index %s.'%base)
         self._print(' %-5s\r'%base, end='')
         # Move to the R-circle, if necessary.
         self.R_fibers[base] = self.base_fiber.transport(circle[base])
@@ -196,10 +196,10 @@ class CircleElevation(object):
             self._print(' %-5s\r'%n, end='')
             sys.stdout.flush()
             self.R_lift_step(n, -1)
-        self._print('Done.')
+        #self._print('\n')
         try:
             self.last_R_fiber = self.R_fibers[-1].transport(circle[0])
-            self._print('Polishing the end fibers ... ', end='')
+            self._print('\nPolishing the end fibers ... ', end='')
             self.R_fibers[0].polish()
             self.last_R_fiber.polish()
             self._print('done.')
@@ -211,7 +211,7 @@ class CircleElevation(object):
                 self._print('OK.')
         except:
             self._print('Could not check for completeness.')
-        self._print('Tracked in %s seconds.'%(time.time() - start))
+        self._print('Tracked in %.2f seconds.'%(time.time() - start))
 
     def R_lift_step(self, n, step):
         previous_fiber = self.R_fibers[n-step]
@@ -244,7 +244,7 @@ class CircleElevation(object):
             self._print(' %-5s\r'%n, end='')
             sys.stdout.flush()
             self.T_fibers[n] = self.R_fibers[n].transport(
-                circle[n], allow_collision=True, fail_quietly=True)
+                circle[n], allow_collision=True)
         try:
             self.T_longitude_holos, self.T_longitude_evs, self.T_choices = self.longidata(
                 self.T_fibers)

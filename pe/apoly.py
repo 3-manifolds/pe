@@ -82,8 +82,8 @@ class ComputedApoly(object) :
             result += format%tuple(row + 0.)
         return result
     
-    def show_newton(self, text=False):
-        V = PolyViewer(self.newton_polygon, title=self.mfld_name)
+    def show_newton(self, text=False, scale=None):
+        V = PolyViewer(self.newton_polygon, title=self.mfld_name, scale=scale)
         if text:
             V.show_text()
         else:
@@ -231,13 +231,6 @@ class Apoly(object):
                 exec(open(hintfile).read())
                 options.update(hint)
                 prec = options['precision']
-                if prec == 'double':
-                    msg = ''
-                else:
-                    msg = 'with %d bits precision'%prec
-                self._print('Using: radius=%f; order=%d; denom=%s %s.'%(
-                    options['radius'], options['order'], options['denom'],
-                    msg))
             else:
                 print("nope.")
         self.order = N = options['order']
@@ -251,6 +244,9 @@ class Apoly(object):
         self.phc_rescue = phc_rescue
         filename = self.manifold.name()+'.base'
         saved_base_fiber = os.path.join(self.base_dir, filename)
+        prec = 53 if self.precision == 'double' else self.precision
+        self._print('Using: radius=%g; order=%d; denom=%s; precision=%d bits.'%(
+            options['radius'], options['order'], options['denom'], prec))
         self.elevation = CircleElevation(
             self.manifold,
             order=self.order,
@@ -275,8 +271,6 @@ class Apoly(object):
             self.multiplicities, vals = self.demultiply(vals)
         self.reduced_degree = len(vals)
         self._compute_all(vals)
-        self._print('Computing the Newton polygon ... ', end='')
-        self.compute_newton_polygon()
         self._print('done.')
         
     def __call__(self, M, L):
@@ -396,6 +390,7 @@ class Apoly(object):
             ifft = numpy.fft.ifft
             def real(z):
                 return z.real
+        self._print("Interpolating with IFFT.")
         if self._denom:
             exec('denom_function = lambda H : %s'%self._denom)
             if isinstance(self.precision, int):
@@ -446,6 +441,8 @@ class Apoly(object):
         if max(self.max_noise) > 0.2:
             self._print('Failed to find integer coefficients with tolerance 0.2')
             return
+        self._print('Computing the Newton polygon.')
+        self.compute_newton_polygon()
         
     def compute_newton_polygon(self):
         power_scale = (1,1) if self.gluing_form else (1,2) 
@@ -456,7 +453,6 @@ class Apoly(object):
         Recompute A after changing attributes.
         """
         self._compute_all(array(self.elevation.R_longitude_evs))    
-        self.compute_newton_polygon()
 
     def help(self):
         print(self.__doc__)
@@ -855,7 +851,7 @@ class PolyViewer:
         self.columns = 1 + self.NP.support[-1][0]
         self.rows = 1 + max([d[1] for d in self.NP.support])
         if scale == None:
-            scale = 1000/max(self.rows, self.columns)
+            scale = 600//max(self.rows, self.columns)
         self.scale = scale
         self.margin = margin
         self.width = (self.columns - 1)*self.scale + 2*self.margin
@@ -902,7 +898,7 @@ class PolyViewer:
                 self.height - self.margin - j*self.scale)
       
     def show_dots(self):
-        r = 2 + self.scale/20
+        r = 2 + self.scale//20
         for i, j in self.NP.support:
             x,y = self.point((i,j))
             color = self.NP.color_dict[(j, i)]
@@ -932,7 +928,7 @@ class PolyViewer:
         self.text=[]
 
     def show_sides(self):
-        r = 3 + self.scale/20
+        r = 3 + self.scale//20
         first = self.NP.lower_vertices[0]
         x1, y1 = self.point(first)
         upper = list(self.NP.upper_vertices)
