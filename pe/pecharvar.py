@@ -10,7 +10,7 @@ map lying above a circle in the compex plane.
 from __future__ import print_function
 import time, sys, os
 from random import randint
-from numpy import arange, array, dot, float64, matrix, log, exp, pi, sqrt, zeros
+from numpy import arange, array, dot, float64, matrix, log, exp, pi, sqrt, zeros, angle
 import snappy
 from snappy import Manifold, ManifoldHP
 from spherogram.graphs import Graph
@@ -245,7 +245,7 @@ class CircleElevation(object):
             sys.stdout.flush()
             try:
                 self.T_fibers[n] = self.R_fibers[n].transport(circle[n], allow_collision=True)
-            except ValueError:
+            except:
                 self._print('Failed to tighten fiber %d.'%n)
         try:
             self.T_longitude_holos, self.T_longitude_evs, self.T_choices = self.longidata(
@@ -655,6 +655,29 @@ class PECharVariety(object):
              extra_line_args={'color':'black', 'linewidth':0.75},
              show_group=show_group)
 
+    def show_R_longitude_evs(self):
+        """
+        Display a plot of the longitude eigenvalues on the meridian
+        preimage of the R-circle.
+        """
+        self.elevation.show_R_longitude_evs()
+
+    def show_T_longitude_evs(self):
+        """
+        Display a plot of the longitude eigenvalues on the meridian
+        preimage of the T-circle.
+        """
+        self.elevation.show_T_longitude_evs()
+        
+    def show_volumes(self):
+        E = self.elevation
+        volumes = E.compute_volumes(E.T_fibers)
+        args = [angle(z) for z in E.T_circle]
+        args = [float(a + 2*pi) if a <= 0 else a for a in args]
+        data = [[v if v is None else complex(a, v) for a, v in zip(args, lift)]
+                for lift in volumes]
+        Plot(data)
+    
     def get_rep(self, fiber_index, shape_index, precision=1000, tight=True):
         """
         Return a precise representation, computed to the specified binary

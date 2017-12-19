@@ -104,8 +104,11 @@ class ShapeSet(object):
         return ((moduli < 1.0E-6).any() or
                 (dist_to_1 < 1.0E-6).any() or
                 (moduli > 1.0E6).any())
-    
 
+    def volume(self):
+        self.manifold.set_tetrahedra_shapes(self.array, None, [(0, 0)])
+        return self.manifold.volume()
+        
     def _SL2C(self, word):
         self.manifold.set_tetrahedra_shapes(self.array, None, [(0, 0)])
         G = self.manifold.fundamental_group()
