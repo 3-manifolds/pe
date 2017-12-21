@@ -14,7 +14,7 @@ from numpy import arange, array, dot, float64, matrix, log, exp, pi, sqrt, zeros
 import snappy
 from snappy import Manifold, ManifoldHP
 from spherogram.graphs import Graph
-from .gluing import Glunomial
+from .gluing import Glunomial, GluingSystem
 from .fiber import Fiber
 from .fibrator import Fibrator
 from .point import PEPoint
@@ -61,6 +61,7 @@ class CircleElevation(object):
         self.phc_rescue = phc_rescue
         self.verbose = verbose
         self.hp_manifold = self.manifold.high_precision()
+        self.gluing_system = GluingSystem(manifold)
         self.betti2 = [c % 2 for c in manifold.homology().coefficients].count(0)
         Darg = 2*pi/order
         # The minus sign is for consistency with the sign convention
@@ -98,12 +99,6 @@ class CircleElevation(object):
         self.T_fibers = list(range(order))
         self.T_circle = None
         self.dim = manifold.num_tetrahedra()
-        self.rhs = []
-        eqns = manifold.gluing_equations('rect')
-        self.glunomials = [Glunomial(A, B, c) for A, B, c in eqns[:-3]]
-        self.rhs = [1.0]*(len(eqns) - 3)
-        self.M_holo, self.L_holo = [Glunomial(A, B, c) for A, B, c in eqns[-2:]]
-        self.glunomials.append(self.M_holo)
         try:
             self.elevate()
             self.R_longitude_holos, self.R_longitude_evs, self.R_choices = self.longidata(
@@ -175,6 +170,41 @@ class CircleElevation(object):
                 '}', '\n}\n')
         with open(hintfile_name, 'w') as hintfile:
             hintfile.write('hint=' + str_rep)
+            
+    def transport(self, fiber, target, allow_collision=False, debug=False):
+        """
+        Transport this fiber to a different target holonomy.  If the resulting
+        fiber has a collision, try jiggling the path.
+        """
+        shapes = []
+        for shape in fiber.shapes:
+            if debug:
+                print("transport: shape ", len(shapes))
+            Zn = self.gluing_system.track(shape.array, target, debug=debug)
+            shapes.append(Zn)
+        result = Fiber(self.manifold, target, shapes=shapes)
+        if result.collision() and not allow_collision:
+            print("Perturbing the path.")
+            return self.retransport(target, debug)
+        return result
+
+    def retransport(self, fiber, target, debug=False):
+        """
+        Transport this fiber to a different target holonomy following a
+        path which first expands the radius, then advances the
+        argument, then reduces the radius. If the resulting fiber has
+        a collision, raise an exception.
+        """
+        for T in (1.01*fiber.H_meridian, 1.01*target, target):
+            print('Transporting to %s.'%T)
+            shapes = []
+            for shape in result.shapes:
+                Zn = self.gluing_system.track(shape.array, T, debug=debug)
+                shapes.append(Zn)
+            result = Fiber(self.manifold, target, shapes=shapes)
+            if result.collision():
+                raise ValueError('The collision recurred.  Perturbation failed.')
+        return result
 
     def elevate(self):
         """
@@ -187,7 +217,7 @@ class CircleElevation(object):
         self._print('with base index %s.'%base)
         self._print(' %-5s\r'%base, end='')
         # Move to the R-circle, if necessary.
-        self.R_fibers[base] = self.base_fiber.transport(circle[base])
+        self.R_fibers[base] = self.transport(self.base_fiber, circle[base])
         for n in range(base+1, self.order):
             self._print(' %-5s\r'%n, end='')
             sys.stdout.flush()
@@ -198,7 +228,7 @@ class CircleElevation(object):
             self.R_lift_step(n, -1)
         #self._print('\n')
         try:
-            self.last_R_fiber = self.R_fibers[-1].transport(circle[0])
+            self.last_R_fiber = self.transport(self.R_fibers[-1], circle[0])
             self._print('\nPolishing the end fibers ... ', end='')
             self.R_fibers[0].polish()
             self.last_R_fiber.polish()
@@ -209,14 +239,15 @@ class CircleElevation(object):
                 self._print('This probably indicates that the base fiber is incorrect.')
             else:
                 self._print('OK.')
-        except:
+        except Exception as e:
             self._print('Could not check for completeness.')
+            self._print(('%s')%e)
         self._print('Tracked in %.2f seconds.'%(time.time() - start))
 
     def R_lift_step(self, n, step):
         previous_fiber = self.R_fibers[n-step]
         try:
-            F = previous_fiber.transport(self.R_circle[n])
+            F = self.transport(previous_fiber, self.R_circle[n])
             self.R_fibers[n] = F
         except Exception as e:
             self._print('\nFailed to compute fiber %s.'%n)
@@ -244,7 +275,7 @@ class CircleElevation(object):
             self._print(' %-5s\r'%n, end='')
             sys.stdout.flush()
             try:
-                self.T_fibers[n] = self.R_fibers[n].transport(circle[n], allow_collision=True)
+                self.T_fibers[n] = self.transport(self.R_fibers[n], circle[n], allow_collision=True)
             except:
                 self._print('Failed to tighten fiber %d.'%n)
         try:
@@ -272,9 +303,9 @@ class CircleElevation(object):
         """
         self._print('Computing longitude holonomies and eigenvalues ... ', end='')
         # This crashes if there are bad fibers.
-        longitude_holonomies = [
-            [self.L_holo(f.shapes[m].array) for f in fiber_list if isinstance(f, Fiber)]
-            for m in range(self.degree)]
+        longitude_holonomies = [[self.gluing_system.L_nomial(f.shapes[m].array)
+                                 for f in fiber_list if isinstance(f, Fiber)]
+                                for m in range(self.degree)]
         if isinstance(fiber_list[0], Fiber):
             index = 0
         else:
@@ -333,7 +364,7 @@ class CircleElevation(object):
                  
     def polish_R_longitude_vals(self, precision=196):
         R = ComplexField(precision)
-        L_holo = self.L_holo
+        L_holo = self.gluing_system.L_nomial
         # The minus sign is because the FFT circle is oriented clockwise.
         circle = [R(self.radius)*U1Q(-n, self.order, precision=precision)
                   for n in range(self.order)]
@@ -358,8 +389,10 @@ class CircleElevation(object):
         self.polished_R_longitude_holos = holos
         self.polished_R_longitude_evs = evs
 
-    def compute_volumes(self, fiber_list):
+    def volumes(self, fiber_list=None):
         """Return a list of the volumes of all the characters in a list of fibers."""
+        if fiber_list is None:
+            fiber_list = self.T_fibers
         volumes = [[] for n in range(self.degree)]
         for fiber in fiber_list:
             if isinstance(fiber, int):

@@ -696,11 +696,11 @@ class Apoly(object):
 
     def show_R_volumes(self):
         H = self.elevation
-        Plot(H.compute_volumes(H.R_fibers))
+        Plot(H.volumes(H.R_fibers))
 
     def show_T_volumes(self):
         H = self.elevation
-        Plot(H.compute_volumes(H.T_fibers))
+        Plot(H.volumes(H.T_fibers))
 
     def tighten(self, T=1.0):
         self.elevation.tighten(T)

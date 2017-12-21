@@ -324,6 +324,8 @@ def check_slope(H, n, s):
     target = log(F.H_meridian).imag()
     return float(lifted_slope(M, target, S))
 
+# FIX ME - fibers no longer have a transport method.
+# Use an elevation here.
 def bisection(H, low, high, s, target_slope, epsilon=1.0e-8):
     CC = ComplexField()
     low_fiber = H.T_fibers[low]

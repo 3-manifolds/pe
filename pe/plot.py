@@ -46,7 +46,8 @@ class Plot(object):
         if self.type == PEPoint:
             data = [expand_leave_gaps_to_nones(d) for d in data]
         elif self.type != complex:
-            data = [[complex(*z) for z in enumerate(d)] for d in data]
+            data = [[complex(n, z) if z is not None else None for n, z in enumerate(d)]
+                    for d in data]
         self.data = data
         self.start_plotter()
         if len(self.data) > 0:
