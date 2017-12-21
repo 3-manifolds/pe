@@ -1,16 +1,18 @@
 """
 Define the GluingSystem and Glunomial classes.
 
-A GluingSystem object represents a system of gluing equations.  The
-monomials in the equations are represented by Glunomial objects.
+A GluingSystem object represents a system of gluing equations for an
+ideal triangulation of a 3-manifold.
+
+The monomials in the equations are represented by Glunomial objects.
 """
+
 from __future__ import print_function
-from numpy import dtype, array, matrix, prod, ones, pi, exp
+from numpy import dtype, ndarray, array, matrix, prod, ones, pi, exp
 from numpy.linalg import svd, norm, solve, lstsq, matrix_rank
 from numpy.random import random
 from snappy.snap.shapes import enough_gluing_equations
-# The numpy type for our complex arrays
-DTYPE = dtype('c16')
+
 # Constants for Newton's method
 RESIDUAL_BOUND = 1.0E-14
 STEPSIZE_BOUND = 1.0E-15
@@ -18,13 +20,14 @@ STEPSIZE_BOUND = 1.0E-15
 class Glunomial(object):
     """
     A product of powers of linear terms z_i or (1-z_i), as appears on
-    the left side of a gluing equation.  These are Laurent monomials;
-    powers may be negative.  Instantiate with one of a triple as
-    returned by Manifold.gluing_equations('rect').
+    the left side of a gluing equation.  These are Laurent monomials,
+    so powers may be negative.
+
+    Instantiate a glunomial with a triple, as in the list returned
+    by Manifold.gluing_equations('rect').
     """
     def __init__(self, A, B, c):
-        # Convert gens to integers if A and B are lists of gens.
-        self.A, self.B, self.sign = array(map(int, A)), array(map(int, B)), float(c)
+        self.A, self.B, self.sign = A, B, c
 
     def __repr__(self):
         apower = lambda n, p: 'z%d^%s'%(n, p) if p != 1 else 'z%s'%n
@@ -35,60 +38,46 @@ class Glunomial(object):
         return sign + '*'.join(Apowers+Bpowers)
 
     def __call__(self, Z):
-        # Make this work when Z is a numpy array of sage ComplexField elements.
+        """
+        Evaluate this monomial on a numpy array of shapes.  The shapes may
+        be numpy complex128 numbers, or elements of a Sage ComplexField,
+        or mpmath complex numbers.
+        """
+        assert isinstance(Z, ndarray)
+        W = 1 - Z
         try:
-            R = Z[0].parent()
-            one = R(1)
-            sign = R(self.sign)
-        except AttributeError:
-            one = 1
-            sign = self.sign
-        W = one - Z
-        try:
-            return sign*prod(Z**self.A)*prod(W**self.B)
+            return self.sign*prod(Z**self.A)*prod(W**self.B)
         except ValueError:
-            print('Glunomial evaluation crashed on %s'%self)
+            print('Glunomial evaluation failed on %s'%self)
             print('A =', self.A)
             print('B =', self.B)
             print('c =', self.sign)
-            print('Z =', Z)
+            print('Z =', Z, '(%s)'%type(Z[0]))
             raise ValueError
 
     def gradient(self, Z):
-        """Return the gradient of this monomial."""
+        """
+        Return the gradient of this monomial evaluated at a numpy array
+        of shapes.
+        """
+        assert isinstance(Z, ndarray)
         W = 1 - Z
         return self.sign*prod(Z**self.A)*prod(W**self.B)*(self.A/Z - self.B/W)
 
 class GluingSystem(object):
     """
-    The system of gluing equations for a manifold, with specified
-    meridian holonomy.  If the manifold has n tetrahedra, we use the
-    first n-1 edge equations, together with the equation for meridian
-    holonomy.  The left hand side of each equation is a Laurent monomial
-    in z_i and (1-z_i), where z_i are the shape paremeters.  The
-    right hand side of the system is [1,...,1,Hm] where Hm is the
-    the meridian holonomy (i.e. the first eigenvalue squared).
-
-    If a GluingSystem is initialized with a list of shapesets that solve
-    the gluing equations then it will numerically compute the dimension
-    of the tangent cone of the component of the gluing variety through
-    each solution and generate random linear equations to be added to
-    the gluing system in order to cut the dimension of the component down
-    to 1.  The dimensions and extra equations are stored for use when
-    computing fibers of the meridian holonomy.  If no shapes are provided
-    then it is assumed that each component has dimension 1.
+    The system of gluing equations for an ideal triangulaton of a
+    one-cusped 3-manifold.
     """
-    def __init__(self, manifold, fiber):
+    
+    def __init__(self, manifold):
         assert manifold.num_cusps() == 1, 'Manifold must be one-cusped.'
         self.manifold = manifold
         self.num_shapes = manifold.num_tetrahedra()
         eqns = enough_gluing_equations(manifold)
         self.glunomials = [Glunomial(A, B, c) for A, B, c in eqns]
-        rect_eqns = manifold.gluing_equations('rect')
-        self.M_nomial, self.L_nomial = [Glunomial(A, B, c) for A, B, c in rect_eqns[-2:]]
-        if fiber:
-            self.clean_fiber(fiber)
-            self.degree = len(fiber.shapes)
+        cusp_eqns = manifold.gluing_equations('rect')[-2:]
+        self.M_nomial, self.L_nomial = [Glunomial(A, B, c) for A, B, c in cusp_eqns]
             
     def __repr__(self):
         return '\n'.join([str(G) for G in self.glunomials])
@@ -99,16 +88,6 @@ class GluingSystem(object):
     def __len__(self):
         return len(self.glunomials)
 
-    def clean_fiber(self, fiber):
-        """
-        PHC will find solutions which lie on high dimensional components, if any exist.
-        But the mixed volume count assumes a 0-dimensional solution variety.  So
-        solutions on high dimensional components lead to incomplete base fibers. 
-        Currently this checks numerically for high dimesional components and raises
-        an exception if they appear to exist.
-        """
-        fiber.clean([self.corank(shapeset.array) for shapeset in fiber.shapes])
-            
     def jacobian(self, Z):
         """Return the Jacobian matrix for the system at a point Z in shape space."""
         return matrix([G.gradient(Z) for G in self.glunomials])
@@ -154,7 +133,7 @@ class GluingSystem(object):
         LU factorization (not great for nearly singular systems).
         """
         J = self.jacobian(Z)
-        target = ones(len(self), dtype=DTYPE)
+        target = ones(len(self), dtype='complex128')
         target[-1] = M_target
         dZ = solve(J, target - self(Z))
         step_size = norm(dZ)
@@ -170,7 +149,7 @@ class GluingSystem(object):
         singular systems.
         """
         J = self.jacobian(Z)
-        target = ones(len(self), dtype=DTYPE)
+        target = ones(len(self), dtype='complex128')
         target[-1] = M_target
         error = target - self(Z)
         dZ = lstsq(J, error)[0]
@@ -297,4 +276,3 @@ class GluingSystem(object):
                         print('residual:', residual)
                         raise ValueError('Track failed: step size limit reached.')
         return Zn
-

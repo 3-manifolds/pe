@@ -9,7 +9,6 @@ holonomy map on the gluing variety.
 
 from __future__ import print_function
 from numpy import complex128
-from .gluing import GluingSystem
 from .shape import ShapeSet, PolishedShapeSet, GoodShapesNotFound
 
 class Fiber(object):
@@ -19,20 +18,10 @@ class Fiber(object):
     holonomy of the meridian is non-constant, A Fiber object
     represents a fiber for the meridian holonomy as a rational map
     from the gluing variety to C.
-
-    In general, a Fiber object maintains a list of shape vectors, one
-    for each positive dimensional component of the fiber of the meridian
-    holonomy, with each shape vector representing one point on the component.
-    In the case when higher dimensional components occur, the point is
-    obtained by intersecting the component with a random linear subspace
-    with dimension equal to the codimension of the component.  The same
-    linear subspace is used for each component of a given dimension.
-    The linear systems defining these subspaces are maintained by the
-    GluingSystem associated to the fiber.
     """
     
-    def __init__(self, manifold, H_meridian, gluing_system=None,
-                 PHCsystem=None, shapes=None, tolerance=1.0E-06):
+    def __init__(self, manifold, H_meridian, PHCsystem=None, shapes=None,
+                 tolerance=1.0E-06):
         # The tolerance is used to determine which of the PHC solutions
         # are at infinity.
         self.manifold = manifold
@@ -48,10 +37,6 @@ class Fiber(object):
             self.shapes = [ShapeSet(self.manifold, S.point[:N]) for S in self.solutions]
         else:
             raise ValueError('Fiber object requires a PHC system or a list of shapes.')
-        if gluing_system is None:
-            self.gluing_system = GluingSystem(manifold, self)
-        else:
-            self.gluing_system = gluing_system
 
     def __str__(self):
         return "Fiber(Manifold('%s'),\n%s,\nshapes=%s\n)"%(
@@ -196,46 +181,6 @@ class Fiber(object):
             n = min(remaining, key=dist_to_shape)
             result.append((m, n))
             remaining.remove(n)
-        return result
-
-    def transport(self, target, allow_collision=False, debug=False):
-        """
-        Transport this fiber to a different target holonomy.  If the resulting
-        fiber has a collision, try jiggling the path.
-        """
-        shapes = []
-        for shape in self.shapes:
-            if debug:
-                print("transport: shape ", len(shapes))
-            Zn = self.gluing_system.track(shape.array, target, debug=debug)
-            shapes.append(Zn)
-        result = Fiber(self.manifold, target,
-                       gluing_system=self.gluing_system,
-                       shapes=shapes)
-        if result.collision() and not allow_collision:
-            print("Perturbing the path.")
-            return self.retransport(target, debug)
-        return result
-
-    def retransport(self, target, debug=False):
-        """
-        Transport this fiber to a different target holonomy following a
-        path which first expands the radius, then advances the
-        argument, then reduces the radius. If the resulting fiber has
-        a collision, raise an exception.
-        """
-        result = self
-        for T in (1.01*self.H_meridian, 1.01*target, target):
-            print('Transporting to %s.'%T)
-            shapes = []
-            for shape in result.shapes:
-                Zn = self.gluing_system.track(shape.array, T, debug=debug)
-                shapes.append(Zn)
-            result = Fiber(self.manifold, target,
-                           gluing_system=self.gluing_system,
-                           shapes=shapes)
-            if result.collision():
-                raise ValueError('The collision recurred.  Perturbation failed.')
         return result
 
     def polished_shapelist(self, target_holonomy=None, precision=200):
