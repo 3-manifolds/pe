@@ -212,7 +212,7 @@ class SL2RLifter(object):
         return point
 
     def show(self, add_lines=False):
-        self.plot = Plot(self.translation_arcs, title=self.manifold.name())
+        self.plot = Plot(self.translation_arcs, number_type=PEPoint, title=self.manifold.name())
         if add_lines:
             self.draw_line(self.manifold.homological_longitude(), color='green')
             for edge in self.l_space_edges():
@@ -257,7 +257,7 @@ class SL2RLifter(object):
 
     def show_homological(self):
         plotlist = self._show_homological_data()            
-        self.plot = Plot(plotlist, title=self.manifold.name() + ' reframed')
+        self.plot = Plot(plotlist, number_type=PEPoint, title=self.manifold.name() + ' reframed')
         # Draw longitude
         ax = self.plot.figure.axis
         ax.plot((0, 1), (0, 0), color='green')
@@ -276,7 +276,7 @@ class SL2RLifter(object):
                 elif len(slopes) > 1:
                     slopes.append(None)
             plotlist.append(slopes)
-        self.slope_plot = Plot(plotlist)
+        self.slope_plot = Plot(plotlist, type=PEPoint)
 
     def draw_line(self, curve_on_torus, **kwargs):
         ax = self.plot.figure.axis
