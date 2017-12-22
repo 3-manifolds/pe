@@ -678,13 +678,13 @@ class Apoly(object):
 
     def show_coefficients(self):
         plot = Plot([[self.realpart(z) for z in row]
-                     for row in self.normalized_coeffs.real])
+                     for row in self.normalized_coeffs.real], number_type=float)
 
     def show_noise(self):
-        plot = Plot(self.noise)
+        plot = Plot(self.noise, number_type=float)
 
     def show_imag_noise(self):
-        plot = Plot(self.normalized_coeffs.imag)
+        plot = Plot(self.normalized_coeffs.imag, number_type=float)
 
     def show_newton(self, text=False):
         V = PolyViewer(self.newton_polygon, title=self.mfld_name)
@@ -696,11 +696,11 @@ class Apoly(object):
 
     def show_R_volumes(self):
         H = self.elevation
-        Plot(H.volumes(H.R_fibers))
+        Plot(H.volumes(H.R_fibers), number_type=float)
 
     def show_T_volumes(self):
         H = self.elevation
-        Plot(H.volumes(H.T_fibers))
+        Plot(H.volumes(H.T_fibers), number_type=float)
 
     def tighten(self, T=1.0):
         self.elevation.tighten(T)
