@@ -1,5 +1,6 @@
 """
 Plotting using matplotlib and Tkinter.
+---------------------------------------
 
 Matplotlib does all the 2D graphics for Sage, but unfortunately none of
 its GUI backends are compiled by default.  The following suffices to
@@ -28,20 +29,62 @@ So inaddition one may need to recompile the Tkinter module via
    sage -f python
 """
 
-# Load Tkinter
-import tkinter as Tk
-from tkinter import ttk
-
-# Load MatplotLib
 import matplotlib
-matplotlib.use('TkAgg')
-import matplotlib.backends.backend_tkagg as tkagg
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from matplotlib.backends.backend_tkagg import NavigationToolbar2TkAgg
+backend = matplotlib.get_backend()
 
-class MatplotFigure(object):
+if backend == 'TkAgg':
+    import tkinter as Tk
+    from tkinter import ttk
+    from matplotlib.figure import Figure
+    import matplotlib.backends.backend_tkagg as tkagg
+    from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,
+                                                   NavigationToolbar2TkAgg)
+elif backend == 'nbAgg':
+    import matplotlib.backends.backend_nbagg as nbagg
+    from matplotlib.backends.backend_nbagg import (FigureCanvasNbAgg,
+                                                   NavigationToolbar2WebAgg,
+                                                   FigureManagerNbAgg)
+from matplotlib.figure import Figure
+
+class NbFigure(object):
     def __init__(self, add_subplot=True, root=None, **kwargs):
-        figure = matplotlib.figure.Figure(figsize=(10, 6), dpi=100)
+        figure = Figure(figsize=(10, 6), dpi=100)
+        axis = figure.add_subplot(111) if add_subplot else None
+        self.figure, self.axis = figure, axis
+        self.canvas = FigureCanvasNbAgg(figure)
+        self.toolbar = NavigationToolbar2WebAgg(self.canvas)
+        self.manager = FigureManagerNbAgg(self.canvas, 2)
+        
+    def draw(self):
+        self.canvas.draw()
+        self.manager.show()
+
+    def clear(self):
+        self.axis.clear()
+        self.draw()
+
+    def set_cursor(self, cursor_name):
+        toolbar = self.toolbar
+        tkagg.cursord[1] = cursor_name
+        if not toolbar._active:
+            toolbar.set_cursor(1)
+
+    def unset_cursor(self):
+        toolbar = self.canvas.toolbar
+        tkagg.cursord[1] = self.default_cursor
+        if not toolbar._active:
+            toolbar.set_cursor(1)
+
+    def save(self, filename):
+        self.figure.savefig(filename, bbox_inches='tight', transparent='true')
+
+    def save_tikz(self, filename, path='plots/'):
+        import nplot.tikzplot
+        nplot.tikzplot.save_matplotlib_for_paper(self.figure, filename, path)
+
+class TkFigure(object):
+    def __init__(self, add_subplot=True, root=None, **kwargs):
+        figure = Figure(figsize=(10, 6), dpi=100)
         figure.set_facecolor('white')
         axis = figure.add_subplot(111) if add_subplot else None
         self.figure, self.axis = figure, axis
@@ -88,6 +131,11 @@ class MatplotFigure(object):
         import nplot.tikzplot
         nplot.tikzplot.save_matplotlib_for_paper(self.figure, filename, path)
 
+if backend == 'TkAgg':
+    MatplotFigure = TkFigure
+else:
+    MatplotFigure = NbFigure
+    
 if __name__ == "__main__":
     from numpy import arange, sin, pi
     MF = MatplotFigure()
