@@ -682,7 +682,7 @@ class PECharVariety(object):
              limits=((0.0, 1.0), (0.0, 0.5)),
              margins=(0, 0),
              aspect='equal',
-             title=self.manifold.name(),
+             title='PE Character Variety of %s'%self.manifold.name(),
              colors=self.colors,
              extra_lines=[((0.5, 0.5), (0.0, 1.0))],
              extra_line_args={'color':'black', 'linewidth':0.75},

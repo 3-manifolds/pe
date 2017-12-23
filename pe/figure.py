@@ -1,4 +1,8 @@
 """
+This module exports the MatplotFigure class, which comes in different flavors
+depending on the matplotlib backend.  Before importing this module, the
+backend should have been selected using matplotlib.use().
+
 Plotting using matplotlib and Tkinter.
 ---------------------------------------
 
@@ -46,19 +50,15 @@ elif backend == 'nbAgg':
                                                    FigureManagerNbAgg)
 from matplotlib.figure import Figure
 
-class NbFigure(object):
-    def __init__(self, add_subplot=True, root=None, **kwargs):
-        figure = Figure(figsize=(10, 6), dpi=100)
-        axis = figure.add_subplot(111) if add_subplot else None
-        self.figure, self.axis = figure, axis
-        self.canvas = FigureCanvasNbAgg(figure)
-        self.toolbar = NavigationToolbar2WebAgg(self.canvas)
-        self.manager = FigureManagerNbAgg(self.canvas, 2)
-        
-    def draw(self):
-        self.canvas.draw()
-        self.manager.show()
+class FigureBase(object):
 
+    def draw(self):
+        # Subclasses override this message.
+        pass
+
+    def set_title(self, title):
+        self.figure.suptitle(title)
+        
     def clear(self):
         self.axis.clear()
         self.draw()
@@ -82,7 +82,22 @@ class NbFigure(object):
         import nplot.tikzplot
         nplot.tikzplot.save_matplotlib_for_paper(self.figure, filename, path)
 
-class TkFigure(object):
+
+class NbFigure(FigureBase):
+    def __init__(self, add_subplot=True, root=None, **kwargs):
+        figure = Figure(figsize=(10, 6), dpi=72)
+        figure.set_facecolor('white')
+        axis = figure.add_subplot(111) if add_subplot else None
+        self.figure, self.axis = figure, axis
+        self.canvas = FigureCanvasNbAgg(figure)
+        self.toolbar = NavigationToolbar2WebAgg(self.canvas)
+        self.manager = FigureManagerNbAgg(self.canvas, 1)
+        
+    def draw(self):
+        self.canvas.draw()
+        self.manager.show()
+
+class TkFigure(FigureBase):
     def __init__(self, add_subplot=True, root=None, **kwargs):
         figure = Figure(figsize=(10, 6), dpi=100)
         figure.set_facecolor('white')
@@ -108,29 +123,6 @@ class TkFigure(object):
     def draw(self):
         self.canvas.draw()
 
-    def clear(self):
-        self.axis.clear()
-        self.draw()
-
-    def set_cursor(self, cursor_name):
-        toolbar = self.canvas.toolbar
-        tkagg.cursord[1] = cursor_name
-        if not toolbar._active:
-            toolbar.set_cursor(1)
-
-    def unset_cursor(self):
-        toolbar = self.canvas.toolbar
-        tkagg.cursord[1] = self.default_cursor
-        if not toolbar._active:
-            toolbar.set_cursor(1)
-
-    def save(self, filename):
-        self.figure.savefig(filename, bbox_inches='tight', transparent='true')
-
-    def save_tikz(self, filename, path='plots/'):
-        import nplot.tikzplot
-        nplot.tikzplot.save_matplotlib_for_paper(self.figure, filename, path)
-
 if backend == 'TkAgg':
     MatplotFigure = TkFigure
 else:
@@ -138,8 +130,11 @@ else:
     
 if __name__ == "__main__":
     from numpy import arange, sin, pi
+    import matplotlib
+    matplotlib.use('tkagg')
     MF = MatplotFigure()
     t = arange(0.0, 3.0, 0.01)
     s = sin(2*pi*t)
     ans = MF.axis.plot(t, s)
+    MF.draw()
     Tk.mainloop()
