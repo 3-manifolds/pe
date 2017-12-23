@@ -179,9 +179,7 @@ class TkPlot(PlotBase):
         if title:
             figure, axis, window = self.figure, self.figure.axis, self.figure.window
             window.title(title)
-            axis.text(0.02, 0.98, title,
-                      horizontalalignment='left', verticalalignment='top',
-                      transform=axis.transAxes, fontsize=15)
+            figure.set_title(title)
         func_selector_frame = ttk.Frame(window)
         for i, var in enumerate(self.arc_vars):
             button = ttk.Checkbutton(func_selector_frame,
@@ -214,6 +212,11 @@ class TkPlot(PlotBase):
         self.figure.draw()
 
 class NbPlot(PlotBase):
+
+    def init_backend(self):
+        title = self.args.get('title', None)
+        if title:
+            self.figure.set_title(title)
     pass
 
 if  backend == 'TkAgg': 
