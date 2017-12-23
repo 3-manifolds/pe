@@ -1,8 +1,13 @@
 from __future__ import print_function
-try:
-    from .tkplot import MatplotFigure, Tk, ttk
-except ImportError:
-    pass
+
+import matplotlib
+backend = matplotlib.get_backend()
+if  backend == 'TkAgg': 
+    matplotlib.use('tkagg')
+    from .figure import MatplotFigure, Tk, ttk
+else:
+    matplotlib.use('nbagg')
+    from .figure import MatplotFigure
 
 from .point import PEPoint
 from .input import user_input
@@ -61,7 +66,6 @@ class PlotBase(object):
     def init_backend(self):
         # Backend-specific initialization: subclasses override.
         pass
-        
 
     def on_hover(self, event):
         # Subclasses override this handler.
@@ -102,7 +106,6 @@ class PlotBase(object):
         """Configure the plot based on keyword arguments."""
         figure = self.figure
         axis = figure.axis
-        window = figure.window
         limits = self.args.get('limits', None)
         xlim, ylim = limits if limits else (axis.get_xlim(), axis.get_ylim())
 
@@ -142,10 +145,6 @@ class PlotBase(object):
         axis.set_aspect(self.args.get('aspect', 'auto'))
         axis.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
 
-        title = self.args.get('title', None)
-        if title:
-            self.figure.window.title(title)
-
         extra_lines = self.args.get('extra_lines', None)
         if extra_lines:
             extra_line_args = self.args.get('extra_line_args', {})
@@ -167,7 +166,7 @@ class PlotBase(object):
     def save_tikz(self, filename, path='plots/'):
         self.figure.save_tikz(filename, path='plots/')
 
-class Plot(PlotBase):
+class TkPlot(PlotBase):
     
     def init_backend(self):
         self.arc_vars = collections.OrderedDict()
@@ -214,6 +213,13 @@ class Plot(PlotBase):
                 subarc.remove()
         self.figure.draw()
 
+class NbPlot(PlotBase):
+    pass
+
+if  backend == 'TkAgg': 
+    Plot = TkPlot
+else:
+    Plot = NbPlot
 
 if __name__ == "__main__":
     scattered = numpy.random.random((30, 2))
