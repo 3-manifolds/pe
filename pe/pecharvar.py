@@ -50,7 +50,7 @@ class CircleElevation(object):
     the unit circle, and may prevent the transport. Such failures are
     reported on the console and then ignored.
     """
-    def __init__(self, manifold, order=128, radius=1.02, base_dir=None,
+    def __init__(self, manifold, order=128, radius=1.02, tight_radius=1.0, base_dir=None,
                  hint_dir='hints', ignore_saved=False, phc_rescue=False,
                  verbose=True):
         self.base_dir = base_dir
@@ -58,6 +58,7 @@ class CircleElevation(object):
         self.manifold = manifold
         self.order = order
         self.radius = radius
+        self.tight_radius = tight_radius
         self.phc_rescue = phc_rescue
         self.verbose = verbose
         self.hp_manifold = self.manifold.high_precision()
@@ -263,11 +264,13 @@ class CircleElevation(object):
         if not F.is_finite():
             self._print('Degenerate shape! ')
 
-    def tighten(self, T=1.0):
+    def tighten(self, T=None):
         """
         Radially transport each fiber over a point on the R-circle to a
         fiber over a point on the T-circle.
         """
+        if T is None:
+            T = self.tight_radius
         self._print('Tightening the circle to radius %s ...'%T)
         Darg = 2*pi/self.order
         self.T_circle = circle = [T*exp(-n*Darg*1j) for n in range(self.order)]
