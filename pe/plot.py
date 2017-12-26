@@ -176,8 +176,8 @@ class TkPlot(PlotBase):
             var.arc = view 
             self.arc_vars[str(var)] = var
         title = self.args.get('title', None)
+        figure, axis, window = self.figure, self.figure.axis, self.figure.window
         if title:
-            figure, axis, window = self.figure, self.figure.axis, self.figure.window
             window.title(title)
             figure.set_title(title)
         func_selector_frame = ttk.Frame(window)
