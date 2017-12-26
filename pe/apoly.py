@@ -75,12 +75,9 @@ class ComputedApoly(object) :
             result += format%tuple(row + 0.)
         return result
     
-    def show_newton(self, text=False, scale=None):
-        V = PolyViewer(self.newton_polygon, title=self.mfld_name, scale=scale)
-        if text:
-            V.show_text()
-        else:
-            V.show_dots()
+    def show_newton(self, gridsize=None):
+        V = PolyViewer(self.newton_polygon, title=self.mfld_name, gridsize=gridsize)
+        V.show_dots()
         V.show_sides()
 
     def as_string(self, exp='^'):
