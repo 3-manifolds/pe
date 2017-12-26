@@ -3,14 +3,10 @@ The PolyViewer class displays the Newton polygon of a 2-variable polynomial,
 with vertices colored by the log of the absolute value of the coefficient.
 """
 import colorsys, matplotlib
-
-backend = matplotlib.get_backend()
-if backend == 'TkAgg':
-    try:
-        import Tkinter as tkinter
-    except ImportError:
-        import tkinter
-
+from matplotlib import units, ticker
+from matplotlib.cbook import iterable
+from .figure import MatplotFigure
+    
 def color_string(h, s, v):
     """
     Return an html style color string from HSV values in [0.0, 1.0]
@@ -18,115 +14,90 @@ def color_string(h, s, v):
     r, g, b = colorsys.hsv_to_rgb((.03125 + h)%1.0, s, v)
     return "#%.2x%.2x%.2x"%(int(255*r), int(255*g), int(255*b))
 
-class TkPolyViewer:
-    def __init__(self, newton_poly, title=None, scale=None, margin=10):
-        self.NP = newton_poly
+class PolyViewerBase(object):
+    dpi=72
+    min_width=2.0
+    default_height=5.0
+    
+    def __init__(self, newton_poly, title=None, gridsize=None):
+        self.NP, self.title = newton_poly, title
         self.columns = 1 + self.NP.support[-1][0]
         self.rows = 1 + max([d[1] for d in self.NP.support])
-        if scale == None:
-            scale = 600//max(self.rows, self.columns)
-        self.scale = scale
-        self.margin = margin
-        self.width = (self.columns - 1)*self.scale + 2*self.margin
-        self.height = (self.rows - 1)*self.scale + 2*self.margin
-        self.window = tkinter.Tk()
-        if title:
-            self.window.title(title)
-        self.window.wm_geometry('+400+20')
-        self.canvas = tkinter.Canvas(self.window,
-                                     bg='white',
-                                     height=self.height,
-                                     width=self.width)
-        self.canvas.pack(expand=True, fill=tkinter.BOTH)
-        self.font = ('Helvetica','18','bold')
-        self.dots=[]
-        self.text=[]
-        self.sides=[]
+        if gridsize == None:
+            gridsize = self.default_height/max(self.rows, self.columns)
+        self.gridsize = gridsize
+        self.width = self.columns*self.gridsize
+        self.height = self.rows*self.gridsize
+        self.dot_radius = min(8, int(self.dpi*gridsize/3))
+        size = W, H = (self.min_width + self.width, 0.5 + self.height)
+        l, w = (W - self.width)/(2*W), self.width/W
+        b, h = (H - self.height)/(2*H), self.height/H
+        self.figure = MF = MatplotFigure(add_subplot=False, size=size, dpi=100)
+        self.axis = axis = MF.figure.add_axes([l, b, w, h])
+        axis.xaxis.set_major_formatter(ticker.FormatStrFormatter('%d'))    
+        axis.yaxis.set_major_formatter(ticker.FormatStrFormatter('%d'))    
+        axis.margins(x=0.2, y=0.2)
+        self.init_backend()
 
-        self.grid = (
-            [ self.canvas.create_line(
-                0, self.height - self.margin - i*scale,
-                self.width, self.height - self.margin - i*scale,
-                fill=self.gridfill(i))
-              for i in range(self.rows)] +
-            [ self.canvas.create_line(
-                self.margin + i*scale, 0,
-                self.margin + i*scale, self.height,
-                fill=self.gridfill(i))
-              for i in range(self.columns)])
-        #self.window.mainloop()
-
-    def write_psfile(self, filename):
-        self.canvas.postscript(file=filename)
-            
-    def gridfill(self, i):
-        if i:
-            return '#f0f0f0'
-        else:
-            return '#d0d0d0'
-          
-    def point(self, pair):
-        i,j = pair
-        return (self.margin+i*self.scale,
-                self.height - self.margin - j*self.scale)
-      
+    def init_backend(self):
+        # Override to provide backend-specific code
+        pass
+    
     def show_dots(self):
-        r = 2 + self.scale//20
         for i, j in self.NP.support:
-            x,y = self.point((i,j))
             color = self.NP.color_dict[(j, i)]
-            self.dots.append(self.canvas.create_oval(
-                x-r, y-r, x+r, y+r, fill=color, outline=color))
-
-    def erase_dots(self):
-        for dot in self.dots:
-            self.canvas.delete(dot)
-        self.dots = []
-
-    def show_text(self):
-        r = 2 + self.scale/20
-        for i, j in self.NP.support:
-            x,y = self.point((i,j))
-            self.sides.append(self.canvas.create_oval(
-                x-r, y-r, x+r, y+r, fill='black'))
-            self.text.append(self.canvas.create_text(
-                2*r+x,-2*r+y,
-                text=str(self.NP.coeff_dict[(j,i)]),
-                font=self.font,
-                anchor='c'))
-              
-    def erase_text(self):
-        for coeff in self.text:
-            self.canvas.delete(coeff)
-        self.text=[]
-
+            self.axis.plot(i, j, marker='o', ms=self.dot_radius, color=color,
+                           markeredgecolor=color)
+        axis = self.axis
+        axis.set_xlim(xmin=-0.75, xmax=self.columns - 0.25)
+        axis.set_ylim(ymin=-0.75, ymax=self.rows - 0.25)
+        axis.locator_params(axis='x', integer=True)
+        axis.locator_params(axis='y', integer=True)
+        self.figure.draw()
+            
     def show_sides(self):
-        r = 3 + self.scale//20
-        first = self.NP.lower_vertices[0]
-        x1, y1 = self.point(first)
+        r = 2 + self.dot_radius
         upper = list(self.NP.upper_vertices)
         upper.reverse()
+        x1, y1 = first = self.NP.lower_vertices[0]
         vertices = self.NP.lower_vertices + upper + [first]
         for vertex in vertices:
-            self.sides.append(self.canvas.create_oval(
-                x1-r, y1-r, x1+r, y1+r, fill='black', outline='black'))
-            x2, y2 = self.point(vertex)
-            self.sides.append(self.canvas.create_line(
-                x1, y1, x2, y2,
-                fill='black'))
+            self.axis.plot(x1, y1, marker='o', ms=r, color='black')
+            x2, y2 = vertex
+            self.axis.plot([x1, x2], [y1, y2], color='black')
             x1, y1 = x2, y2
+        self.figure.draw()
 
-    def erase_sides(self):
-        for object in self.sides:
-            self.canvas.delete(object)
-        self.sides=[]
+class TkPolyViewer(PolyViewerBase):
+    dpi=100
+    min_width=2.0
+    default_height=8.0
+                           
+    def __init__(self, newton_poly, title=None, gridsize=None):
+        PolyViewerBase.__init__(self, newton_poly, title, gridsize)
+                         
+    def init_backend(self):
+        if self.title:
+            self.figure.window.title(self.title)
+        self.figure.window.wm_geometry('+400+20')
+
+class NbPolyViewer(PolyViewerBase):
+    dpi=72
+    min_width=2.0
+    default_height=5.0
+
+    def __init__(self, newton_poly, title=None, gridsize=None):
+        PolyViewerBase.__init__(self, newton_poly, title, gridsize)
 
 class Unsupported:
-    def __init__(self, newton_poly, title=None, scale=None, margin=10):
+    def __init__(self, newton_poly, title=None, gridsize=None):
         raise RuntimeError ('PolyViewer does not support this matpotlib backend (%s).'%backend)
 
+backend = matplotlib.get_backend()
 if backend == 'TkAgg':
     PolyViewer = TkPolyViewer
+elif backend == 'nbAgg':
+    PolyViewer = NbPolyViewer
 else:
     PolyViewer = Unsupported
     

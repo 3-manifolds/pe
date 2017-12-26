@@ -84,9 +84,8 @@ class FigureBase(object):
 
 
 class NbFigure(FigureBase):
-    def __init__(self, add_subplot=True, root=None, **kwargs):
-        figure = Figure(figsize=(10, 6), dpi=72)
-        figure.set_facecolor('white')
+    def __init__(self, add_subplot=True, root=None, size=(10, 6), dpi=72, **kwargs):
+        figure = Figure(figsize=size, dpi=dpi, facecolor='white')
         axis = figure.add_subplot(111) if add_subplot else None
         self.figure, self.axis = figure, axis
         self.canvas = FigureCanvasNbAgg(figure)
@@ -98,16 +97,16 @@ class NbFigure(FigureBase):
         self.manager.show()
 
 class TkFigure(FigureBase):
-    def __init__(self, add_subplot=True, root=None, **kwargs):
-        figure = Figure(figsize=(10, 6), dpi=100)
-        figure.set_facecolor('white')
+    def __init__(self, add_subplot=True, root=None, size=(10, 6), dpi=100, **kwargs):
+        figure = Figure(figsize=size, dpi=dpi, facecolor='white')
         axis = figure.add_subplot(111) if add_subplot else None
         self.figure, self.axis = figure, axis
 
         window = Tk.Tk() if root is None else Tk.Toplevel(root)
         figure_frame = ttk.Frame(window)
+        W, H = size
         canvas = FigureCanvasTkAgg(figure, master=figure_frame)
-        canvas._tkcanvas.config(highlightthickness=0, width=1000, height=600)
+        canvas._tkcanvas.config(highlightthickness=0, width=W*dpi, height=H*dpi)
         toolbar = NavigationToolbar2TkAgg(canvas, figure_frame)
         toolbar.pack(side=Tk.TOP, fill=Tk.X)
         canvas._tkcanvas.pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
