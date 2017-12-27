@@ -50,7 +50,7 @@ class ComputedApoly(object) :
         for m, n in D.keys():
             coeffs[m//2][n] = D[(m, n)]
         self.height = max([max(abs(x)) for x in self.coefficients])
-        self.bits_height = int(ceil(log(float(self.height))/log(2)))
+        self.bits_height = int(ceil(log(float(self.height)))/log(2))
         self.newton_polygon = NewtonPolygon(D, (1,2))
 
     def __call__(self, M, L):
@@ -67,7 +67,7 @@ class ComputedApoly(object) :
         return 'A-polynomial of %s'%self.mfld_name
 
     def __str__(self):
-        digits = 2 + int(ceil(log(self.height)/log(10)))
+        digits = 2 + int(ceil(log(float(self.height))/log(10)))
         width = len(self.coefficients[0])
         format = '[' + ('%' + str(digits) + '.0f')*width + ']\n'
         result = ''
@@ -405,7 +405,7 @@ class Apoly(object):
         #self.int_coeffs = array([[self. for z in row]
         #                              for row in self.normalized_coeffs], dtype='O')
         self.height = int(max([max(abs(x)) for x in self.int_coeffs]))
-        self.bits_height = int(ceil(float(log(self.height)/log(2))))
+        self.bits_height = int(ceil(log(float(self.height))/log(2)))
         #self.bits_height = log(self.height, 2)
         self.noise = (array([[real(z) for z in row] for row in self.normalized_coeffs], dtype='O') -
                       self.int_coeffs)
