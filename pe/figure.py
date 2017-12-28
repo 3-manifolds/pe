@@ -39,7 +39,9 @@ backend = matplotlib.get_backend()
 if backend == 'TkAgg':
     print('Using TkAgg as the matplotlib backend.')
     from IPython import get_ipython
-    get_ipython().magic("%gui tk")
+    ip = get_ipython()
+    if ip:
+        ip.magic("%gui tk")
     import tkinter as Tk
     from tkinter import ttk
     from matplotlib.figure import Figure

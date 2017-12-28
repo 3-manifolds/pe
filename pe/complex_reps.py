@@ -109,8 +109,8 @@ class PSL2CRepOf3ManifoldGroup(object):
     >>> rho
     <m004(0,0): [0.5+0.86603I, 0.5+0.86603I]>
     >>> G = rho.polished_holonomy()
-    >>> float(G('ab').trace().real())
-    -2.0
+    >>> float(G('ab').trace().real()**2)
+    4.0
     """
     def __init__(self, manifold,
                  target_meridian_holonomy=None,
