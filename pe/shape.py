@@ -209,19 +209,19 @@ class PolishedShapeSet(object):
     >>> rough[0]
     (0.94501569508040595+1.0738656547982881j)
     >>> polished = PolishedShapeSet(rough, target_holonomy=1.0)
-    >>> print '%.55s'%polished[0].real()
-    0.94501569508040449844398481070855256180052530814866749
-    >>> print '%.55s'%M.high_precision().tetrahedra_shapes('rect')[0].real()
-    0.94501569508040449844398481070855256180052530814866749
+    >>> '%.55s'%polished[0].real()
+    '0.94501569508040449844398481070855256180052530814866749'
+    >>> '%.55s'%M.high_precision().tetrahedra_shapes('rect')[0].real()
+    '0.94501569508040449844398481070855256180052530814866749'
     >>> M = snappy.Manifold('m071(7,0)')
     >>> beta = PolishedShapeSet(ShapeSet(M), U1Q(1,7, precision=256), precision=256)
-    >>> print '%.55s'%beta[0].real()
-    1.78068392631530372708547775577353937466128526916049412
-    >>> print '%.55s'%M.high_precision().tetrahedra_shapes('rect')[0].real()
-    1.78068392631530372708547775577353937466128526916049412
+    >>> '%.55s'%beta[0].real()
+    '1.78068392631530372708547775577353937466128526916049412'
+    >>> '%.55s'%M.high_precision().tetrahedra_shapes('rect')[0].real()
+    '1.78068392631530372708547775577353937466128526916049412'
     >>> beta.advance_holonomy(1, 128)
-    >>> print '%.55s'%beta[0].real()
-    1.85948924439337005767593476988617911744582266669793858
+    >>> '%.55s'%beta[0].real()
+    '1.85948924439337005767593476988617911744582266669793858'
     """
     def __init__(self, rough_shapes, target_holonomy, precision=212):
         self.rough_shapes = rough_shapes
