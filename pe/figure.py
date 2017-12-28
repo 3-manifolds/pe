@@ -37,6 +37,9 @@ import matplotlib
 backend = matplotlib.get_backend()
 
 if backend == 'TkAgg':
+    print('Using TkAgg as the matplotlib backend.')
+    from IPython import get_ipython
+    get_ipython().magic("%gui tk")
     import tkinter as Tk
     from tkinter import ttk
     from matplotlib.figure import Figure
@@ -44,6 +47,7 @@ if backend == 'TkAgg':
     from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,
                                                    NavigationToolbar2TkAgg)
 elif backend == 'nbAgg':
+    print('Using nbAgg as the matplotlib backend.')
     import matplotlib.backends.backend_nbagg as nbagg
     from matplotlib.backends.backend_nbagg import (FigureCanvasNbAgg,
                                                    NavigationToolbar2WebAgg,

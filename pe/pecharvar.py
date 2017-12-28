@@ -24,9 +24,6 @@ from .plot import Plot
 from .complex_reps import PSL2CRepOf3ManifoldGroup
 from .real_reps import PSL2RRepOf3ManifoldGroup
 from sage.all import ComplexField
-from IPython import get_ipython
-
-get_ipython().magic("%gui tk")
 
 class CircleElevation(object):
     """
@@ -284,64 +281,84 @@ class CircleElevation(object):
         try:
             self.T_longitude_holos, self.T_longitude_evs, self.T_choices = self.longidata(
                 self.T_fibers)
-        except:
-            self._print('Failed to compute longitude holonomies.')
+        except Exception as e:
+            self._print('Failed to compute longitude holonomies: %s'%e)
 
     def longidata(self, fiber_list):
         """
-        Compute the longitude holonomies and eigenvalues at each point in
-        each fiber in the argument.  We allow the list to contain
-        placeholders for failed computations.  A placeholder is any
-        object which is not an instance of Fiber.  The fibers must all
+        Compute the longitude holonomies and eigenvalues at each point in each
+        fiber in a list of fibers.  We allow the input list of fibers to
+        contain placeholders for failed computations.  (A placeholder is
+        any object which is not an instance of Fiber.)  The fibers must all
         have degree == self.degree.
 
-        The method produces two lists of lists.  Each outer list has
-        length self.degree.  The inner lists contain pairs (n,z) where
-        n is the index of the fiber in the input list and z is the
-        associated holonomy or eigenvalue.  The integer can be used to
-        reconstruct the corresponding meridian holonomy or eigenvalue
-        in the case where the list of fibers is the elevation of a
-        sampled circle.
+        The method produces two lists of lists.  Each outer list has length
+        self.degree and each inner list has length self.order, and contains
+        a None value for each index where the input fiber list contained a
+        placeholder.
 
+        Finding the longitude means choosing a square root λ of the
+        longitude holonomy.  As long as the trace of the longitude is
+        nonzero there is a unique choice of sign such that λ + 1/λ equals
+        the trace.  However, computing the trace of the longitude involves
+        constructing a PSL(2,C) representation and lifting it to SL(2,C).
+        This is an expensive computation.  So for efficiency we do this
+        only at the first computed fiber and for subsequent fibers we
+        choose the sign which makes the longitude eigenvalue closer to the
+        value computed for the previous fiber.  Note, however, that this
+        may fail if the order is chosen to be too small.
         """
-        self._print('Computing longitude holonomies and eigenvalues ... ', end='')
-        # This crashes if there are bad fibers.
-        longitude_holonomies = [[self.gluing_system.L_nomial(f.shapes[m].array)
-                                 for f in fiber_list if isinstance(f, Fiber)]
-                                for m in range(self.degree)]
-        if isinstance(fiber_list[0], Fiber):
-            index = 0
-        else:
-            index = randint(0, self.order - 1)
-            self._print('Using %d as the starting index.'%index)
+        
+        self._print('Computing longitude holonomies and eigenvalues ... ')
+        # Compute holonomies with None values where the fiber is a placeholder.
+        L_nomial = self.gluing_system.L_nomial
+        longitude_holonomies = [
+            [L_nomial(f.shapes[m].array) if isinstance(f, Fiber) else None
+             for f in fiber_list]
+            for m in range(self.degree)]
+        # Find the first fiber which has actually been computed.
+        index = 0
+        while not isinstance(fiber_list[index], Fiber):
+            index += 1
+        self._print('Using index %d to determine signs.'%index)
         longitude_traces = self.find_longitude_traces(fiber_list[index])
         longitude_eigenvalues = []
         choices = []
         for m, L in enumerate(longitude_holonomies):
+            # Choose the sign for the eigenvalue at the starting fiber
             tr = longitude_traces[m]
             e = sqrt(L[index])
-            # Choose the sign for the eigenvalue at the starting fiber
-            flip = abs(e + 1/e - tr) > abs(e + 1/e + tr)
-            E = [-e if flip else e]
-            Echoices = [self.ev_choice(E[0])]
-            # Fix discontinuities caused by the branch cut used by sqrt
+            E = [None]*index
+            if abs(e + 1/e - tr) > abs(e + 1/e + tr):
+                e = -e
+            E.append(e)
+            Echoices = [self.ev_choice(e)]
+            previous = e
+            # From here on, choose the sign which makes this eigenvalue closer
+            # to the previous eigenvalue.  For this to work correctly the order
+            # needs to be sufficiently large.
             for holo in L[index+1:]:
+                if holo is None:
+                    E.append(None)
+                    Echoices.append(None)
+                    continue
                 e = sqrt(holo)
-                flip = abs(e - E[-1]) > abs(e + E[-1])
-                E.append(-e if flip else e)
-                Echoices.append(self.ev_choice(E[-1]))
-            if index > 0:
-                for holo in L[index-1::-1]:
-                    e = sqrt(holo)
-                    flip = abs(e - E[0]) < abs(e + E[0])
-                    E.insert(0, -e if flip else e)
-                    Echoices.insert(0, self.ev_choice(E[0]))
+                if abs(e - previous) > abs(e + previous):
+                    e = -e
+                E.append(e)
+                Echoices.append(self.ev_choice(e))
+                previous = e
             longitude_eigenvalues.append(E)
             choices.append(Echoices)
         self._print('done.')
         return longitude_holonomies, longitude_eigenvalues, choices
 
     def ev_choice(self, ev):
+        """
+        Compute some numerical information that characterizes which square root was
+        chosen to be the eigenvalue.  It is used when computing high precision
+        eigenvalues.
+        """
         absreal, absimag = abs(ev.real), abs(ev.imag)
         if absreal >= absimag:
             part = 0
@@ -352,7 +369,10 @@ class CircleElevation(object):
         return part, pos
 
     def set_sign(self, choice, ev):
-        # Assumes that ev is a sage ComplexNumber
+        """
+        Determine the sign of a high precision eigenvalue using the data provided by
+        ev_choice.  The parameter ev is assumed to be a sage ComplexNumber.
+        """
         part, pos = choice
         if part == 0:
             if ev.real() > 0:
@@ -539,6 +559,8 @@ class PECharVariety(object):
             arc, info = PEArc(), []
             marker = ''
             for n, ev in enumerate(track):
+                if ev is None:
+                    continue
                 if 0.99999 < abs(ev) < 1.00001:
                     if show_group:
                         shape = H.T_fibers[n].shapes[m]
