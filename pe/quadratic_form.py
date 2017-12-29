@@ -92,7 +92,8 @@ def preserves_hermitian_form(SL2C_matrices):
 
     CC = M.base_ring()
     mp.prec = CC.prec()
-    epsilon = mp.mpf(2)**(-int(0.8*mp.prec))
+    RR = RealField(CC.prec())
+    epsilon = RR(2)**(-int(0.8*mp.prec))
     U, S, V = mp.svd(sage_matrix_to_mpmath(M))
     S = list(mp.chop(S, epsilon))
     if mp.zero not in S:
