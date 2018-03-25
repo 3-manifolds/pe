@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 The PolyViewer class displays the Newton polygon of a 2-variable polynomial,
 with vertices colored by the log of the absolute value of the coefficient.
@@ -5,6 +6,7 @@ with vertices colored by the log of the absolute value of the coefficient.
 import colorsys, matplotlib
 from matplotlib import units, ticker
 from matplotlib.cbook import iterable
+from matplotlib.pyplot import title
 from .figure import MatplotFigure
     
 def color_string(h, s, v):
@@ -13,6 +15,12 @@ def color_string(h, s, v):
     """
     r, g, b = colorsys.hsv_to_rgb((.03125 + h)%1.0, s, v)
     return "#%.2x%.2x%.2x"%(int(255*r), int(255*g), int(255*b))
+
+class PolyFigure(MatplotFigure):
+
+    def __init__(self, *args, **kwargs):
+        MatplotFigure.__init__(self, *args, **kwargs)
+        self.NP = kwargs.get('NP', None)
 
 class PolyViewerBase(object):
     dpi=72
@@ -32,17 +40,35 @@ class PolyViewerBase(object):
         size = W, H = (self.min_width + self.width, 0.5 + self.height)
         l, w = (W - self.width)/(2*W), self.width/W
         b, h = (H - self.height)/(2*H), self.height/H
-        self.figure = MF = MatplotFigure(add_subplot=False, size=size, dpi=100)
+        self.figure = MF = PolyFigure(NP=newton_poly, add_subplot=False,
+                                      size=size, dpi=100)
         self.axis = axis = MF.figure.add_axes([l, b, w, h])
+        axis.set_position([0.1, 0.12, 0.8, 0.83])
         axis.xaxis.set_major_formatter(ticker.FormatStrFormatter('%d'))    
         axis.yaxis.set_major_formatter(ticker.FormatStrFormatter('%d'))    
         axis.margins(x=0.2, y=0.2)
+        self.monomial = MF.figure.text(0.1, 0.025, '', fontsize=18)
+        self.figure.canvas.mpl_connect(
+            'motion_notify_event', self.show_coefficient)
         self.init_backend()
 
     def init_backend(self):
         # Override to provide backend-specific code
         pass
     
+    def show_coefficient(self, event):
+        x, y = event.xdata, event.ydata
+        if x is None or y is None:
+            self.monomial.set_text('')
+        else:
+            l_degree, m_degree = int(round(x)), int(round(y))
+            coeff = self.NP(m_degree, l_degree)
+            if coeff is not None:
+                self.monomial.set_text('${%d} M^{%d}L^{%d}$'%(coeff, m_degree, l_degree))
+            else:
+                self.monomial.set_text('$0$')
+        self.figure.draw()
+
     def show_dots(self):
         for i, j in self.NP.support:
             color = self.NP.color_dict[(j, i)]
