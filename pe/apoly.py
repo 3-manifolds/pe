@@ -52,7 +52,8 @@ class ComputedApoly(object) :
         self.height = max([max(abs(x)) for x in self.coefficients])
         self.bits_height = int(ceil(log(float(self.height)))/log(2))
         self.newton_polygon = NewtonPolygon(D, (1,2))
-
+        self.viewer = None
+        
     def __call__(self, M, L):
         result = 0
         rows, cols = self.coefficients.shape
@@ -76,7 +77,9 @@ class ComputedApoly(object) :
         return result
     
     def show_newton(self, gridsize=None):
-        V = PolyViewer(self.newton_polygon, title=self.mfld_name, gridsize=gridsize)
+        self.viewer = V = PolyViewer(self.newton_polygon,
+                                     title=self.mfld_name,
+                                     gridsize=gridsize)
         V.show_dots()
         V.show_sides()
 
@@ -194,6 +197,7 @@ class Apoly(object):
         else:
             self.mfld_name = mfld
             self.manifold = Manifold(mfld)
+        self.viewer= None
         self.gluing_form = gluing_form
         self.verbose = verbose
         self.apoly_dir = apoly_dir
@@ -677,7 +681,7 @@ class Apoly(object):
         plot = Plot(self.normalized_coeffs.imag, number_type=float)
 
     def show_newton(self, text=False):
-        V = PolyViewer(self.newton_polygon, title=self.mfld_name)
+        self.viewer= V = PolyViewer(self.newton_polygon, title=self.mfld_name)
         if text:
             V.show_text()
         else:
@@ -779,6 +783,10 @@ class NewtonPolygon:
         self.newton_sides = {}
         self.find_vertices()
 
+    def __call__(self, m_degree, l_degree):
+        degree = (m_degree, l_degree)
+        return self.coeff_dict.get(degree, None)
+    
     def slope(self, v, w):
         return Slope((w[0]-v[0], w[1]-v[1]))
 
