@@ -1,7 +1,14 @@
-\documentclass[12pt, letter, oneside]{amsart}
+\documentclass[12pt, letterpaper, oneside]{amsart}
 \usepackage{amsfonts, amsmath, amsthm, amssymb}
 \usepackage[width=6.5in, height=9.0in]{geometry}
-\usepackage{kpfonts}
+% \usepackage{kpfonts}
+\usepackage{unicode-math}
+\setmainfont{Lato Regular}
+\setmathfont{texgyreschola-math.otf}
+%\setmathfont{texgyreschola-math.otf}[range=sfit->it]
+%\setmathfont[range=it]{Lato Italic}
+\setmathfont{Lato Italic}[range=it]
+%\setmathfont{latinmodern-math.otf}
 \usepackage{url}
 
 % Numbering and "theorems"
@@ -24,7 +31,7 @@
 
 \parindent=0pt
 \parskip=10pt
-\linespread{1.1}
+\linespread{1.2}
 
 \newcommand{\CC}{\mathbb{C}}
 \newcommand{\FFT}{\text{FFT}}
@@ -34,7 +41,7 @@
 \begin{document}
 \title{The FFT with multiprecision arithmetic}
 \author{Marc Culler}
-\date{2017}
+\date{2018}
 \maketitle
 \section{Introduction}
 
