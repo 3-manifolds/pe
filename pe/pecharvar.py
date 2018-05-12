@@ -148,7 +148,7 @@ class CircleElevation(object):
         except IOError:
             data = {}
         return data
-        
+
     def save_hint(self, basename=None, directory=None, extra_options={}):
         """Save the settings used to compute this variety."""
         if directory == None:
@@ -168,7 +168,7 @@ class CircleElevation(object):
                 '}', '\n}\n')
         with open(hintfile_name, 'w') as hintfile:
             hintfile.write('hint=' + str_rep)
-            
+
     def transport(self, fiber, target, allow_collision=False, debug=False,
                   fail_quietly=False):
         """
@@ -188,7 +188,7 @@ class CircleElevation(object):
         if result.collision() and not allow_collision:
             print("Perturbing the path.")
             result, msg = self.retransport(target, debug=debug, fail_quietly=fail_quietly)
-        return result, msg 
+        return result, msg
 
     def retransport(self, fiber, target, debug=False, fail_quietly=False):
         """
@@ -317,7 +317,7 @@ class CircleElevation(object):
         value computed for the previous fiber.  Note, however, that this
         may fail if the order is chosen to be too small.
         """
-        
+
         self._print('Computing longitude holonomies and eigenvalues ... ')
         # Compute holonomies with None values where the fiber is a placeholder.
         L_nomial = self.gluing_system.L_nomial
@@ -393,7 +393,7 @@ class CircleElevation(object):
                 return ev if pos else -ev
             else:
                 return -ev if pos else ev
-                 
+
     def polish_R_longitude_vals(self, precision=196):
         R = ComplexField(precision)
         L_holo = self.gluing_system.L_nomial
@@ -484,7 +484,7 @@ class CircleElevation(object):
         preimage of the T-circle.
         """
         Plot([[complex(x) for x in track] for track in self.T_longitude_evs])
-               
+
 def solve_mod2_system(the_matrix, rhs):
     """Mod 2 linear algebra - used for lifting reps to SL2C"""
     M, N = the_matrix.shape
@@ -604,7 +604,7 @@ class PECharVariety(object):
                 else:
                     if len(arc) == 1:
                         # It can happen, e.g. with knot 9_44, that we find an isolated
-                        # real rep on the edge of the pillowcase. 
+                        # real rep on the edge of the pillowcase.
                         m, n = arc[0].index
                         s = self.elevation.T_fibers[n].shapes[m]
                         if s.has_real_traces():
@@ -623,10 +623,11 @@ class PECharVariety(object):
                         arc.add_info(self.elevation)
                         self.arcs.append(arc)
                     arc = PEArc()
-            # if arc:
-            #     # I don't knw why this was here
-            #     arc.add_info(self.elevation)
-            #     self.arcs.append(arc)
+            # If the entire track consists of real reps, we end up here with
+            # a non-empty arc.
+            if arc:
+                arc.add_info(self.elevation)
+                self.arcs.append(arc)
         self.curve_graph = curve_graph = Graph([], list(range(len(self.arcs))))
         self.add_extrema()
         # build the color dict
@@ -760,7 +761,7 @@ class PECharVariety(object):
         preimage of the T-circle.
         """
         self.elevation.show_T_longitude_evs()
-        
+
     def show_volumes(self):
         E = self.elevation
         volumes = E.compute_volumes(E.T_fibers)
@@ -769,7 +770,7 @@ class PECharVariety(object):
         data = [[v if v is None else complex(a, v) for a, v in zip(args, lift)]
                 for lift in volumes]
         Plot(data)
-    
+
     def get_rep(self, fiber_index, shape_index, precision=1000, tight=True):
         """
         Return a precise representation, computed to the specified binary
