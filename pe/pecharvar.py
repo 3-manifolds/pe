@@ -176,17 +176,19 @@ class CircleElevation(object):
         fiber has a collision, try jiggling the path.
         """
         shapes = []
-        for shape in fiber.shapes:
+        for m, shape in enumerate(fiber.shapes):
             if debug:
                 print("transport: shape ", len(shapes))
-            Zn, success = self.gluing_system.track(shape.array, target, debug=debug,
+            Zn, msg = self.gluing_system.track(shape.array, target, debug=debug,
                                                    fail_quietly=fail_quietly)
             shapes.append(Zn)
+            if msg:
+                print('At point %d: '%m + msg)
         result = Fiber(self.manifold, target, shapes=shapes)
         if result.collision() and not allow_collision:
             print("Perturbing the path.")
-            return self.retransport(target, debug=debug, fail_quietly=fail_quietly)
-        return result
+            result, msg = self.retransport(target, debug=debug, fail_quietly=fail_quietly)
+        return result, msg 
 
     def retransport(self, fiber, target, debug=False, fail_quietly=False):
         """
@@ -199,13 +201,13 @@ class CircleElevation(object):
             print('Transporting to %s.'%T)
             shapes = []
             for shape in result.shapes:
-                Zn, success = self.gluing_system.track(shape.array, T, debug=debug,
+                Zn, msg = self.gluing_system.track(shape.array, T, debug=debug,
                                                        fail_quietly=fail_quietly)
                 shapes.append(Zn)
             result = Fiber(self.manifold, target, shapes=shapes)
             if result.collision():
                 raise ValueError('The collision recurred.  Perturbation failed.')
-        return result
+        return result, msg
 
     def elevate(self):
         """
@@ -218,7 +220,7 @@ class CircleElevation(object):
         self._print('with base index %s.'%base)
         self._print(' %-5s\r'%base, end='')
         # Move to the R-circle, if necessary.
-        self.R_fibers[base] = self.transport(self.base_fiber, circle[base])
+        self.R_fibers[base], msg = self.transport(self.base_fiber, circle[base])
         for n in range(base+1, self.order):
             self._print(' %-5s\r'%n, end='')
             sys.stdout.flush()
@@ -229,7 +231,7 @@ class CircleElevation(object):
             self.R_lift_step(n, -1)
         #self._print('\n')
         try:
-            self.last_R_fiber = self.transport(self.R_fibers[-1], circle[0])
+            self.last_R_fiber, msg = self.transport(self.R_fibers[-1], circle[0])
             self._print('\nPolishing the end fibers ... ', end='')
             self.R_fibers[0].polish()
             self.last_R_fiber.polish()
@@ -248,7 +250,7 @@ class CircleElevation(object):
     def R_lift_step(self, n, step):
         previous_fiber = self.R_fibers[n-step]
         try:
-            F = self.transport(previous_fiber, self.R_circle[n])
+            F, msg = self.transport(previous_fiber, self.R_circle[n])
             self.R_fibers[n] = F
         except Exception as e:
             self._print('\nFailed to compute fiber %s.'%n)
@@ -278,11 +280,13 @@ class CircleElevation(object):
             self._print(' %-5s\r'%n, end='')
             sys.stdout.flush()
             try:
-                self.T_fibers[n] = self.transport(self.R_fibers[n], circle[n],
+                self.T_fibers[n], msg = self.transport(self.R_fibers[n], circle[n],
                                                   allow_collision=True,
                                                   fail_quietly=True)
             except Exception as e:
                 self._print('Failed to tighten fiber %d.'%n)
+            if msg:
+                self._print('Failed to tighten some points of fiber %d.'%n)
         try:
             self.T_longitude_holos, self.T_longitude_evs, self.T_choices = self.longidata(
                 self.T_fibers)
@@ -518,6 +522,11 @@ class PEArc(list):
     A list of pillowcase points lying on an arc of the PECharVariety.
     Subclassed here to allow additional attributes.
     """
+    def add_info(self, elevation):
+        m, n = self.first_index = self[0].index
+        self.first_shape = elevation.T_fibers[n].shapes[m]
+        m, n = self.last_index = self[-1].index
+        self.last_shape = elevation.T_fibers[n].shapes[m]
 
 class PECharVariety(object):
     """Representation of the PE Character Variety of a 3-manifold."""
@@ -556,16 +565,16 @@ class PECharVariety(object):
     def build_arcs(self, show_group=False):
         """Find the arcs in the pillowcase projection of this PE Character Variety."""
         self.arcs = []
-        self.arc_info = []
         H = self.elevation
         delta_M = -1.0/self.order
         M_args = 0.5 * (arange(self.order, dtype=float64)*delta_M % 1.0)
         for m, track in enumerate(self.elevation.T_longitude_evs):
-            arc, info = PEArc(), []
+            arc = PEArc()
             marker = ''
             for n, ev in enumerate(track):
                 if ev is None:
                     continue
+                # Is the longitude eigenvalue on the unit circle?
                 if 0.99999 < abs(ev) < 1.00001:
                     if show_group:
                         shape = H.T_fibers[n].shapes[m]
@@ -576,39 +585,48 @@ class PECharVariety(object):
                         else:
                             marker = 'x'
                     L = (log(ev).imag/(2*pi))%1.0
-                    if len(arc) > 2:  # don't do this near the corners.
+                    # Add a gap if the arc wraps around the cut edge of the
+                    # pillowcase.  But leave it alone near the corners.
+                    if len(arc) > 2:
                         last_L = arc[-1].real
-                        if last_L > 0.8 and L < 0.2:   # L became > 1
+                        if last_L > 0.8 and L < 0.2:   # wrapped at L = 1
                             length = 1.0 - last_L + L
                             interp = ((1.0-last_L)*M_args[n] + L*M_args[n-1])/length
                             arc.append(PEPoint(1.0, interp, leave_gap=True,
-                                               marker=marker))
+                                            marker=marker))
                             arc.append(PEPoint(0.0, interp))
-                        elif last_L < 0.2 and L > 0.8: # L became < 0
+                        elif last_L < 0.2 and L > 0.8: # wrapped at L = 0
                             length = last_L + 1.0 - L
                             interp = (last_L*M_args[n] + (1.0 - L)*M_args[n-1])/length
                             arc.append(PEPoint(0.0, interp, leave_gap=True))
                             arc.append(PEPoint(1.0, interp))
                     arc.append(PEPoint(L, M_args[n], marker=marker, index=(m, n)))
-                    info.append((m, n))
                 else:
-                    if len(arc) > 1:
-                        m, n = arc.first_info = info[0]
-                        arc.first_shape = self.elevation.T_fibers[n].shapes[m]
-                        m, n = arc.last_info = info[-1]
-                        arc.last_shape = self.elevation.T_fibers[n].shapes[m]
+                    if len(arc) == 1:
+                        # It can happen, e.g. with knot 9_44, that we find an isolated
+                        # real rep on the edge of the pillowcase. 
+                        m, n = arc[0].index
+                        s = self.elevation.T_fibers[n].shapes[m]
+                        if s.has_real_traces():
+                            P = arc.pop()
+                            print('Found an isolated real rep at', P.index)
+                            # Repeat the point to avoid index errors.
+                            # Arbitrarily set it to have real part 1.0 so it will always
+                            # be on the right when computing extrema.
+                            assert min(abs(P.real), abs(P.real -1.0)) < 1.0E-14
+                            P = PEPoint(1.0, P.imag, index=P.index, marker=P.marker)
+                            arc.append(P)
+                            arc.append(P)
+                        else:
+                            arc.pop()
+                    if len(arc) >= 1:
+                        arc.add_info(self.elevation)
                         self.arcs.append(arc)
-                        self.arc_info.append(info)
                     arc = PEArc()
-                    info = []
-            if arc:
-                # Dumb repetition
-                m, n = arc.first_info = info[0]
-                arc.first_shape = self.elevation.T_fibers[n].shapes[m]
-                m, n = arc.last_info = info[-1]
-                arc.last_shape = self.elevation.T_fibers[n].shapes[m]
-                self.arcs.append(arc)
-                self.arc_info.append(info)
+            # if arc:
+            #     # I don't knw why this was here
+            #     arc.add_info(self.elevation)
+            #     self.arcs.append(arc)
         self.curve_graph = curve_graph = Graph([], list(range(len(self.arcs))))
         self.add_extrema()
         # build the color dict
@@ -670,6 +688,11 @@ class PECharVariety(object):
                     elif right[1].real < right[0].real and left[1].real > left[0].real:
                         right.insert(0, PEPoint(1.0, left[0].imag))
                         left.insert(0, PEPoint(0.0, left[0].imag))
+                    elif right[1].real == right[0].real == 1.0:
+                        if left[1].real < left[0].real:
+                            left.insert(0, PEPoint(1.0, right[0].imag))
+                        else:
+                            left.insert(0, PEPoint(0.0, right[0].imag))
                     else:
                         join = False
                     if join:
@@ -693,10 +716,15 @@ class PECharVariety(object):
                 if 0.01 < right[-1].imag < 0.49:
                     join = True
                     if right[-2].real > right[-1].real and left[-2].real < left[-1].real:
-                        right.append(left[-1])
+                        left.append(right[-1])
                     elif right[-2].real < right[-1].real and left[-2].real > left[-1].real:
                         right.append(PEPoint(1.0, left[-1].imag))
                         left.append(PEPoint(0.0, left[-1].imag))
+                    elif right[1].real == right[0].real == 1.0:
+                        if left[-2].real > left[-1].real:
+                            left.append(PEPoint(0.0, right[0].imag))
+                        else:
+                            left.append(PEPoint(1.0, right[0].imag))
                     else:
                         join = False
                     if join:
