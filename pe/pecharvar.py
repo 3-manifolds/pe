@@ -169,7 +169,8 @@ class CircleElevation(object):
         with open(hintfile_name, 'w') as hintfile:
             hintfile.write('hint=' + str_rep)
             
-    def transport(self, fiber, target, allow_collision=False, debug=False):
+    def transport(self, fiber, target, allow_collision=False, debug=False,
+                  fail_quietly=False):
         """
         Transport this fiber to a different target holonomy.  If the resulting
         fiber has a collision, try jiggling the path.
@@ -178,15 +179,16 @@ class CircleElevation(object):
         for shape in fiber.shapes:
             if debug:
                 print("transport: shape ", len(shapes))
-            Zn = self.gluing_system.track(shape.array, target, debug=debug)
+            Zn, success = self.gluing_system.track(shape.array, target, debug=debug,
+                                                   fail_quietly=fail_quietly)
             shapes.append(Zn)
         result = Fiber(self.manifold, target, shapes=shapes)
         if result.collision() and not allow_collision:
             print("Perturbing the path.")
-            return self.retransport(target, debug)
+            return self.retransport(target, debug=debug, fail_quietly=fail_quietly)
         return result
 
-    def retransport(self, fiber, target, debug=False):
+    def retransport(self, fiber, target, debug=False, fail_quietly=False):
         """
         Transport this fiber to a different target holonomy following a
         path which first expands the radius, then advances the
@@ -197,7 +199,8 @@ class CircleElevation(object):
             print('Transporting to %s.'%T)
             shapes = []
             for shape in result.shapes:
-                Zn = self.gluing_system.track(shape.array, T, debug=debug)
+                Zn, success = self.gluing_system.track(shape.array, T, debug=debug,
+                                                       fail_quietly=fail_quietly)
                 shapes.append(Zn)
             result = Fiber(self.manifold, target, shapes=shapes)
             if result.collision():
@@ -275,8 +278,10 @@ class CircleElevation(object):
             self._print(' %-5s\r'%n, end='')
             sys.stdout.flush()
             try:
-                self.T_fibers[n] = self.transport(self.R_fibers[n], circle[n], allow_collision=True)
-            except:
+                self.T_fibers[n] = self.transport(self.R_fibers[n], circle[n],
+                                                  allow_collision=True,
+                                                  fail_quietly=True)
+            except Exception as e:
                 self._print('Failed to tighten fiber %d.'%n)
         try:
             self.T_longitude_holos, self.T_longitude_evs, self.T_choices = self.longidata(

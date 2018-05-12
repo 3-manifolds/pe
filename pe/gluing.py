@@ -220,7 +220,8 @@ class GluingSystem(object):
         ending at a solution where the meridian holonomy takes the
         specified value.  The path is subdivided into subpaths of
         length determined by dT, which may be further divided if
-        convergence problems arise.
+        convergence problems arise.  Returns a shape array and a
+        boolean indicating success.
         """
         M_start = self(Z)[-1]
         delta = (M_target - M_start)
@@ -233,7 +234,7 @@ class GluingSystem(object):
         target = M_start + delta
         Zn, residual = self.newton1(Zn, target)
         if residual < 1.0E-8: # What is a good threshold here?  Was 1.0E-12
-            return Zn
+            return Zn, True
         # If that fails, try taking baby steps.
         if debug:
             print('Taking baby steps ...')
@@ -266,7 +267,7 @@ class GluingSystem(object):
                 if dT < STEPSIZE_BOUND:
                     if fail_quietly:
                         print('Track failed: step size limit reached.')
-                        return Zn
+                        return Zn, False
                     else:
                         print('\nLongitude holonomy:', self.L_holonomy(Zn))
                         print('Track parameter:', Tn)
@@ -275,4 +276,4 @@ class GluingSystem(object):
                         print('Newton bound:', self.newton_error(prev_Z))
                         print('residual:', residual)
                         raise ValueError('Track failed: step size limit reached.')
-        return Zn
+        return Zn, True
