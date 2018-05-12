@@ -234,7 +234,7 @@ class GluingSystem(object):
         target = M_start + delta
         Zn, residual = self.newton1(Zn, target)
         if residual < 1.0E-8: # What is a good threshold here?  Was 1.0E-12
-            return Zn, True
+            return Zn, ''
         # If that fails, try taking baby steps.
         if debug:
             print('Taking baby steps ...')
@@ -266,8 +266,7 @@ class GluingSystem(object):
                     print('Track step reduced to %.17f; corank = %s'%(dT, self.corank(prev_Z)))
                 if dT < STEPSIZE_BOUND:
                     if fail_quietly:
-                        print('Track failed: step size limit reached.')
-                        return Zn, False
+                        return Zn, 'Track failed: step size limit reached.'
                     else:
                         print('\nLongitude holonomy:', self.L_holonomy(Zn))
                         print('Track parameter:', Tn)
@@ -276,4 +275,4 @@ class GluingSystem(object):
                         print('Newton bound:', self.newton_error(prev_Z))
                         print('residual:', residual)
                         raise ValueError('Track failed: step size limit reached.')
-        return Zn, True
+        return Zn, ''
