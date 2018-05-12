@@ -42,7 +42,6 @@ class PlotBase(object):
     def __init__(self, data, number_type=complex, **kwargs):
         self.linewidth = kwargs.get('linewidth', 1.0)
         self.style = kwargs.get('style', 'lines')
-        self.color_dict = kwargs.get('colors', {})
         self.args = kwargs
         self.type = number_type
         if not isinstance(data[0], (Sequence, numpy.ndarray)):
@@ -53,6 +52,11 @@ class PlotBase(object):
             data = [[complex(n, z) if z is not None else None for n, z in enumerate(d)]
                     for d in data]
         self.data = data
+        self.color_dict = kwargs.get('colors', {})
+        if self.color_dict:
+            self.num_colors = len(set(self.color_dict.values()))
+        else:
+            self.num_colors = len(self.data)
         self.arcs = []
         self.arc_views = []
         self.vertex_sets = []
@@ -78,12 +82,12 @@ class PlotBase(object):
     def start_plotter(self):
         self.figure = MF = MatplotFigure(add_subplot=False)
         MF.axis = axis = MF.figure.add_axes([0.07, 0.07, 0.8, 0.9])
+        groups = {}
         for i, component in enumerate(self.data):
-            color = self.color(self.color_dict.get(i, i))
+            color = self.color(i)
             X = attribute_map(component, 'real')
             Y = attribute_map(component, 'imag')
             arc = axis.plot(X, Y, color=color, label='%d' % i)
-            self.arcs.append(arc[0])
             arc_items = [arc[0]]
             verts = axis.scatter(X, Y, s=0.01, color=color, marker='.', picker=3)
             arc_items.append(verts)
@@ -98,7 +102,11 @@ class PlotBase(object):
                                              numpy.ma.masked_where(mask, Y),
                                              marker=marker, color=color)
                         arc_items.append(marks)
-            self.arc_views.append(arc_items)
+            if color in groups:
+                groups[color] += arc_items
+            else:
+                groups[color] = arc_items
+        self.arc_views = list(groups.values())
         self.configure()
         self.init_backend()
 
@@ -116,17 +124,21 @@ class PlotBase(object):
         ylim = (ylim[0] - sy, ylim[1] + sy)
         axis.set_xlim(*xlim)
         axis.set_ylim(*ylim)
-
         axis.set_aspect(self.args.get('aspect', 'auto'))
-        axis.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
-
+        self.create_legend(axis)
         self.figure.canvas.mpl_connect('pick_event', self.on_pick)
         self.figure.canvas.mpl_connect('motion_notify_event', self.on_hover)
 
-    @staticmethod
-    def color(i):
-        from matplotlib.cm import gnuplot2
-        return gnuplot2(i/8.0 - numpy.floor(i/8.0))
+    def create_legend(self, axis):
+        handles, labels = [], []
+        for n, group in enumerate(self.arc_views):
+            handles.append(group[0])
+            labels.append('%d'%n)
+        axis.legend(handles, labels, loc='upper left', bbox_to_anchor=(1.0, 1.0))
+        
+    def color(self, i):
+        n = self.color_dict.get(i, i)
+        return matplotlib.cm.brg(float(n)/(self.num_colors-1))
 
     def create_plot(self, dummy_arg=None):
         axis = self.figure.axis
@@ -143,7 +155,6 @@ class PlotBase(object):
         axis.set_ylim(*ylim)
 
         axis.set_aspect(self.args.get('aspect', 'auto'))
-        axis.legend(loc='upper left', bbox_to_anchor=(1.0, 1.0))
 
         extra_lines = self.args.get('extra_lines', None)
         if extra_lines:
