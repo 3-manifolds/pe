@@ -82,7 +82,7 @@ class PlotBase(object):
     def start_plotter(self):
         self.figure = MF = MatplotFigure(add_subplot=False)
         MF.axis = axis = MF.figure.add_axes([0.07, 0.07, 0.8, 0.9])
-        groups = {}
+        groups = collections.OrderedDict()
         for i, component in enumerate(self.data):
             color = self.color(i)
             X = attribute_map(component, 'real')
@@ -138,7 +138,7 @@ class PlotBase(object):
         
     def color(self, i):
         n = self.color_dict.get(i, i)
-        return matplotlib.cm.brg(float(n)/(self.num_colors-1))
+        return matplotlib.cm.brg(float(1+n)/self.num_colors)
 
     def create_plot(self, dummy_arg=None):
         axis = self.figure.axis
