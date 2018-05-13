@@ -8,7 +8,7 @@ objects, which represent a family of fibers for the meridian holonomy
 map lying above a circle in the compex plane.
 """
 from __future__ import print_function
-import time, sys, os
+import time, sys, os, collections
 from random import randint
 from numpy import arange, array, dot, float64, matrix, log, exp, pi, sqrt, zeros, angle
 import snappy
@@ -103,8 +103,8 @@ class CircleElevation(object):
                 self.R_fibers)
             self.failed = False
         except Exception as e:
-            print(e)
             self.failed = True
+            raise(e)
 
     def __call__(self, Z):
         return array([F(Z) for F in self.glunomials])
@@ -187,7 +187,8 @@ class CircleElevation(object):
         result = Fiber(self.manifold, target, shapes=shapes)
         if result.collision() and not allow_collision:
             print("Perturbing the path.")
-            result, msg = self.retransport(target, debug=debug, fail_quietly=fail_quietly)
+            result, msg = self.retransport(fiber, target, debug=debug,
+                                           fail_quietly=fail_quietly)
         return result, msg
 
     def retransport(self, fiber, target, debug=False, fail_quietly=False):
@@ -200,7 +201,7 @@ class CircleElevation(object):
         for T in (1.01*fiber.H_meridian, 1.01*target, target):
             print('Transporting to %s.'%T)
             shapes = []
-            for shape in result.shapes:
+            for shape in fiber.shapes:
                 Zn, msg = self.gluing_system.track(shape.array, T, debug=debug,
                                                        fail_quietly=fail_quietly)
                 shapes.append(Zn)
@@ -262,6 +263,7 @@ class CircleElevation(object):
                 F.match_to(previous_fiber)
                 self.R_fibers[n] = F
             else:
+                print('raising exception', e)
                 raise e
         if not F.is_finite():
             self._print('Degenerate shape! ')
@@ -274,6 +276,7 @@ class CircleElevation(object):
         if T is None:
             T = self.tight_radius
         self._print('Tightening the circle to radius %s ...'%T)
+        msg = ''
         Darg = 2*pi/self.order
         self.T_circle = circle = [T*exp(-n*Darg*1j) for n in range(self.order)]
         for n in range(self.order):
@@ -523,9 +526,9 @@ class PEArc(list):
     Subclassed here to allow additional attributes.
     """
     def add_info(self, elevation):
-        m, n = self.first_index = self[0].index
+        n, m = self.first_index = self[0].index
         self.first_shape = elevation.T_fibers[n].shapes[m]
-        m, n = self.last_index = self[-1].index
+        n, m = self.last_index = self[-1].index
         self.last_shape = elevation.T_fibers[n].shapes[m]
 
 class PECharVariety(object):
@@ -600,23 +603,24 @@ class PECharVariety(object):
                             interp = (last_L*M_args[n] + (1.0 - L)*M_args[n-1])/length
                             arc.append(PEPoint(0.0, interp, leave_gap=True))
                             arc.append(PEPoint(1.0, interp))
-                    arc.append(PEPoint(L, M_args[n], marker=marker, index=(m, n)))
+                    arc.append(PEPoint(L, M_args[n], marker=marker, index=(n, m)))
                 else:
                     if len(arc) == 1:
                         # It can happen, e.g. with knot 9_44, that we find an isolated
                         # real rep on the edge of the pillowcase.
-                        m, n = arc[0].index
+                        n, m = arc[0].index
                         s = self.elevation.T_fibers[n].shapes[m]
                         if s.has_real_traces():
                             P = arc.pop()
                             print('Found an isolated real rep at', P.index)
-                            # Repeat the point to avoid index errors.
-                            # Arbitrarily set it to have real part 1.0 so it will always
-                            # be on the right when computing extrema.
-                            assert min(abs(P.real), abs(P.real -1.0)) < 1.0E-14
-                            P = PEPoint(1.0, P.imag, index=P.index, marker=P.marker)
-                            arc.append(P)
-                            arc.append(P)
+                            # Repeat the point to avoid index errors.  If it is
+                            # on an edge, arbitrarily set it to have real part
+                            # 1.0 so it will always be on the right when
+                            # computing extrema.
+                            if min(abs(P.real), abs(P.real -1.0)) < 1.0E-14:
+                                P = PEPoint(1.0, P.imag, index=P.index, marker=P.marker)
+                                arc.append(P)
+                                arc.append(P)
                         else:
                             arc.pop()
                     if len(arc) >= 1:
@@ -631,7 +635,7 @@ class PECharVariety(object):
         self.curve_graph = curve_graph = Graph([], list(range(len(self.arcs))))
         self.add_extrema()
         # build the color dict
-        self.colors = {}
+        self.colors = collections.OrderedDict()
         for n, component in enumerate(curve_graph.components()):
             for m in component:
                 self.colors[m] = n
