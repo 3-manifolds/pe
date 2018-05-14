@@ -531,6 +531,29 @@ class PEArc(list):
         n, m = self.last_index = self[-1].index
         self.last_shape = elevation.T_fibers[n].shapes[m]
 
+    def add_gap(self, L, M_args, n):
+        """
+        Add gaps where the arc wraps around the vertical cut edge of the
+        pillowcase (L=0 or L=1).  Wrapping is deemed to have occurred
+        if the next dx is more than 0.5 and has opposite sign to the
+        previous dx.
+        """
+        assert len(self) > 1
+        last_L = self[-1].real
+        last_dx = self[-1].real - self[-2].real
+        dx = L - last_L
+        if abs(dx) > 0.5:
+            if last_dx > 0 and dx < 0:   # wrapping past L = 1
+                length = 1.0 + dx
+                interp = ((1.0 - last_L)*M_args[n] + L*M_args[n-1])/length
+                self.append(PEPoint(1.0, interp, leave_gap=True))
+                self.append(PEPoint(0.0, interp))
+            elif last_dx < 0 and dx > 0: # wrapping past L = 0
+                length = 1.0 - dx
+                interp = (last_L*M_args[n] + (1.0 - L)*M_args[n-1])/length
+                self.append(PEPoint(0.0, interp, leave_gap=True))
+                self.append(PEPoint(1.0, interp))
+        
 class PECharVariety(object):
     """Representation of the PE Character Variety of a 3-manifold."""
     def __init__(self, manifold, order=128, radius=1.02,
@@ -588,21 +611,8 @@ class PECharVariety(object):
                         else:
                             marker = 'x'
                     L = (log(ev).imag/(2*pi))%1.0
-                    # Add a gap if the arc wraps around the cut edge of the
-                    # pillowcase.  But leave it alone near the corners.
-                    if len(arc) > 2:
-                        last_L = arc[-1].real
-                        if last_L > 0.8 and L < 0.2:   # wrapped at L = 1
-                            length = 1.0 - last_L + L
-                            interp = ((1.0-last_L)*M_args[n] + L*M_args[n-1])/length
-                            arc.append(PEPoint(1.0, interp, leave_gap=True,
-                                            marker=marker))
-                            arc.append(PEPoint(0.0, interp))
-                        elif last_L < 0.2 and L > 0.8: # wrapped at L = 0
-                            length = last_L + 1.0 - L
-                            interp = (last_L*M_args[n] + (1.0 - L)*M_args[n-1])/length
-                            arc.append(PEPoint(0.0, interp, leave_gap=True))
-                            arc.append(PEPoint(1.0, interp))
+                    if len(arc) > 1:
+                        arc.add_gap(L, M_args, n)
                     arc.append(PEPoint(L, M_args[n], marker=marker, index=(n, m)))
                 else:
                     if len(arc) == 1:
