@@ -525,7 +525,11 @@ class PEArc(list):
     A list of pillowcase points lying on an arc of the PECharVariety.
     Subclassed here to allow additional attributes.
     """
-    def add_info(self, elevation):
+    def __init__(self, *args, **kwargs):
+        self.arctype = kwargs.pop('arctype', 'arc')
+        super(PEArc, self).__init__(self, *args, **kwargs)
+    
+    def add_info(self, elevation, arctype='arc'):
         n, m = self.first_index = self[0].index
         self.first_shape = elevation.T_fibers[n].shapes[m]
         n, m = self.last_index = self[-1].index
@@ -589,7 +593,17 @@ class PECharVariety(object):
         return self.elevation[index]
 
     def build_arcs(self, show_group=False):
-        """Find the arcs in the pillowcase projection of this PE Character Variety."""
+        """
+        Find the arcs in the pillowcase projection of this PE Character Variety.
+        Iterates through the arcs in T_longitude_evs, extracting the subarcs
+        where the longitude eigenvalue lies on the unit circle.  These arcs become
+        vertices of a "curve graph".  The arcs are parametrized by decreasing values
+        of the meridian eigenvalue, so they run from a local maximum to a local
+        minimum of the meridian eigenvalue.  These extrema become the edges of the
+        curve graph.  So the components of the curve graph correspond to closed curves
+        or arcs joining corners in the pillowcase picture.  (Note that these arcs
+        and curves have multiplicities!)
+        """
         self.arcs = []
         H = self.elevation
         delta_M = -1.0/self.order
@@ -711,9 +725,8 @@ class PECharVariety(object):
                     else:
                         join = False
                     if join:
-                        self.curve_graph.add_edge(
-                            self.arcs.index(left),
-                            self.arcs.index(right))
+                        self.curve_graph.add_edge(self.arcs.index(left),
+                                                  self.arcs.index(right))
         # cups
         arcs = list(self.arcs)
         arcs.sort(key=lambda x: x[-1].imag)
