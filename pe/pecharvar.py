@@ -527,7 +527,7 @@ class PEArc(list):
     """
     def __init__(self, *args, **kwargs):
         self.arctype = kwargs.pop('arctype', 'arc')
-        super(PEArc, self).__init__(self, *args, **kwargs)
+        super(PEArc, self).__init__(*args)
     
     def add_info(self, elevation, arctype='arc'):
         n, m = self.first_index = self[0].index
@@ -629,7 +629,7 @@ class PECharVariety(object):
                         arc.add_gap(L, M_args, n)
                     arc.append(PEPoint(L, M_args[n], marker=marker, index=(n, m)))
                 else:
-                    if len(arc) == 1:
+                    if False and len(arc) == 1:
                         # It can happen, e.g. with knot 9_44, that we find an isolated
                         # real rep on the edge of the pillowcase.
                         n, m = arc[0].index
@@ -647,7 +647,7 @@ class PECharVariety(object):
                                 arc.append(P)
                         else:
                             arc.pop()
-                    if len(arc) >= 1:
+                    if len(arc) > 1:
                         arc.add_info(self.elevation)
                         self.arcs.append(arc)
                     arc = PEArc()
@@ -694,10 +694,10 @@ class PECharVariety(object):
         pillowcase picture are unions of these monotone arcs joined at
         critical points of the argument of the meridian.  This method
         attempts to compute which arcs should be joined at maxima or
-        minima.
+        minima, and adds the "cups" and "caps" to the pillowcase picture.
         """
-        arcs = list(self.arcs)
-        # caps
+        # Caps
+        arcs = [a for a in self.arcs if a.arctype == 'arc']
         arcs.sort(key=lambda x: x[0].imag, reverse=True)
         while arcs:
             arc = arcs.pop(0)
@@ -707,28 +707,25 @@ class PECharVariety(object):
             while len(level) > 1:
                 distances = array([level[0].first_shape.dist(a.first_shape)
                                    for a in level[1:]])
-                cap = [level.pop(0), level.pop(distances.argmin())]
-                cap.sort(key=lambda a: a[0].real)
-                left, right = cap
+                cap_pair = [level.pop(0), level.pop(distances.argmin())]
+                cap_pair.sort(key=lambda a: a[0].real)
+                left, right = cap_pair
                 if .01 < right[0].imag < .49:
-                    join = True
-                    if right[1].real > right[0].real and left[1].real < left[0].real:
-                        right.insert(0, left[0])
-                    elif right[1].real < right[0].real and left[1].real > left[0].real:
-                        right.insert(0, PEPoint(1.0, left[0].imag))
-                        left.insert(0, PEPoint(0.0, left[0].imag))
-                    elif right[1].real == right[0].real == 1.0:
-                        if left[1].real < left[0].real:
-                            left.insert(0, PEPoint(1.0, right[0].imag))
-                        else:
-                            left.insert(0, PEPoint(0.0, right[0].imag))
+                    cap_arc = PEArc(arctype='cap')
+                    cap_arc.append(left[0])
+                    if left[1].real > left[0].real and right[1].real < right[0].real:
+                        # \ / -- the cap wraps
+                        cap_arc.append(PEPoint(0.0, left[0].imag, leave_gap=True))
+                        cap_arc.append(PEPoint(1.0, left[0].imag))
                     else:
-                        join = False
-                    if join:
-                        self.curve_graph.add_edge(self.arcs.index(left),
-                                                  self.arcs.index(right))
-        # cups
-        arcs = list(self.arcs)
+                        cap_arc.append(right[0])
+                    cap_arc.append(right[0])
+                    n = len(self.arcs)
+                    self.arcs.append(cap_arc)
+                    self.curve_graph.add_edge(self.arcs.index(left), n)
+                    self.curve_graph.add_edge(n, self.arcs.index(right))
+        # Cups
+        arcs = [a for a in self.arcs if a.arctype == 'arc']
         arcs.sort(key=lambda x: x[-1].imag)
         while arcs:
             arc = arcs.pop(0)
@@ -738,28 +735,23 @@ class PECharVariety(object):
             while len(level) > 1:
                 distances = array([level[0].last_shape.dist(a.last_shape)
                                    for a in level[1:]])
-                cup = [level.pop(0), level.pop(distances.argmin())]
-                cup.sort(key=lambda a: a[-1].real)
-                left, right = cup
+                cup_pair = [level.pop(0), level.pop(distances.argmin())]
+                cup_pair.sort(key=lambda a: a[-1].real)
+                left, right = cup_pair
                 if 0.01 < right[-1].imag < 0.49:
-                    join = True
-                    if right[-2].real > right[-1].real and left[-2].real < left[-1].real:
-                        left.append(right[-1])
-                    elif right[-2].real < right[-1].real and left[-2].real > left[-1].real:
-                        right.append(PEPoint(1.0, left[-1].imag))
-                        left.append(PEPoint(0.0, left[-1].imag))
-                    elif right[1].real == right[0].real == 1.0:
-                        if left[-2].real > left[-1].real:
-                            left.append(PEPoint(0.0, right[0].imag))
-                        else:
-                            left.append(PEPoint(1.0, right[0].imag))
+                    cup_arc = PEArc(arctype='cup')
+                    cup_arc.append(left[-1])
+                    if left[-2].real > left[-1].real and right[-2].real < right[-1].real:
+                        # / \ the cup wraps
+                        cup_arc.append(PEPoint(0.0, left[-1].imag, leave_gap=True))
+                        cup_arc.append(PEPoint(1.0, left[-1].imag))
                     else:
-                        join = False
-                    if join:
-                        self.curve_graph.add_edge(
-                            self.arcs.index(left),
-                            self.arcs.index(right))
-        return
+                        cup_arc.append(right[-1])
+                    cup_arc.append(right[-1])
+                    n = len(self.arcs)
+                    self.arcs.append(cup_arc)
+                    self.curve_graph.add_edge(self.arcs.index(left), n)
+                    self.curve_graph.add_edge(n, self.arcs.index(right))
 
     def show(self, show_group=False):
         """Plot the pillowcase image of this PE Character Variety."""
