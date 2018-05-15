@@ -2,7 +2,7 @@
 from __future__ import print_function
 import os
 from snappy import Manifold
-from .pecharvar import CircleElevation
+from .elevation import CircleElevation
 from .shape import U1Q, PolishedShapeSet
 from .input import user_input
 from .plot import Plot
