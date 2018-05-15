@@ -76,7 +76,7 @@ class ComputedApoly(object) :
             result += format%tuple(row + 0.)
         return result
     
-    def show_newton(self, gridsize=None):
+    def show(self, gridsize=None):
         self.viewer = V = PolyViewer(self.newton_polygon,
                                      title=self.mfld_name,
                                      gridsize=gridsize)
@@ -239,8 +239,8 @@ class Apoly(object):
         filename = self.manifold.name()+'.base'
         saved_base_fiber = os.path.join(self.base_dir, filename)
         prec = 53 if self.precision == 'double' else self.precision
-        self._print('Using: radius=%g; order=%d; denom=%s; precision=%d bits.'%(
-            options['radius'], options['order'], options['denom'], prec))
+        msg = 'Using: radius=%g; order=%d; denom=%s; precision=%d bits.'%(
+            options['radius'], options['order'], options['denom'], prec)
         self.elevation = CircleElevation(
             self.manifold,
             order=self.order,
@@ -248,6 +248,7 @@ class Apoly(object):
             base_dir=self.base_dir,
             phc_rescue=self.phc_rescue,
             verbose=self.verbose,
+            msg=msg
         )
         if self.elevation.failed:
             print("Warning: Failed to elevate the R-circle.  This Apoly is incomplete.")

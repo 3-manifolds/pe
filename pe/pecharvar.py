@@ -21,7 +21,6 @@ from .input import user_input
 from .plot import Plot
 from .complex_reps import PSL2CRepOf3ManifoldGroup
 from .real_reps import PSL2RRepOf3ManifoldGroup
-from sage.all import ComplexField
 import sys, os
 
 
@@ -84,7 +83,7 @@ class PECharVariety(object):
             # target = saved_data.get('H_meridian', None)
             # target_arg = log(target).imag if target else None
             self.elevation = CircleElevation(
-                manifold=self.manifold,
+                self.manifold,
                 order=order,
                 radius=radius,
                 base_dir=base_dir,
