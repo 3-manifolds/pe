@@ -30,28 +30,28 @@ def l1_dist(a, b):
 
 class SL2RLifter(object):
     def __init__(self, V, silent=False):
-        start = time()
         self.elevation = H = V.elevation
         self.degree = H.degree
         self.order = H.order
         self.manifold = V.manifold
         self.set_peripheral_info()
         if not silent:
-            print('polishing shapes ... ', end=' ')
+            start = time()
+            print('polishing shapes ... ', end='')
         self.find_shapes()
         if not silent:
             now = time()
-            print('(%.2f secs)\n'%(now - start), 'lifting reps ... ', end=' ')
+            print('(%.2f secs)\nlifting reps ... '%(now - start), end='')
             start = now
         self.find_reps()
         if not silent:
             now = time()
-            print('(%.2f secs)\n'%(now - start), 'computing translations ... ', end=' ')
+            print('(%.2f secs)\ncomputing translations ... '%(now - start), end='')
             start = now
         self.find_translation_arcs()
         if not silent:
             now = time()
-            print('(%.2f secs)\n'%(now - start), end=' ')
+            print('(%.2f secs)\n'%(now - start))
 
     def set_peripheral_info(self):
         G = self.manifold.fundamental_group()
