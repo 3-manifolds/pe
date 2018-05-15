@@ -176,20 +176,23 @@ class CircleElevation(object):
         fiber has a collision, try jiggling the path.
         """
         shapes = []
+        failed_points = set()
         for m, shape in enumerate(fiber.shapes):
             if debug:
                 print("transport: shape ", len(shapes))
-            Zn, msg = self.gluing_system.track(shape.array, target, debug=debug,
+            Zn, failures = self.gluing_system.track(shape.array, target, debug=debug,
                                                    fail_quietly=fail_quietly)
             shapes.append(Zn)
-            if msg:
-                print('At point %d: '%m + msg)
+            if failures:
+                #print('At point %d: '%m + msg)
+                failed_points.add(m)
         result = Fiber(self.manifold, target, shapes=shapes)
         if result.collision() and not allow_collision:
             print("Perturbing the path.")
-            result, msg = self.retransport(fiber, target, debug=debug,
+            result, more_failures = self.retransport(fiber, target, debug=debug,
                                            fail_quietly=fail_quietly)
-        return result, msg
+            failed_points |= more_failures
+        return result, failed_points
 
     def retransport(self, fiber, target, debug=False, fail_quietly=False):
         """
@@ -201,14 +204,17 @@ class CircleElevation(object):
         for T in (1.01*fiber.H_meridian, 1.01*target, target):
             print('Transporting to %s.'%T)
             shapes = []
-            for shape in fiber.shapes:
+            failed_points = set()
+            for m, shape in enumerate(fiber.shapes):
                 Zn, msg = self.gluing_system.track(shape.array, T, debug=debug,
                                                        fail_quietly=fail_quietly)
                 shapes.append(Zn)
+                if msg:
+                    failed_points.add(m)
             result = Fiber(self.manifold, target, shapes=shapes)
             if result.collision():
                 raise ValueError('The collision recurred.  Perturbation failed.')
-        return result, msg
+        return result, failed_points
 
     def elevate(self):
         """
@@ -221,7 +227,7 @@ class CircleElevation(object):
         self._print('with base index %s.'%base)
         self._print(' %-5s\r'%base, end='')
         # Move to the R-circle, if necessary.
-        self.R_fibers[base], msg = self.transport(self.base_fiber, circle[base])
+        self.R_fibers[base], failed = self.transport(self.base_fiber, circle[base])
         for n in range(base+1, self.order):
             self._print(' %-5s\r'%n, end='')
             sys.stdout.flush()
@@ -232,7 +238,7 @@ class CircleElevation(object):
             self.R_lift_step(n, -1)
         #self._print('\n')
         try:
-            self.last_R_fiber, msg = self.transport(self.R_fibers[-1], circle[0])
+            self.last_R_fiber, failed = self.transport(self.R_fibers[-1], circle[0])
             self._print('\nPolishing the end fibers ... ', end='')
             self.R_fibers[0].polish()
             self.last_R_fiber.polish()
@@ -251,7 +257,7 @@ class CircleElevation(object):
     def R_lift_step(self, n, step):
         previous_fiber = self.R_fibers[n-step]
         try:
-            F, msg = self.transport(previous_fiber, self.R_circle[n])
+            F, failed = self.transport(previous_fiber, self.R_circle[n])
             self.R_fibers[n] = F
         except Exception as e:
             self._print('\nFailed to compute fiber %s.'%n)
@@ -263,7 +269,6 @@ class CircleElevation(object):
                 F.match_to(previous_fiber)
                 self.R_fibers[n] = F
             else:
-                print('raising exception', e)
                 raise e
         if not F.is_finite():
             self._print('Degenerate shape! ')
@@ -279,20 +284,26 @@ class CircleElevation(object):
         msg = ''
         Darg = 2*pi/self.order
         self.T_circle = circle = [T*exp(-n*Darg*1j) for n in range(self.order)]
+        self.tighten_failures = collections.defaultdict(set)
         for n in range(self.order):
             self._print(' %-5s\r'%n, end='')
             sys.stdout.flush()
+            failed_points = set()
             try:
-                self.T_fibers[n], msg = self.transport(self.R_fibers[n], circle[n],
-                                                  allow_collision=True,
-                                                  fail_quietly=True)
+                self.T_fibers[n], failed = self.transport(
+                    self.R_fibers[n], circle[n],
+                    allow_collision=True, fail_quietly=True)
+                failed_points |= failed
             except Exception as e:
                 self._print('Failed to tighten fiber %d.'%n)
-            if msg:
-                self._print('Failed to tighten some points of fiber %d.'%n)
+            if failed_points:
+                bad_points = sorted(list(failed_points))
+                self._print('Tightening failures in fiber %d: %s'%(n, bad_points))
+                for m in bad_points:
+                    self.tighten_failures[m].add(n)
         try:
-            self.T_longitude_holos, self.T_longitude_evs, self.T_choices = self.longidata(
-                self.T_fibers)
+            self.T_longitude_holos, self.T_longitude_evs, self.T_choices = (
+                self.longidata(self.T_fibers))
         except Exception as e:
             self._print('Failed to compute longitude holonomies: %s'%e)
 
@@ -605,19 +616,21 @@ class PECharVariety(object):
         and curves have multiplicities!)
         """
         self.arcs = []
-        H = self.elevation
-        delta_M = -1.0/self.order
-        M_args = 0.5 * (arange(self.order, dtype=float64)*delta_M % 1.0)
-        for m, track in enumerate(self.elevation.T_longitude_evs):
+        elevation = self.elevation
+        delta_M = -0.5/self.order
+        M_args = arange(0.5, 0.0, delta_M, dtype=float64)
+        for m, track in enumerate(elevation.T_longitude_evs):
             arc = PEArc()
             marker = ''
+            failed = elevation.tighten_failures.get(m, set())
             for n, ev in enumerate(track):
-                if ev is None:
+                if n in failed:
+                    # Skip over this point since we weren't able to tighten it.
                     continue
                 # Is the longitude eigenvalue on the unit circle?
-                if 0.99999 < abs(ev) < 1.00001:
+                if .99999 < abs(ev) < 1.00001:
                     if show_group:
-                        shape = H.T_fibers[n].shapes[m]
+                        shape = elevation.T_fibers[n].shapes[m]
                         if shape.in_SU2():
                             marker = '.'
                         elif shape.has_real_traces():
@@ -629,32 +642,15 @@ class PECharVariety(object):
                         arc.add_gap(L, M_args, n)
                     arc.append(PEPoint(L, M_args[n], marker=marker, index=(n, m)))
                 else:
-                    if False and len(arc) == 1:
-                        # It can happen, e.g. with knot 9_44, that we find an isolated
-                        # real rep on the edge of the pillowcase.
-                        n, m = arc[0].index
-                        s = self.elevation.T_fibers[n].shapes[m]
-                        if s.has_real_traces():
-                            P = arc.pop()
-                            print('Found an isolated real rep at', P.index)
-                            # Repeat the point to avoid index errors.  If it is
-                            # on an edge, arbitrarily set it to have real part
-                            # 1.0 so it will always be on the right when
-                            # computing extrema.
-                            if min(abs(P.real), abs(P.real -1.0)) < 1.0E-14:
-                                P = PEPoint(1.0, P.imag, index=P.index, marker=P.marker)
-                                arc.append(P)
-                                arc.append(P)
-                        else:
-                            arc.pop()
                     if len(arc) > 1:
-                        arc.add_info(self.elevation)
+                        arc.add_info(elevation)
                         self.arcs.append(arc)
+                    # start a new arc
                     arc = PEArc()
             # If the entire track consists of real reps, we end up here with
             # a non-empty arc.
             if arc:
-                arc.add_info(self.elevation)
+                arc.add_info(elevation)
                 self.arcs.append(arc)
         self.curve_graph = curve_graph = Graph([], list(range(len(self.arcs))))
         self.add_extrema()
