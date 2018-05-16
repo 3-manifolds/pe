@@ -2,6 +2,7 @@
 import os, sys
 os.environ['OPENBLAS_NUM_THREADS'] = '1'
 from .pecharvar import PECharVariety
+from .elevation import CircleElevation, LineElevation
 from .complex_reps import PSL2CRepOf3ManifoldGroup
 from .real_reps import PSL2RRepOf3ManifoldGroup
 from .shape import ShapeSet, PolishedShapeSet

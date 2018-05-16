@@ -17,7 +17,6 @@ from .fiber import Fiber
 from .fibrator import Fibrator
 from .point import PEPoint
 from .shape import PolishedShapeSet, U1Q
-from .input import user_input
 from .plot import Plot
 from .complex_reps import PSL2CRepOf3ManifoldGroup
 from .real_reps import PSL2RRepOf3ManifoldGroup
@@ -91,6 +90,7 @@ class PECharVariety(object):
                 ignore_saved=ignore_saved)
         else:
             self.elevation = elevation
+        self._print('Tightening the circle to radius 1.0')
         self.elevation.tighten()
 
     def __getitem__(self, index):
