@@ -9,6 +9,8 @@ from random import randint
 from .gluing import Glunomial, GluingSystem
 from .fiber import Fiber
 from .fibrator import Fibrator
+from .input import user_input
+from .plot import Plot
 from .shape import PolishedShapeSet, U1Q
 from sage.all import ComplexField
 import os, sys, time
@@ -59,6 +61,12 @@ class Elevation(object):
             saved_data = self._get_saved_data()
         else:
             saved_data = {}
+        # Pre-initialize the list of fibers by just inserting an integer for
+        # each fiber.  If the fiber construction fails, this can be detected by
+        # isinstance(fiber, int)
+        self.T_fibers = list(range(order))
+        self.R_fibers = list(range(order))
+        self._set_paths()
         target = self._get_fibrator_target(saved_data)
         shapes = saved_data.get('shapes', None)
         self.fibrator = Fibrator(manifold, target=target, shapes=shapes, base_dir=base_dir)
@@ -72,12 +80,6 @@ class Elevation(object):
             raise RuntimeError('The base fiber contains Tillmann points.')
         self.degree = len(base_fiber)
         self._print('Order is %d; Degree is %s.'%(self.order, self.degree))
-        # Pre-initialize the list of fibers by just inserting an integer for
-        # each fiber.  If the fiber construction fails, this can be detected by
-        # isinstance(fiber, int)
-        self.T_fibers = list(range(order))
-        self.R_fibers = list(range(order))
-        self._set_paths()
         if msg:
             self._print(msg)
         self.elevate()
@@ -224,18 +226,13 @@ class Elevation(object):
         if not F.is_finite():
             self._print('Degenerate shape! ')
 
-    def tighten(self, T=None):
+    def tighten(self, path=None):
         """
         Radially transport each fiber over a point on the R-path to a
         fiber over a point on the T-path.
         """
-        if T is None:
+        if path is None:
             path = self.T_path
-        else:
-            Darg = 2*pi/order
-            path = [T*exp(-n*Darg*1j) for n in range(self.order)]
-        self._print('Tightening the circle to radius %s ...'%(
-            T if T else self.tight_radius))
         msg = ''
         self.tighten_failures = defaultdict(set)
         for n in range(self.order):
@@ -537,6 +534,61 @@ class CircleElevation(Elevation):
         a collision, raise an exception.
         """
         for T in (1.01*fiber.H_meridian, 1.01*target, target):
+            print('Transporting to %s.'%T)
+            shapes = []
+            failed_points = set()
+            for m, shape in enumerate(fiber.shapes):
+                Zn, msg = self.gluing_system.track(shape.array, T, debug=debug,
+                                                       fail_quietly=fail_quietly)
+                shapes.append(Zn)
+                if msg:
+                    failed_points.add(m)
+            result = Fiber(self.manifold, target, shapes=shapes)
+            if result.collision():
+                raise ValueError('The collision recurred.  Perturbation failed.')
+        return result, failed_points
+
+class LineElevation(Elevation):
+    """
+    A family of fibers for the meridian holonomy map, lying above the
+    unit interval on the real axis.
+    """
+    def __init__(self, manifold, offset=0.02, **kwargs):
+        self.offset = offset
+        if 'msg' not in kwargs:
+            kwargs['msg'] = 'Using offset=%g'%self.offset
+        kwargs['base_dir'] = 'R_base_fibers'
+        super(LineElevation, self).__init__(manifold, **kwargs)
+
+    def _set_paths(self):
+        order = self.order
+        dx = 1.0/(order + 1)
+        self.T_path = [(1.0 - n*dx) for n in range(order)]
+        self.R_path = [(1.0 - n*dx) + self.offset*1j for n in range(order)]
+
+    def _get_saved_data(self):
+        return {}
+
+    def _get_fibrator_target(self, saved_data):
+        base_index = randint(0, self.order-2)
+        self._print('Choosing random base index: %d'%base_index)
+        target = self.R_path[base_index]
+        return target
+
+    def _finalize(self):
+        """
+        Checks that the lifted paths close up to form simple curves.
+        """
+        pass
+
+    def retransport(self, fiber, target, debug=False, fail_quietly=False):
+        """
+        Transport this fiber to a different target holonomy following a
+        jiggled path which first expands the radius, then advances the
+        argument, then reduces the radius. If the resulting fiber has
+        a collision, raise an exception.
+        """
+        for T in (fiber.H_meridian + 0.1*1j, target + 0.1*1j, target):
             print('Transporting to %s.'%T)
             shapes = []
             failed_points = set()
