@@ -1,16 +1,18 @@
+from __future__ import print_function
 import random, string
 from itertools import chain
 from .shape import ShapeSet, PolishedShapeSet
-from .sage_helper import (_within_sage, cached_function, RR, CC, Id2,
-                          elementary_divisors, smith_normal_form, pari,
-                          matrix, vector)
+from .sage_helper import (
+    _within_sage, cached_function, RR, CC, Id2, elementary_divisors,
+    smith_normal_form, pari, matrix, vector)
 from .matrix_helper import SL2C_inverse, GL2C_inverse
 from .quadratic_form import preserves_hermitian_form
-from snappy.snap import generators
+from snappy.snap.t3mlite import Mcomplex
 from snappy.snap.t3mlite.simplex import V0, V1, V2, V3, E01
-from snappy.snap.polished_reps import (clean_matrix,
-                                       ManifoldGroup,
-                                       prod)
+from snappy.snap.kernel_structures import (
+    Infinity, TransferKernelStructuresEngine)
+from snappy.snap.fundamental_polyhedron import FundamentalPolyhedronEngine
+from snappy.snap.polished_reps import clean_matrix, ManifoldGroup, prod
 
 if _within_sage:
     coboundary_matrix = matrix
@@ -18,24 +20,24 @@ else:
     coboundary_matrix = pari.matrix
 
 def reconstruct_representation(G, geom_mats):
-    mats = [None] + [geom_mats[i] for i in range(1, G.num_original_generators(\
-)+1)]
+    mats = [None]
+    mats += [geom_mats[i] for i in range(1, G.num_original_generators()+1)]
     moves = G._word_moves()
     while len(moves) > 0:
         a = moves.pop(0)
-        if a >= len(mats): # new generator added                               
-            n = moves.index(a)  # end symbol location                          
+        if a >= len(mats): # new generator added
+            n = moves.index(a)  # end symbol location
             word, moves = moves[:n], moves[n+1:]
             mats.append(prod([mats[g] if g > 0 else SL2C_inverse(mats[-g])
                                   for g in word]))
         else:
             b = moves.pop(0)
-            if a == b:  # generator removed                                    
+            if a == b:  # generator removed
                 mats[a] = mats[-1]
                 mats = mats[:-1]
-            elif a == -b: # invert generator                                   
+            elif a == -b: # invert generator
                 mats[a] = SL2C_inverse(mats[a])
-            else: #handle slide                                                
+            else: #handle slide
                 A, B = mats[abs(a)], mats[abs(b)]
                 if a*b < 0:
                     B = SL2C_inverse(B)
@@ -92,14 +94,19 @@ def polished_group(M, shapes, precision=100,
                    lift_to_SL2=True, check=True):
     error = pari(2.0)**(-precision*0.8)
     G = M.fundamental_group(*fundamental_group_args)
-    N = generators.SnapPy_to_Mcomplex(M, shapes)
-    T = N.ChooseGenInitialTet
+    m = Mcomplex(M)
+    f = FundamentalPolyhedronEngine(m)
+    t = TransferKernelStructuresEngine(m, M)
+    t.add_shapes(shapes)
+    t.add_choose_generators_info(M._choose_generators_info())
+    T = m.ChooseGenInitialTet
     z = T.ShapeParameters[E01]
-    init_tet_vertices = {V0:0, V1:generators.Infinity, V2:z, V3:1}
-    generators.visit_tetrahedra(N, init_tet_vertices)
-    mats = generators.compute_matrices(N)
+    init_tet_vertices = {V0:0, V1:Infinity, V2:z, V3:1}
+    f.unglue()
+    f.visit_tetrahedra_to_compute_vertices(T, init_tet_vertices)
+    f.compute_matrices(normalize_matrices=True)
     gen_mats = [clean_matrix(A, error=error, prec=precision)
-                for A in reconstruct_representation(G, mats)]
+                for A in reconstruct_representation(G, m.GeneratorMatrices)]
     PG = ManifoldGroup(
         G.generators(), G.relators(), G.peripheral_curves(), gen_mats)
     if lift_to_SL2:
@@ -245,7 +252,7 @@ class PSL2CRepOf3ManifoldGroup(object):
                 if abs((a*b*A*B).trace() - 2) > epsilon:
                     return False
         return True
-                
+
     def really_comes_from_filling(self, precision=None):
         G = self.polished_holonomy(precision)
         return G.check_representation() < RR(2.0)**(-0.8*self.precision)

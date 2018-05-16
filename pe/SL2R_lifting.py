@@ -212,7 +212,11 @@ class SL2RLifter(object):
         return point
 
     def show(self, add_lines=False):
-        self.plot = Plot(self.translation_arcs, number_type=PEPoint, title=self.manifold.name())
+        self.plot = Plot(
+            self.translation_arcs,
+            number_type=PEPoint,
+            title=self.manifold.name(),
+            position=(0.07, 0.07, 0.8, 0.85))
         if add_lines:
             self.draw_line(self.manifold.homological_longitude(), color='green')
             for edge in self.l_space_edges():

@@ -13,7 +13,7 @@ from .complex_reps import (PSL2CRepOf3ManifoldGroup, polished_group,
 from .euler import orientation, PSL2RtildeElement, LiftedFreeGroupRep
 from .matrix_helper import (eigenvectors, apply_matrix, vector_dist,
                             normalize_vector, fixed_point)
-from . import quadratic_form
+from .quadratic_form import conjugator_into_SL2R
 
 
 class CouldNotConjugateIntoPSL2R(Exception):
@@ -73,7 +73,7 @@ def conjugate_into_PSL2R(rho, max_error, xxx_todo_changeme):
     # a generic algorithm.
 
     if abs((A*B*SL2C_inverse(A)*SL2C_inverse(B)).trace() - 2) < max_error:
-        C = quadratic_form.conjugator_into_SL2R(gen_mats)
+        C = conjugator_into_SL2R(gen_mats)
         Cinv = SL2C_inverse(C)
         curr_mats = [Cinv*M*C for M in gen_mats]
         curr_mats, error = real_part_of_matrices_with_error(curr_mats)
