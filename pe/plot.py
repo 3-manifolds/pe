@@ -116,12 +116,15 @@ class PlotBase(object):
         axis = figure.axis
         limits = self.args.get('limits', None)
         xlim, ylim = limits if limits else (axis.get_xlim(), axis.get_ylim())
-
         margin_x, margin_y = self.args.get('margins', (0.1, 0.1))
         sx = (xlim[1] - xlim[0])*margin_x
         xlim = (xlim[0] - sx, xlim[1] + sx)
         sy = (ylim[1] - ylim[0])*margin_y
         ylim = (ylim[0] - sy, ylim[1] + sy)
+        position = self.args.get('position', None)
+        if position:
+            axis.set_position(position)
+        print('axis', axis)
         axis.set_xlim(*xlim)
         axis.set_ylim(*ylim)
         axis.set_aspect(self.args.get('aspect', 'auto'))
@@ -191,11 +194,15 @@ class TkPlot(PlotBase):
         if title:
             window.title(title)
             figure.set_title(title)
+            #axis.title.set_position(0.5, 1.1)
         func_selector_frame = ttk.Frame(window)
+        uncheck = Tk.Button(func_selector_frame, text='X', fg='red',
+                            padx=3, pady=0, command=self.clearall)
+        uncheck.grid(column=0, row=0, sticky=(Tk.N, Tk.W))
         for i, var in enumerate(self.arc_vars):
             button = ttk.Checkbutton(func_selector_frame,
                                      text='%d'% i, variable=var)
-            button.grid(column=0, row=i, sticky=(Tk.N, Tk.W))
+            button.grid(column=0, row=i+1, sticky=(Tk.N, Tk.W))
         func_selector_frame.grid(column=1, row=0, sticky=(Tk.N))
         window.columnconfigure(1, weight=0)
 
@@ -221,6 +228,11 @@ class TkPlot(PlotBase):
             for subarc in var.arc:
                 subarc.remove()
         self.figure.draw()
+
+    def clearall(self, *args):
+        for var in self.arc_vars.values():
+            if var.get():
+                var.set(False)
 
 class NbPlot(PlotBase):
 
