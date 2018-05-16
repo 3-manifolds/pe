@@ -31,7 +31,7 @@ class PEArc(list):
     def __init__(self, *args, **kwargs):
         self.arctype = kwargs.pop('arctype', 'arc')
         super(PEArc, self).__init__(*args)
-    
+
     def add_info(self, elevation, arctype='arc'):
         n, m = self.first_index = self[0].index
         self.first_shape = elevation.T_fibers[n].shapes[m]
@@ -60,7 +60,7 @@ class PEArc(list):
                 interp = (last_L*M_args[n] + (1.0 - L)*M_args[n-1])/length
                 self.append(PEPoint(0.0, interp, leave_gap=True))
                 self.append(PEPoint(1.0, interp))
-        
+
 class PECharVariety(object):
     """
     An object representating the PE Character Variety of a 3-manifold.
@@ -74,13 +74,9 @@ class PECharVariety(object):
             self.manifold = manifold
         else:
             self.manifold = Manifold(manifold)
-            saved_data = {}
         self.radius = radius
         self.order = order
         if elevation is None:
-            # self._check_dir(base_dir, 'I need a directory for storing base fibers.')
-            # target = saved_data.get('H_meridian', None)
-            # target_arg = log(target).imag if target else None
             self.elevation = CircleElevation(
                 self.manifold,
                 order=order,
@@ -90,7 +86,6 @@ class PECharVariety(object):
                 ignore_saved=ignore_saved)
         else:
             self.elevation = elevation
-        self._print('Tightening the circle to radius 1.0')
         self.elevation.tighten()
 
     def __getitem__(self, index):
@@ -209,9 +204,9 @@ class PECharVariety(object):
                         # \ / -- the cap wraps
                         cap_arc.append(PEPoint(0.0, left[0].imag, leave_gap=True))
                         cap_arc.append(PEPoint(1.0, left[0].imag))
+                        cap_arc.append(right[0])
                     else:
                         cap_arc.append(right[0])
-                    cap_arc.append(right[0])
                     n = len(self.arcs)
                     self.arcs.append(cap_arc)
                     self.curve_graph.add_edge(self.arcs.index(left), n)
@@ -237,9 +232,9 @@ class PECharVariety(object):
                         # / \ the cup wraps
                         cup_arc.append(PEPoint(0.0, left[-1].imag, leave_gap=True))
                         cup_arc.append(PEPoint(1.0, left[-1].imag))
+                        cup_arc.append(right[-1])
                     else:
                         cup_arc.append(right[-1])
-                    cup_arc.append(right[-1])
                     n = len(self.arcs)
                     self.arcs.append(cup_arc)
                     self.curve_graph.add_edge(self.arcs.index(left), n)
@@ -253,6 +248,7 @@ class PECharVariety(object):
              limits=((0.0, 1.0), (0.0, 0.5)),
              margins=(0, 0),
              aspect='equal',
+             position=(0.07, 0.07, 0.8, 0.95),
              title='PE Character Variety of %s'%self.manifold.name(),
              colors=self.colors,
              extra_lines=[((0.5, 0.5), (0.0, 1.0))],

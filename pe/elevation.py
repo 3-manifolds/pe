@@ -228,12 +228,12 @@ class Elevation(object):
 
     def tighten(self, path=None):
         """
-        Radially transport each fiber over a point on the R-path to a
-        fiber over a point on the T-path.
+        Transport each fiber over a point on the R-path to the fiber over
+        the corresponding point on the T-path.
         """
         if path is None:
             path = self.T_path
-        msg = ''
+        self._tighten_msg()
         self.tighten_failures = defaultdict(set)
         for n in range(self.order):
             self._print(' %-5s\r'%n, end='')
@@ -526,6 +526,9 @@ class CircleElevation(Elevation):
             self._print('Could not check for completeness.')
             self._print(('%s')%e)
 
+    def _tighten_msg(self):
+        self._print('Tightening the circle to radius %g'%self.tight_radius)
+
     def retransport(self, fiber, target, debug=False, fail_quietly=False):
         """
         Transport this fiber to a different target holonomy following a
@@ -557,12 +560,12 @@ class LineElevation(Elevation):
         self.offset = offset
         if 'msg' not in kwargs:
             kwargs['msg'] = 'Using offset=%g'%self.offset
-        kwargs['base_dir'] = 'R_base_fibers'
+        kwargs['base_dir'] = 'PR_base_fibers'
         super(LineElevation, self).__init__(manifold, **kwargs)
 
     def _set_paths(self):
         order = self.order
-        dx = 1.0/(order + 1)
+        dx = 1.0/(order + 1) # Don't include the ideal point at M=0
         self.T_path = [(1.0 - n*dx) for n in range(order)]
         self.R_path = [(1.0 - n*dx) + self.offset*1j for n in range(order)]
 
@@ -581,6 +584,9 @@ class LineElevation(Elevation):
         """
         pass
 
+    def _tighten_msg(self):
+        self._print('Tightening to the real axis.')
+        
     def retransport(self, fiber, target, debug=False, fail_quietly=False):
         """
         Transport this fiber to a different target holonomy following a
