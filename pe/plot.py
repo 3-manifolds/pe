@@ -124,7 +124,6 @@ class PlotBase(object):
         position = self.args.get('position', None)
         if position:
             axis.set_position(position)
-        print('axis', axis)
         axis.set_xlim(*xlim)
         axis.set_ylim(*ylim)
         axis.set_aspect(self.args.get('aspect', 'auto'))
