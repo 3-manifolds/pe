@@ -8,9 +8,7 @@ from .matrix_helper import SL2C_inverse, GL2C_inverse
 from .quadratic_form import preserves_hermitian_form
 from snappy.snap import generators
 from snappy.snap.t3mlite.simplex import V0, V1, V2, V3, E01
-from snappy.snap.polished_reps import (initial_tet_ideal_vertices,
-                                       reconstruct_representation,
-                                       clean_matrix,
+from snappy.snap.polished_reps import (clean_matrix,
                                        ManifoldGroup,
                                        prod)
 
@@ -18,6 +16,32 @@ if _within_sage:
     coboundary_matrix = matrix
 else:
     coboundary_matrix = pari.matrix
+
+def reconstruct_representation(G, geom_mats):
+    mats = [None] + [geom_mats[i] for i in range(1, G.num_original_generators(\
+)+1)]
+    moves = G._word_moves()
+    while len(moves) > 0:
+        a = moves.pop(0)
+        if a >= len(mats): # new generator added                               
+            n = moves.index(a)  # end symbol location                          
+            word, moves = moves[:n], moves[n+1:]
+            mats.append(prod([mats[g] if g > 0 else SL2C_inverse(mats[-g])
+                                  for g in word]))
+        else:
+            b = moves.pop(0)
+            if a == b:  # generator removed                                    
+                mats[a] = mats[-1]
+                mats = mats[:-1]
+            elif a == -b: # invert generator                                   
+                mats[a] = SL2C_inverse(mats[a])
+            else: #handle slide                                                
+                A, B = mats[abs(a)], mats[abs(b)]
+                if a*b < 0:
+                    B = SL2C_inverse(B)
+                mats[abs(a)] = A*B if a > 0 else B*A
+
+    return mats[1:]
 
 def random_word(letters, N):
     return ''.join([random.choice(letters) for _ in range(N)])
@@ -72,7 +96,6 @@ def polished_group(M, shapes, precision=100,
     T = N.ChooseGenInitialTet
     z = T.ShapeParameters[E01]
     init_tet_vertices = {V0:0, V1:generators.Infinity, V2:z, V3:1}
-    #init_tet_vertices = initial_tet_ideal_vertices(N)
     generators.visit_tetrahedra(N, init_tet_vertices)
     mats = generators.compute_matrices(N)
     gen_mats = [clean_matrix(A, error=error, prec=precision)
