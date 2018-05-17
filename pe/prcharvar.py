@@ -90,9 +90,9 @@ class PRCharVariety(object):
                         self.arcs.append(arc)
                     # start a new arc
                     arc = []
-            # If the entire track consists of real reps, we end up here with
+            # If the last point on the track is a real reps, we end up here with
             # a non-empty arc.
-            if arc:
+            if len(arc) > 1:
                 self.arcs.append(arc)
 
     def show(self, show_group=False):
