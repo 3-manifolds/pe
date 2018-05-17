@@ -11,16 +11,11 @@ holonomy map lying above the interval (0, 1] on the real axis.
 as in the circle case? ]]
 """
 from __future__ import print_function
-from numpy import arange, array, float64, log, pi, angle
+from numpy import log
 from snappy import Manifold, ManifoldHP
 from .elevation import LineElevation
-from .fiber import Fiber
-from .fibrator import Fibrator
 from .point import PEPoint
-from .shape import PolishedShapeSet, U1Q
 from .plot import Plot
-from .complex_reps import PSL2CRepOf3ManifoldGroup
-from .real_reps import PSL2RRepOf3ManifoldGroup
 import sys, os
 
 class PRCharVariety(object):

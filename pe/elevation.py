@@ -26,8 +26,7 @@ class Elevation(object):
 
     The construction begins by using PHC (via the Fibrator class) to find a
     single fiber over the base point ξ_0 in the R-path having index N_0.  (Thus
-    the base point need not be an endpoint.)  The value of N_0 can be specified
-    with the keyword argument *base_index*.  The default behavior is to choose
+    the base point need not be an endpoint.) The default behavior is to choose
     N_0 at random.
 
     Once a base Fiber has been constructed, it is transported along the path in
@@ -71,8 +70,6 @@ class Elevation(object):
         shapes = saved_data.get('shapes', None)
         self.fibrator = Fibrator(manifold, target=target, shapes=shapes, base_dir=base_dir)
         self.base_fiber = base_fiber = self.fibrator()
-        arg = log(base_fiber.H_meridian).imag%(2*pi)
-        self.base_index = (self.order - int(arg*self.order/(2*pi)))%self.order
         if not base_fiber.is_finite():
             for n, s in enumerate(base_fiber.shapes):
                 if s.is_degenerate():
@@ -85,15 +82,18 @@ class Elevation(object):
         self.elevate()
         self._finalize()
 
-    def _set_paths():
+    def _set_paths(self):
         raise ValueError('Only subclasses of Elevation can be instantiated.')
 
     def _get_saved_data(self):
         raise ValueError('Only subclasses of Elevation can be instantiated.')
 
-    def _get_fibrator_target():
+    def _get_fibrator_target(self):
         raise ValueError('Only subclasses of Elevation can be instantiated.')
 
+    def _set_base_index(self):
+        raise ValueError('Only subclasses of Elevation can be instantiated.')
+        
     def _finalize():
         raise ValueError('Only subclasses of Elevation can be instantiated.')
 
@@ -473,7 +473,7 @@ class CircleElevation(Elevation):
     def __init__(self, manifold, radius=1.02, tight_radius=1.0, **kwargs):
         self.radius, self.tight_radius = radius, tight_radius
         if 'msg' not in kwargs:
-            kwargs['msg'] = 'Using: radius=%g; tight_radius= %g'%(
+            kwargs['msg'] = 'Using: radius=%g; tight_radius=%g'%(
                 self.radius, self.tight_radius)
         super(CircleElevation, self).__init__(manifold, **kwargs)
 
@@ -496,12 +496,18 @@ class CircleElevation(Elevation):
         return data
 
     def _get_fibrator_target(self, saved_data):
+        """
+        Return a target value of H_meridian at the base fiber.  Also stores
+        the index of the base fiber as self.base_fiber.
+        """
         target = saved_data.get('H_meridian', None)
         target_arg = log(target).imag if target else None
         if target_arg:
             target = self.radius*exp(target_arg*1j)
+            arg = target_arg%(2*pi)
+            self.base_index = (self.order - int(arg*self.order/(2*pi)))%self.order
         else:
-            base_index = randint(0, self.order-2)
+            self.base_index = base_index = randint(0, self.order-2)
             self._print('Choosing random base index: %d'%base_index)
             target = self.radius*exp(-2*pi*1j*base_index/self.order)
         return target
@@ -573,7 +579,7 @@ class LineElevation(Elevation):
         return {}
 
     def _get_fibrator_target(self, saved_data):
-        base_index = randint(0, self.order-2)
+        self.base_index = base_index = randint(0, self.order-2)
         self._print('Choosing random base index: %d'%base_index)
         target = self.R_path[base_index]
         return target
