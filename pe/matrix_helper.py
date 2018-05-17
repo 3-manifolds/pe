@@ -1,6 +1,6 @@
 from .sage_helper import (matrix, vector, Id2, eigenvalues, get_pi,
                           complex_field, complex_I, pari, arg)
-    
+
 def SL2C_inverse(A):
     return A.adjoint()
 
@@ -35,7 +35,7 @@ def right_kernel_two_by_two(A):
 def eigenvectors(A):
     """
     Returns the eigenvectors of the matrix A that live in its field of
-    definition.  
+    definition.
     """
     eigval = eigenvalues(A)
     # For (essentially) parabolic matrices in SL(2, R), sometime the
@@ -43,7 +43,7 @@ def eigenvectors(A):
     # and so don't show up in eigenvalues.
     prec = A.base_ring().precision()
     epsilon = (2.0)**(-0.8*prec)
-    if len(eigval) == 0:  
+    if len(eigval) == 0:
         for e in [1, -1]:
             if (A - e*Id2).determinant().abs() < epsilon:
                 eigval.append(e)

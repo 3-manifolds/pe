@@ -37,7 +37,7 @@ except ImportError:
     def fraction(numerator, denominator):
         return '%d/%d'%(numerator, denominator)
 
-class ComputedApoly(object) :
+class ComputedApoly(object):
     def __init__(self, mfld_name, dict_dir='apoly_dicts'):
         self.mfld_name = mfld_name
         with open(os.path.join(dict_dir, mfld_name + '.dict')) as datafile:
@@ -53,7 +53,7 @@ class ComputedApoly(object) :
         self.bits_height = int(ceil(log(float(self.height)))/log(2))
         self.newton_polygon = NewtonPolygon(D, (1,2))
         self.viewer = None
-        
+
     def __call__(self, M, L):
         result = 0
         rows, cols = self.coefficients.shape
@@ -63,7 +63,7 @@ class ComputedApoly(object) :
                 Lresult = Lresult*L + self.coefficients[-1-i][-1-j]
             result = result*M + Lresult
         return result
-    
+
     def __repr__(self):
         return 'A-polynomial of %s'%self.mfld_name
 
@@ -75,7 +75,7 @@ class ComputedApoly(object) :
         for row in self.coefficients:
             result += format%tuple(row + 0.)
         return result
-    
+
     def show(self, gridsize=None):
         self.viewer = V = PolyViewer(self.newton_polygon,
                                      title=self.mfld_name,
@@ -119,7 +119,7 @@ class ComputedApoly(object) :
                         monomial = '%d*M^%d'%(a,m)
                     else:
                         monomial = '%d'%a
-                    monomials.append(monomial.replace('^1 ',' '))
+                    monomials.append(monomial.replace('^1 ', ' '))
             if monomials:
                 p = - n*twist - minexp
                 if p:
@@ -127,7 +127,7 @@ class ComputedApoly(object) :
                     if p < 0:
                         P = '('+P+')'
                     if n > 0:
-                        term = '+ (L^%d*M^%s)*('%(n,P) + ' + '.join(monomials) + ')'
+                        term = '+ (L^%d*M^%s)*('%(n, P) + ' + '.join(monomials) + ')'
                     else:
                         term = '(M^%s)*('%P + ' + '.join(monomials) + ')'
                 else:
@@ -136,12 +136,12 @@ class ComputedApoly(object) :
                     else:
                         term = '(' + ' + '.join(monomials) + ')'
                 term = self.break_line(term)
-                terms.append(term.replace('+ -','- '))
+                terms.append(term.replace('+ -', '- '))
         return name + ' :=\n' + '\n'.join(terms)
 
 class Apoly(object):
     """
-    The A-polynomial of a SnapPy manifold.  
+    The A-polynomial of a SnapPy manifold.
 
     Constructor: Apoly(mfld, order=128, gluing_form=False, denom=None, multi=False,
                        use_hints=True, verbose=True)
@@ -166,13 +166,13 @@ class Apoly(object):
     A.as_string(exp='^') returns a string suitable for input to a generic symbolic
                       algebra program which uses the symbol exp for exponentiation.
     A.sage()          returns a Sage polynomial with parent ring ZZ['M', 'L']
-    A.show_R_longitude_evs() uses matplotlib to graph the L-projections of 
+    A.show(text=False) shows the newton polygon with dots.  The text
+                      flag shows the coefficients.
+    A.show_R_longitude_evs() uses matplotlib to graph the L-projections of
                       arcs of the elevation of the circle of radius R in the M-plane.
     A.show_T_longitude_evs() uses matplotlib to graph the L-projections
                       of components of the inverse image of the tightened
                       circle of radius T in the M-plane.
-    A.show_newton(text=False) shows the newton polygon with dots.  The text
-                      flag shows the coefficients.
     A.boundary_slopes() returns the boundary slopes detected by the character
                       variety.
     A.save(basename=None, dir='polys', with_hint=True, twist=0)
@@ -267,7 +267,7 @@ class Apoly(object):
         self.reduced_degree = len(vals)
         self._compute_all(vals)
         self._print('done.')
-        
+
     def __call__(self, M, L):
         result = 0
         rows, cols = self.coefficients.shape
@@ -277,7 +277,7 @@ class Apoly(object):
                 Lresult = Lresult*L + self.coefficients[-1-i][-1-j]
             result = result*M + Lresult
         return result
-    
+
     def __repr__(self):
         return 'A-polynomial of %s'%self.mfld_name
 
@@ -302,7 +302,7 @@ class Apoly(object):
             return round(z.real)
         else:
             raise ValueError('Unknown type %s.'%type(z))
-        
+
     @staticmethod
     def realpart(z):
         if is_ComplexNumber(z):
@@ -348,7 +348,7 @@ class Apoly(object):
         # Perhaps we should remove powers of H and verify that we
         # are left with a product of cyclotomics.
         return PolynomialRing(ZZ, 'H')(coeffs)
-        
+
     @denom.setter
     def denom(self, denom_string):
         assert denom_string is None or isinstance(denom_string, str)
@@ -357,7 +357,7 @@ class Apoly(object):
             self._compute_all(array(self.elevation.polished_R_longitude_evs))
         else:
             self._compute_all(array(self.elevation.R_longitude_evs))
-            
+
     def _compute_all(self, vals):
         """
         Use a discrete Fourier transform to compute the A-polynomial from the
@@ -393,7 +393,7 @@ class Apoly(object):
                           for n in range(self.order)]
                 D = array([denom_function(z) for z in circle])
             else:
-                D = array([denom_function(z) for z in self.elevation.R_circle])
+                D = array([denom_function(z) for z in self.elevation.R_path])
             self.raw_coeffs = array([ifft(x*D) for x in self.sampled_coeffs])
         else:
             self.raw_coeffs = array([ifft(x) for x in self.sampled_coeffs])
@@ -422,7 +422,7 @@ class Apoly(object):
                              'Coefficients may be wrapping.  '
                              'If so, a larger order might help.')
         C = self.int_coeffs.transpose()
-        coefficient_array =  take(C, arange(len(C))-self.shift, axis=0)
+        coefficient_array = take(C, arange(len(C))-self.shift, axis=0)
         rows, cols = coefficient_array.shape
         while rows > 0:
             if max(abs(coefficient_array[rows-1])) > 0:
@@ -438,16 +438,16 @@ class Apoly(object):
             return
         self._print('Computing the Newton polygon.')
         self.compute_newton_polygon()
-        
+
     def compute_newton_polygon(self):
-        power_scale = (1,1) if self.gluing_form else (1,2) 
+        power_scale = (1, 1) if self.gluing_form else (1, 2)
         self.newton_polygon = NewtonPolygon(self.as_dict(), power_scale)
 
     def recompute(self):
         """
         Recompute A after changing attributes.
         """
-        self._compute_all(array(self.elevation.R_longitude_evs))    
+        self._compute_all(array(self.elevation.R_longitude_evs))
 
     def help(self):
         print(self.__doc__)
@@ -467,7 +467,7 @@ class Apoly(object):
            .101E3 - .999E0 - .100E3 "=" .1E1 == 1.0
         """
         for n in range(evs.shape[1]):
-            evs[:,n] = sorted(evs[:,n], key=lambda x: -abs(x))
+            evs[:, n] = sorted(evs[:, n], key=lambda x: -abs(x))
         coeffs = [0, ones(evs[0].shape, evs.dtype)]
         for root in evs:
             for i in range(1, len(coeffs)):
@@ -476,23 +476,23 @@ class Apoly(object):
         return coeffs[1:]
 
     def demultiply(self, eigenvalues):
-            multiplicities = []
-            sdr = [] #system of distinct representatives
-            multis = [1]*len(eigenvalues)
-            for i in range(len(eigenvalues)):
-                unique = True
-                for j in range(i+1,len(eigenvalues)):
-                    # If this row is the same as a lower row, do not
-                    # put it in the sdr.  Just increment the multiplicity
-                    # of the lower row.
-                    if max(abs(eigenvalues[i] - eigenvalues[j])) < 1.0E-6:
-                        unique = False
-                        multis[j] += multis[i]
-                        break
-                if unique:
-                    sdr.append(i)
-                    multiplicities.append((i, multis[i]))
-            return multiplicities, take(eigenvalues, sdr, 0)
+        multiplicities = []
+        sdr = [] #system of distinct representatives
+        multis = [1]*len(eigenvalues)
+        for i in range(len(eigenvalues)):
+            unique = True
+            for j in range(i+1,len(eigenvalues)):
+                # If this row is the same as a lower row, do not
+                # put it in the sdr.  Just increment the multiplicity
+                # of the lower row.
+                if max(abs(eigenvalues[i] - eigenvalues[j])) < 1.0E-6:
+                    unique = False
+                    multis[j] += multis[i]
+                    break
+            if unique:
+                sdr.append(i)
+                multiplicities.append((i, multis[i]))
+        return multiplicities, take(eigenvalues, sdr, 0)
 
     def find_shift(self):
        rows, cols = self.normalized_coeffs.shape
@@ -559,14 +559,14 @@ class Apoly(object):
             lines.append(line[marks[i]:marks[i+1]])
         lines.append(line[marks[-1]:])
         return '\n    '.join(lines)
-    
+
     def as_string(self, exp='^'):
         polynomial_string = ('+'.join(self.monomials())).replace('+-','-')
         return polynomial_string.replace('^', exp)
 
     def sage(self):
         return sage_poly_ring(self.as_dict())
-    
+
     # could do this by sorting the monomials
     def as_Lpolynomial(self, name='A', twist=0):
         terms = []
@@ -613,7 +613,7 @@ class Apoly(object):
                 term = self.break_line(term)
                 terms.append(term.replace('+ -','- '))
         return name + ' :=\n' + '\n'.join(terms)
-            
+
     def save(self, basename=None, dir=None, with_hint=True, twist=0):
         if dir == None:
             if self.gluing_form:
@@ -659,10 +659,10 @@ class Apoly(object):
                     'multi': self.multi,
                     'precision': self.precision
                 })
-            
+
     def boundary_slopes(self):
         return [s.sage() for s in self.newton_polygon.lower_slopes]
-        
+
     def show_R_longitude_evs(self):
         self.elevation.show_R_longitude_evs()
 
@@ -681,7 +681,7 @@ class Apoly(object):
     def show_imag_noise(self):
         plot = Plot(self.normalized_coeffs.imag, number_type=float)
 
-    def show_newton(self, text=False):
+    def show(self, text=False):
         self.viewer= V = PolyViewer(self.newton_polygon, title=self.mfld_name)
         if text:
             V.show_text()
@@ -726,7 +726,7 @@ class Apoly(object):
                     symmetry = False
         if symmetry:
             self._print('OK.')
-        result = noise_ok and symmetry 
+        result = noise_ok and symmetry
         if result:
             self._print('Passed!')
         return result
@@ -752,7 +752,7 @@ class Slope:
             x, y = -x, -y
         self.x = x//gcd
         self.y = y//gcd
-        
+
     def __eq__(self, other):
         return self.y*other.x == other.y*self.x
 
@@ -764,7 +764,7 @@ class Slope:
 
     def sage(self):
         return fraction(self.y, self.x)
-    
+
 class NewtonPolygon:
     def __init__(self, coeff_dict, power_scale=(1,1)):
         # Clean up weird sage tuples
@@ -787,7 +787,7 @@ class NewtonPolygon:
     def __call__(self, m_degree, l_degree):
         degree = (m_degree, l_degree)
         return self.coeff_dict.get(degree, None)
-    
+
     def slope(self, v, w):
         return Slope((w[0]-v[0], w[1]-v[1]))
 
@@ -834,7 +834,7 @@ class NewtonPolygon:
                 side_dict[(j,i)] = self.coeff_dict[(j,i)]
             result[slope] = side_dict
         return result
-    
+
     def puiseux_expansion(self):
         result = []
         for slope, side_dict in self.side_dicts().items():

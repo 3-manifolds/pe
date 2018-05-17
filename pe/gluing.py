@@ -69,7 +69,7 @@ class GluingSystem(object):
     The system of gluing equations for an ideal triangulaton of a
     one-cusped 3-manifold.
     """
-    
+
     def __init__(self, manifold):
         assert manifold.num_cusps() == 1, 'Manifold must be one-cusped.'
         self.manifold = manifold
@@ -78,7 +78,7 @@ class GluingSystem(object):
         self.glunomials = [Glunomial(A, B, c) for A, B, c in eqns]
         cusp_eqns = manifold.gluing_equations('rect')[-2:]
         self.M_nomial, self.L_nomial = [Glunomial(A, B, c) for A, B, c in cusp_eqns]
-            
+
     def __repr__(self):
         return '\n'.join([str(G) for G in self.glunomials])
 
@@ -124,7 +124,7 @@ class GluingSystem(object):
         a ball of radius STEPSIZE_BOUND around the shape vector Z.
         """
         return self.num_shapes*norm(self.M_nomial.gradient(Z), 1)*STEPSIZE_BOUND
-        
+
     def newton_step(self, Z, M_target):
         """
         Do one iteration of Newton's method, starting at Z and aiming

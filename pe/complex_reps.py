@@ -226,7 +226,7 @@ class PSL2CRepOf3ManifoldGroup(object):
         if not self.has_real_traces(precision):
             return False
         G = self.polished_holonomy()
-        ans, sig, form = preserves_hermitian_form(G._matrices)
+        ans, sig, _ = preserves_hermitian_form(G._matrices)
         if ans == False:
             raise ValueError('Rep with real traces does not preserve quad form')
         return sig != 'indefinite'
@@ -235,7 +235,7 @@ class PSL2CRepOf3ManifoldGroup(object):
         if not self.has_real_traces(precision):
             return False
         G = self.polished_holonomy()
-        ans, sig, form = preserves_hermitian_form(G._matrices)
+        ans, sig, _ = preserves_hermitian_form(G._matrices)
         if ans == False:
             raise ValueError('Rep with real traces does not preserve quad form')
         return sig != 'definite'

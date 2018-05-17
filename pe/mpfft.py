@@ -12,17 +12,17 @@ class BaseFFT:
         assert factors.issubset(set((2,3))), 'N must be 2^m*3^n.'
         self.N = N
         self._initialize()
-        
+
     def _initialize(self):
         # Subclasses override this method to compute rows 2 and 3 of the
-        # matrix [FFT_N] and rows 2 and 3 of 
+        # matrix [FFT_N] and rows 2 and 3 of
         # Remember that the FFT world orients the unit circle clockwise.
         pass
-    
+
     def _zeros(self, k):
-        # Subclasses override this method to return an array of zeros. 
+        # Subclasses override this method to return an array of zeros.
         pass
-        
+
     def _fft(self, A, invert):
         # The only difference between the fft and the inverse fft
         # is which generator is chosen for the group of roots of 1.
@@ -60,7 +60,7 @@ class BaseFFT:
     def fft(self, A):
         assert len(A) == self.N
         return self._fft(A, False)
-    
+
     def ifft(self, A):
         assert len(A) == self.N
         return self._fft(A, True)/self.N
@@ -70,14 +70,14 @@ class DoubleFFT(BaseFFT):
     A bare bones, recursive FFT using ordinary double precision
     arithmetic.  Accepts array lengths of the form 2^m*3^n.
     """
-        
+
     def _initialize(self):
         N = self.N
         self.zhat = exp(array([-2*n*numpy.pi*1j/N for n in range(N)]))
         self.izhat = exp(array([2*n*numpy.pi*1j/N for n in range(N)]))
         self.z2hat = self.zhat.take(xrange(0, 2*N, 2), mode='wrap')
         self.iz2hat = self.izhat.take(xrange(0, 2*N, 2), mode='wrap')
-        
+
     def _zeros(self, k):
         return zeros(k, dtype='complex')
 
@@ -89,9 +89,9 @@ class ComplexFFT(BaseFFT):
     def __init__(self, N, precision=256):
         self.precision = precision
         BaseFFT.__init__(self, N)
-        
+
     def _initialize(self):
-        N, F = self.N, ComplexField(self.precision) 
+        N, F = self.N, ComplexField(self.precision)
         self.zhat = array([F((-2*k*pi*I/N).exp()) for k in range(N)],
                            dtype='O')
         self.izhat = array([F((2*k*pi*I/N).exp()) for k in range(N)],

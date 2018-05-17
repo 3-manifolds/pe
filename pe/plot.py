@@ -2,7 +2,7 @@ from __future__ import print_function
 
 import matplotlib
 backend = matplotlib.get_backend()
-if  backend == 'TkAgg': 
+if  backend == 'TkAgg':
     matplotlib.use('tkagg')
     from .figure import MatplotFigure, Tk, ttk
 else:
@@ -78,7 +78,7 @@ class PlotBase(object):
     def on_pick(self, event):
         # Subclasses override this handler.
         pass
-    
+
     def start_plotter(self):
         self.figure = MF = MatplotFigure(add_subplot=False)
         MF.axis = axis = MF.figure.add_axes([0.07, 0.07, 0.8, 0.9])
@@ -137,7 +137,7 @@ class PlotBase(object):
             handles.append(group[0])
             labels.append('%d'%n)
         axis.legend(handles, labels, loc='upper left', bbox_to_anchor=(1.0, 1.0))
-        
+
     def color(self, i):
         n = self.color_dict.get(i, i)
         return matplotlib.cm.brg(float(1+n)/self.num_colors)
@@ -172,7 +172,7 @@ class PlotBase(object):
             kwargs['color'] = 'black'
         ax.plot(xx, yy, **kwargs)
         ax.plot(xx, yy, **kwargs)
-    
+
     def save(self, filename):
         self.figure.save(filename)
 
@@ -180,13 +180,13 @@ class PlotBase(object):
         self.figure.save_tikz(filename, path='plots/')
 
 class TkPlot(PlotBase):
-    
+
     def init_backend(self):
         self.arc_vars = collections.OrderedDict()
         for view in self.arc_views:
             var = Tk.BooleanVar(self.figure.window, value=True)
             var.trace('w', self.arc_button_callback)
-            var.arc = view 
+            var.arc = view
             self.arc_vars[str(var)] = var
         title = self.args.get('title', None)
         figure, axis, window = self.figure, self.figure.axis, self.figure.window
@@ -241,7 +241,7 @@ class NbPlot(PlotBase):
             self.figure.set_title(title)
     pass
 
-if  backend == 'TkAgg': 
+if  backend == 'TkAgg':
     Plot = TkPlot
 else:
     Plot = NbPlot

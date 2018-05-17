@@ -20,7 +20,7 @@ def mpmath_matrix_to_sage(A):
 def left_mult_by_adjoint(A):
     """
     Given A in GL_2, returns the 4 x 4 matrix of the left action of A*
-    on M_2 with respect to the standard basis. 
+    on M_2 with respect to the standard basis.
 
     >>> A = matrix(ZZ, [[1, 2], [3, 7]])
     >>> M = left_mult_by_adjoint(A); M
@@ -65,7 +65,7 @@ def nearly_diagonal(A):
     assert A.rows == A.cols == 2
     a = A[0,0]
     return mp.norm(A - mp.diag([a, a])) < 1000*mp.eps
-    
+
 def preserves_hermitian_form(SL2C_matrices):
     """
     >>> CC = ComplexField(100)
