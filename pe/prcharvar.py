@@ -81,10 +81,8 @@ class PRCharVariety(object):
                             marker = 'x'
                     L = log(abs(ev.real))
                     # Take the square root, so we have an eigenvalue not a holonomy.
-                    # We are doing the computation for M in (0, 1] going down from 1,
-                    # but the picture looks more natural if the x axis increases.
-                    M = -0.5*log(elevation.T_path[n])
-                    arc.append(PEPoint(M, L, marker=marker, index=(n, m)))
+                    M = 0.5*log(elevation.T_path[n])
+                    arc.append(PEPoint(L, M, marker=marker, index=(n, m)))
                 else:
                     if len(arc) > 1:  # Ignore isolated parobolic reps.
                         self.arcs.append(arc)

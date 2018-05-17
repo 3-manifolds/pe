@@ -64,7 +64,7 @@ class FigureBase(object):
 
     def set_title(self, title):
         self.figure.suptitle(title)
-        
+
     def clear(self):
         self.axis.clear()
         self.draw()
@@ -97,7 +97,7 @@ class NbFigure(FigureBase):
         self.canvas = FigureCanvasNbAgg(figure)
         self.toolbar = NavigationToolbar2WebAgg(self.canvas)
         self.manager = FigureManagerNbAgg(self.canvas, 1)
-        
+
     def draw(self):
         self.canvas.draw()
         self.manager.show()
@@ -132,7 +132,7 @@ if backend == 'TkAgg':
     MatplotFigure = TkFigure
 else:
     MatplotFigure = NbFigure
-    
+
 if __name__ == "__main__":
     from numpy import arange, sin, pi
     import matplotlib

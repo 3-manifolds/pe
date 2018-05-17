@@ -33,7 +33,7 @@ class Fibrator(object):
         """
         Return a base Fiber constructed from scratch or from precomputed shapes."""
         if self.shapes:
-            return Fiber(self.manifold, self.target, shapes=self.shapes) 
+            return Fiber(self.manifold, self.target, shapes=self.shapes)
         else:
             print('Computing the base fiber ... ', end=' ')
             begin = time.time()
@@ -43,7 +43,7 @@ class Fibrator(object):
                 base_fiber_file=os.path.join(self.base_dir, self.manifold.name()+'.base')
                 template="{{\n'manifold': '''{mfld}''',\n'H_meridian': {target},\n'shapes': {shapes}\n}}"
                 shape_repr = repr([list(s) for s in result.shapes])
-                shape_repr = shape_repr.replace(',', ',\n').replace('[[','[\n [')            
+                shape_repr = shape_repr.replace(',', ',\n').replace('[[','[\n [')
                 with open(base_fiber_file, 'w') as datafile:
                     datafile.write(template.format(
                         mfld=self.manifold._to_string(),
@@ -65,7 +65,7 @@ class Fibrator(object):
                                                  [PHCPoly(ring, e) for e in equations])
         base_system = parametrized_system.start(target, tolerance)
         return Fiber(self.manifold, target, PHCsystem=base_system)
-        
+
     @staticmethod
     def rect_to_PHC(eqn, rhs=None):
         """Convert a system of gluing equations to PHC's format."""
@@ -124,5 +124,3 @@ class Fibrator(object):
             for equation in system:
                 output.write(equation + ';\n')
 
-
-    

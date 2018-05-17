@@ -108,7 +108,7 @@ class ShapeSet(object):
     def volume(self):
         self.manifold.set_tetrahedra_shapes(self.array, None, [(0, 0)])
         return self.manifold.volume()
-        
+
     def _SL2C(self, word):
         self.manifold.set_tetrahedra_shapes(self.array, None, [(0, 0)])
         G = self.manifold.fundamental_group()
@@ -242,7 +242,7 @@ class PolishedShapeSet(object):
         manifold = self.manifold
         #working_prec = precision + 32
         working_prec = precision + 64
-        mpmath.mp.prec = working_prec 
+        mpmath.mp.prec = working_prec
         target_epsilon = mpmath.mpmathify(2.0)**-precision
         det_epsilon = mpmath.mpmathify(2.0)**(32 - precision)
         #shapes = [mpmath.mpmathify(z) for z in init_shapes]

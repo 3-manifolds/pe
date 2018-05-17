@@ -1,14 +1,12 @@
-from __future__ import print_function
 """
 The PolyViewer class displays the Newton polygon of a 2-variable polynomial,
 with vertices colored by the log of the absolute value of the coefficient.
 """
-import colorsys, matplotlib
-from matplotlib import units, ticker
-from matplotlib.cbook import iterable
-from matplotlib.pyplot import title
+from __future__ import print_function
+import colorsys
+from matplotlib import ticker, get_backend
 from .figure import MatplotFigure
-    
+
 def color_string(h, s, v):
     """
     Return an html style color string from HSV values in [0.0, 1.0]
@@ -23,15 +21,15 @@ class PolyFigure(MatplotFigure):
         self.NP = kwargs.get('NP', None)
 
 class PolyViewerBase(object):
-    dpi=72
-    min_width=2.0
-    default_height=5.0
-    
+    dpi = 72
+    min_width = 2.0
+    default_height = 5.0
+
     def __init__(self, newton_poly, title=None, gridsize=None):
         self.NP, self.title = newton_poly, title
         self.columns = 1 + self.NP.support[-1][0]
         self.rows = 1 + max([d[1] for d in self.NP.support])
-        if gridsize == None:
+        if gridsize is None:
             gridsize = self.default_height/max(self.rows, self.columns)
         self.gridsize = gridsize
         self.width = self.columns*self.gridsize
@@ -44,8 +42,8 @@ class PolyViewerBase(object):
                                       size=size, dpi=100)
         self.axis = axis = MF.figure.add_axes([l, b, w, h])
         axis.set_position([0.1, 0.12, 0.8, 0.83])
-        axis.xaxis.set_major_formatter(ticker.FormatStrFormatter('%d'))    
-        axis.yaxis.set_major_formatter(ticker.FormatStrFormatter('%d'))    
+        axis.xaxis.set_major_formatter(ticker.FormatStrFormatter('%d'))
+        axis.yaxis.set_major_formatter(ticker.FormatStrFormatter('%d'))
         axis.margins(x=0.2, y=0.2)
         self.monomial = MF.figure.text(0.1, 0.025, '', fontsize=18)
         self.figure.canvas.mpl_connect(
@@ -55,7 +53,7 @@ class PolyViewerBase(object):
     def init_backend(self):
         # Override to provide backend-specific code
         pass
-    
+
     def show_coefficient(self, event):
         x, y = event.xdata, event.ydata
         if x is None or y is None:
@@ -80,7 +78,7 @@ class PolyViewerBase(object):
         axis.locator_params(axis='x', integer=True)
         axis.locator_params(axis='y', integer=True)
         self.figure.draw()
-            
+
     def show_sides(self):
         r = 2 + self.dot_radius
         upper = list(self.NP.upper_vertices)
@@ -95,22 +93,22 @@ class PolyViewerBase(object):
         self.figure.draw()
 
 class TkPolyViewer(PolyViewerBase):
-    dpi=100
-    min_width=2.0
-    default_height=8.0
-                           
+    dpi = 100
+    min_width = 2.0
+    default_height = 8.0
+
     def __init__(self, newton_poly, title=None, gridsize=None):
         PolyViewerBase.__init__(self, newton_poly, title, gridsize)
-                         
+
     def init_backend(self):
         if self.title:
             self.figure.window.title(self.title)
         self.figure.window.wm_geometry('+400+20')
 
 class NbPolyViewer(PolyViewerBase):
-    dpi=72
-    min_width=2.0
-    default_height=5.0
+    dpi = 72
+    min_width = 2.0
+    default_height = 5.0
 
     def __init__(self, newton_poly, title=None, gridsize=None):
         PolyViewerBase.__init__(self, newton_poly, title, gridsize)
@@ -119,11 +117,11 @@ class Unsupported:
     def __init__(self, newton_poly, title=None, gridsize=None):
         raise RuntimeError ('PolyViewer does not support this matpotlib backend (%s).'%backend)
 
-backend = matplotlib.get_backend()
+backend = get_backend()
 if backend == 'TkAgg':
     PolyViewer = TkPolyViewer
 elif backend == 'nbAgg':
     PolyViewer = NbPolyViewer
 else:
     PolyViewer = Unsupported
-    
+

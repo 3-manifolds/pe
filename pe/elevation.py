@@ -586,7 +586,7 @@ class LineElevation(Elevation):
 
     def _tighten_msg(self):
         self._print('Tightening to the real axis.')
-        
+
     def retransport(self, fiber, target, debug=False, fail_quietly=False):
         """
         Transport this fiber to a different target holonomy following a

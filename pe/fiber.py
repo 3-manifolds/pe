@@ -19,7 +19,7 @@ class Fiber(object):
     represents a fiber for the meridian holonomy as a rational map
     from the gluing variety to C.
     """
-    
+
     def __init__(self, manifold, H_meridian, PHCsystem=None, shapes=None,
                  tolerance=1.0E-06):
         # The tolerance is used to determine which of the PHC solutions
@@ -68,7 +68,7 @@ class Fiber(object):
 
     def _random_vector(self):
         return [exp(2*random()*pi*1j) for n in xrange(self.num_shapes)]
-    
+
     def clean(self, coranks):
         """
         This should only be called for the random base fiber.
@@ -97,7 +97,7 @@ class Fiber(object):
             for m, q in enumerate(self.shapes[n+1:]):
                 if p.dist(q) < 1.0E-10:
                     print("\nCollision of shapesets %s and %s at %s."%(
-                        n, n+m+1, self.H_meridian))  
+                        n, n+m+1, self.H_meridian))
                     return True
         return False
 
@@ -109,7 +109,7 @@ class Fiber(object):
         """
         other_shapes = list(enumerate(other.shapes))
         result = list(range(len(self)))
-        
+
         for s in self.shapes:
             distance = float('inf')
             nearest = -1
@@ -121,7 +121,7 @@ class Fiber(object):
             result[nearest] = s
             other_shapes.pop(nearest_index)
         self.shapes = result
-        
+
     def is_finite(self):
         """
         Check if any cross-ratios are 0 or 1
@@ -153,7 +153,7 @@ class Fiber(object):
             except GoodShapesNotFound:
                 precision *= 2
         if polished is None:
-            raise GoodShapesNotFound('Failed to polish shapeset') 
+            raise GoodShapesNotFound('Failed to polish shapeset')
         for shapes, polished_shapes in zip(self, polished):
             shapes.update([complex128(z) for z in polished_shapes])
 

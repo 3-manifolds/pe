@@ -61,7 +61,7 @@ class SL2RLifter(object):
             m, l = -m, -l
         self.m_abelian, self.l_abelian = m, l
         # Same as index of homological meridian in H_1(M)_free
-        self.l_order = gcd(m, l)  
+        self.l_order = gcd(m, l)
 
         # We also want to be able to view things from a more homologically
         # natural point of view.
@@ -260,13 +260,13 @@ class SL2RLifter(object):
         return plotlist
 
     def show_homological(self):
-        plotlist = self._show_homological_data()            
+        plotlist = self._show_homological_data()
         self.plot = Plot(plotlist, number_type=PEPoint, title=self.manifold.name() + ' reframed')
         # Draw longitude
         ax = self.plot.figure.axis
         ax.plot((0, 1), (0, 0), color='green')
         self.plot.figure.draw()
- 
+
     def show_slopes(self):
         M = self.elevation.manifold.copy()
         plotlist = []
