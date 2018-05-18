@@ -16,6 +16,7 @@ from .sage_helper import _within_sage
 if _within_sage:
     from sage.all import ComplexField, Matrix, pari
     from sage.libs.mpmath.utils import mpmath_to_sage
+    from cypari2.pari_instance import prec_bits_to_dec
     import mpmath
     def Number(z, precision=212):
         """In sage we use Sage numbers."""
@@ -31,6 +32,11 @@ def U1Q(p, q, precision=212):
     result = (2*pari.pi(precision=precision)*p*pari('I')/q).exp(
         precision=precision)
     return Number(result, precision=precision)
+
+def precise_ratio(p, q, precision=212):
+    if q != 0:
+        one = pari_set_precision(1.0, precision)
+        return Number(one*p/q)
 
 def pari_set_precision(x, precision):
     """
@@ -324,4 +330,3 @@ class PolishedShapeSet(object):
 if __name__ == '__main__':
     import doctest
     doctest.testmod()
-

@@ -116,7 +116,7 @@ class SL2RLifter(object):
             reps = []
             for sn, S in arc:
                 _, n = sn
-                target = U1Q(-n, self.order, precision=1000)
+                target = self.elevation.precise_T_target(n, precision=1000)
                 try:
                     rho = PSL2RRepOf3ManifoldGroup(
                         self.elevation.manifold,

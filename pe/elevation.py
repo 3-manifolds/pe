@@ -11,7 +11,7 @@ from .fiber import Fiber
 from .fibrator import Fibrator
 from .input import user_input
 from .plot import Plot
-from .shape import PolishedShapeSet, U1Q
+from .shape import PolishedShapeSet, U1Q, precise_ratio
 from sage.all import ComplexField
 import os, sys, time
 
@@ -93,7 +93,7 @@ class Elevation(object):
 
     def _set_base_index(self):
         raise ValueError('Only subclasses of Elevation can be instantiated.')
-        
+
     def _finalize():
         raise ValueError('Only subclasses of Elevation can be instantiated.')
 
@@ -535,6 +535,12 @@ class CircleElevation(Elevation):
     def _tighten_msg(self):
         self._print('Tightening the circle to radius %g'%self.tight_radius)
 
+    def precise_T_target(self, n, precision=212):
+        """
+        Return a value for the nth element of the T_path, with specified precision.
+        """
+        return U1Q(-n, self.order, precision=precision)
+
     def retransport(self, fiber, target, debug=False, fail_quietly=False):
         """
         Transport this fiber to a different target holonomy following a
@@ -593,6 +599,10 @@ class LineElevation(Elevation):
     def _tighten_msg(self):
         self._print('Tightening to the real axis.')
 
+    def precise_T_target(self, n, precision=212):
+        N = 1 + self.order
+        return precise_ratio(N - n, N, precision)
+
     def retransport(self, fiber, target, debug=False, fail_quietly=False):
         """
         Transport this fiber to a different target holonomy following a
@@ -645,4 +655,3 @@ def solve_mod2_system(the_matrix, rhs):
         S[j] = (A[R[i]][N] - dot(A[R[i]][j+1:-1], S[j+1:]))%2
         i -= 1
     return S
-
