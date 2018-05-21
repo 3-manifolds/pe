@@ -70,15 +70,13 @@ class PECharVariety(object):
                  ignore_saved=False):
         # The default order is 13^2 because 13th roots of 1 are rarely singularities.
         self.base_dir = base_dir
-        if isinstance(manifold, (Manifold, ManifoldHP)):
-            self.manifold = manifold
-        else:
-            self.manifold = Manifold(manifold)
+        if not isinstance(manifold, (Manifold, ManifoldHP)):
+            manifold = Manifold(manifold)
         self.radius = radius
         self.order = order
         if elevation is None:
             self.elevation = CircleElevation(
-                self.manifold,
+                manifold,
                 order=order,
                 radius=radius,
                 base_dir=base_dir,
@@ -86,6 +84,8 @@ class PECharVariety(object):
                 ignore_saved=ignore_saved)
         else:
             self.elevation = elevation
+        # Save the manifold here, because it may have been replaced by a saved manifold.
+        self.manifold = self.elevation.manifold
         self.elevation.tighten()
 
     def __getitem__(self, index):
@@ -119,7 +119,7 @@ class PECharVariety(object):
                     # Skip over this point since we weren't able to tighten it.
                     continue
                 # Is the longitude eigenvalue on the unit circle?
-                if .99999 < abs(ev) < 1.00001:
+                if ev and .99999 < abs(ev) < 1.00001:
                     if show_group:
                         shape = elevation.T_fibers[n].shapes[m]
                         if shape.in_SU2():
@@ -239,6 +239,31 @@ class PECharVariety(object):
                     self.arcs.append(cup_arc)
                     self.curve_graph.add_edge(self.arcs.index(left), n)
                     self.curve_graph.add_edge(n, self.arcs.index(right))
+        # For manifolds which are not S^3 knot complements, closed curves in the
+        # PE character variety can wrap vertically around the pillowcase.
+        wrappers = [n for n, a in enumerate(self.arcs) if (
+            a[0].index[0] == 0 and
+            a[-1].index[0] == self.order - 1 and
+            0.001 < a[0].real < 0.999 and
+            0.001 < a[-1].real < 0.9999)]
+        if wrappers:
+            def f(n):
+                a = self.arcs[n]
+                if a[0].real <= 0.5:
+                    # Glue front to back at the bottom.
+                    # This is approximate because are 1 step from the start
+                    A = array([abs(1.0 - b[-1].real - a[-1].real) for b in self.arcs])
+                    result = int(A.argmin())
+                    print(A[result])
+                else:
+                    # Glue back to front at the top.
+                    # This is essentially exact.
+                    A = array([abs(1.0 - b[0].real - a[0].real) for b in self.arcs])
+                    result = int(A.argmin())
+                    print(A[result])
+                return result
+            for n in wrappers:
+                self.curve_graph.add_edge(n, f(n))
 
     def show(self, show_group=False):
         """Plot the pillowcase image of this PE Character Variety."""

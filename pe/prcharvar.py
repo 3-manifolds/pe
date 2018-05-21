@@ -26,15 +26,13 @@ class PRCharVariety(object):
                  base_dir='PR_base_fibers', hint_dir='PR_hints',
                  ignore_saved=True):
         self.base_dir = base_dir
-        if isinstance(manifold, (Manifold, ManifoldHP)):
-            self.manifold = manifold
-        else:
-            self.manifold = Manifold(manifold)
+        if not isinstance(manifold, (Manifold, ManifoldHP)):
+            manifold = Manifold(manifold)
         self.offset = offset
         self.order = order
         if elevation is None:
             self.elevation = LineElevation(
-                self.manifold,
+                manifold,
                 order=order,
                 offset=offset,
                 base_dir=base_dir,
@@ -42,6 +40,8 @@ class PRCharVariety(object):
                 ignore_saved=ignore_saved)
         else:
             self.elevation = elevation
+        # Save the manifold here, because it may have been replaced by a saved manifold.
+        self.manifold = self.elevation.manifold
         self.elevation.tighten()
 
     def __getitem__(self, index):
