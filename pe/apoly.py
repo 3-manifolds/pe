@@ -630,7 +630,7 @@ class Apoly(object):
                 cwd = os.path.abspath(os.path.curdir)
                 newdir = os.path.join(cwd,dir)
                 response = user_input("May I create a directory %s?(y/n)"%newdir)
-                if response.lower()[0] != 'y':
+                if response.lower() != 'y':
                     sys.exit(0)
                 os.mkdir(newdir)
         if basename == None:

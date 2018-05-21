@@ -14,7 +14,6 @@ from snappy import Manifold, ManifoldHP
 from spherogram.graphs import Graph
 from .elevation import CircleElevation
 from .fiber import Fiber
-from .fibrator import Fibrator
 from .point import PEPoint
 from .shape import PolishedShapeSet, U1Q
 from .plot import Plot
