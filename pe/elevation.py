@@ -4,6 +4,7 @@ Define the Elevation class, and its children CircleElevation and LineElevation.
 """
 from __future__ import print_function
 from collections import defaultdict
+from snappy import Manifold
 from numpy import array, dot, matrix, log, exp, pi, sqrt, zeros
 from random import randint
 from .gluing import Glunomial, GluingSystem
@@ -51,15 +52,17 @@ class Elevation(object):
         self.order = order
         self.phc_rescue = phc_rescue
         self.verbose = verbose
-        self.hp_manifold = self.manifold.high_precision()
+        self._check_dir(base_dir, 'I need a directory for storing base fibers.')
+        if not ignore_saved:
+            saved_data, ask_save = self._get_saved_data()
+        else:
+            saved_data, ask_save = {}, False
+        # The manifold may have been replaced with a saved one.
+        manifold = self.manifold
+        self.hp_manifold = manifold.high_precision()
         self.dim = manifold.num_tetrahedra()
         self.gluing_system = GluingSystem(manifold)
         self.betti2 = [c % 2 for c in manifold.homology().coefficients].count(0)
-        self._check_dir(base_dir, 'I need a directory for storing base fibers.')
-        if not ignore_saved:
-            saved_data = self._get_saved_data()
-        else:
-            saved_data = {}
         # Pre-initialize the list of fibers by just inserting an integer for
         # each fiber.  If the fiber construction fails, this can be detected by
         # isinstance(fiber, int)
@@ -69,7 +72,7 @@ class Elevation(object):
         target = self._get_fibrator_target(saved_data)
         shapes = saved_data.get('shapes', None)
         self.fibrator = Fibrator(manifold, target=target, shapes=shapes, base_dir=base_dir)
-        self.base_fiber = base_fiber = self.fibrator()
+        self.base_fiber = base_fiber = self.fibrator(ask_save=ask_save)
         if not base_fiber.is_finite():
             for n, s in enumerate(base_fiber.shapes):
                 if s.is_degenerate():
@@ -110,8 +113,8 @@ class Elevation(object):
             cwd = os.path.abspath(os.path.curdir)
             newdir = os.path.join(cwd, directory)
             print('\n'+ message)
-            response = user_input("May I create a directory %s?(Y/n)"%newdir)
-            if response and response.lower()[0] != 'y':
+            response = user_input("May I create a directory %s?(y/n)"%newdir)
+            if response and response.lower() != 'y':
                 sys.exit(0)
             print()
             os.mkdir(newdir)
@@ -487,13 +490,31 @@ class CircleElevation(Elevation):
 
     def _get_saved_data(self):
         base_fiber_file=os.path.join(self.base_dir, self.manifold.name()+'.base')
+        ask_save = False
         try:
             with open(base_fiber_file) as datafile:
                 data = eval(datafile.read())
             self._print('Loaded the base fiber from %s'%base_fiber_file)
+            M = Manifold(data['manifold'])
+            if M != self.manifold:
+                if self.verbose:
+                    self._print('The saved base fiber uses a different triangualation of %s!'%M)
+                    response = user_input('Would you like to \n'
+                                          '(a) use the saved triangulation; or\n'
+                                          '(b) recompute the base fiber\n'
+                                          '? ')
+                    while response.lower() not in ('a', 'b'):
+                        response = user_input('Please type "a" or "b": ')
+                    if response.lower() == 'a':
+                        self.manifold = M
+                    elif response == 'b':
+                        ask_save = True
+                        data = {}
+                else:
+                    data = {}    
         except IOError:
             data = {}
-        return data
+        return data, ask_save
 
     def _get_fibrator_target(self, saved_data):
         """
@@ -582,7 +603,7 @@ class LineElevation(Elevation):
         self.R_path = [(1.0 - n*dx) + self.offset*1j for n in range(order)]
 
     def _get_saved_data(self):
-        return {}
+        return {}, False
 
     def _get_fibrator_target(self, saved_data):
         self.base_index = base_index = randint(0, self.order-2)

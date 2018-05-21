@@ -1,10 +1,11 @@
 """
 Define the Fibrator class.
 
-A Fibrator object uses PHC to construct an initial fiber, which can
-then be transported around a circle.
+A Fibrator object uses PHC to construct a base fiber, which can then be
+transported around a path.
 """
 from __future__ import print_function
+from .input import user_input
 import os, time
 try:
     from cyphc import PolyRing, PHCPoly, ParametrizedSystem
@@ -29,7 +30,7 @@ class Fibrator(object):
         self.shapes = shapes
         self.tolerance = tolerance
 
-    def __call__(self):
+    def __call__(self, ask_save=False):
         """
         Return a base Fiber constructed from scratch or from precomputed shapes."""
         if self.shapes:
@@ -44,12 +45,15 @@ class Fibrator(object):
                 template="{{\n'manifold': '''{mfld}''',\n'H_meridian': {target},\n'shapes': {shapes}\n}}"
                 shape_repr = repr([list(s) for s in result.shapes])
                 shape_repr = shape_repr.replace(',', ',\n').replace('[[','[\n [')
-                with open(base_fiber_file, 'w') as datafile:
-                    datafile.write(template.format(
-                        mfld=self.manifold._to_string(),
-                        target=self.target,
-                        shapes=shape_repr))
-                print('Saved base fiber as %s'%base_fiber_file)
+                if ask_save:
+                    response = user_input('Would you like to save this base fiber? (y/n)')
+                if not ask_save or response.lower() == 'y':
+                    with open(base_fiber_file, 'w') as datafile:
+                        datafile.write(template.format(
+                            mfld=self.manifold._to_string(),
+                            target=self.target,
+                            shapes=shape_repr))
+                    print('Saved base fiber as %s'%base_fiber_file)
             return result
 
     def PHC_compute_fiber(self, target, tolerance=None):
