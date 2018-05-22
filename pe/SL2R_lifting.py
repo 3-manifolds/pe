@@ -10,7 +10,8 @@ from .fiber import Fiber
 from snappy import CensusKnots
 from snappy.snap.polished_reps import MapToFreeAbelianization
 
-from sage.all import RealField, ComplexField, ZZ, log, vector, matrix, gcd, xgcd
+from sage.all import (RealField, ComplexField, ZZ, log, exp, arg, vector,
+                      matrix, gcd, xgcd)
 from snappy.snap.nsagetools import hyperbolic_torsion
 from time import time
 
@@ -211,8 +212,8 @@ class SL2RLifter(object):
         self.translation_dict[sn] = rho.translations = point
         return point
 
-    def show(self, add_lines=False):
-        self.plot = Plot(
+    def show_in_snappy_framing(self, add_lines=False):
+        self.plot_snappy = Plot(
             self.translation_arcs,
             number_type=PEPoint,
             title=self.manifold.name(),
@@ -259,9 +260,14 @@ class SL2RLifter(object):
             plotlist.append(reframed_arc)
         return plotlist
 
-    def show_homological(self):
+    def show(self):
         plotlist = self._show_homological_data()
-        self.plot = Plot(plotlist, number_type=PEPoint, title=self.manifold.name() + ' reframed')
+        self.plot = Plot(plotlist,
+                         number_type=PEPoint,
+                         limits=((0.0, 1.0), None),
+                         margins=(0.0, 0.0),
+                         position=(0.07, 0.07, 0.8, 0.85),
+                         title='Translation Extension Locus of %s'%self.manifold.name())
         # Draw longitude
         ax = self.plot.figure.axis
         ax.plot((0, 1), (0, 0), color='green')
@@ -270,7 +276,26 @@ class SL2RLifter(object):
     def show_slopes(self):
         M = self.elevation.manifold.copy()
         plotlist = []
-        for arc in self.SL2R_arcs:
+        for n, arc in enumerate(self._show_homological_data()):
+            slopes = []
+            for p in arc:
+                if p.real != 0:
+                    z = (1 + 0.01*n)*exp(-arg(p)*1j)
+                    slopes.append(z)
+                elif len(slopes) > 1:
+                    slopes.append(None)
+            plotlist.append(slopes)
+        self.slope_plot = Plot(plotlist,
+                               limits=((-1.25,1.25),(-1.25,1.25)),
+                               margins=(0, 0),
+                               aspect="equal",
+                               position=(0.07, 0.07, 0.8, 0.85),
+                               title='Realized slopes of %s'%self.manifold.name())
+
+    def show_slopes_flat(self):
+        M = self.elevation.manifold.copy()
+        plotlist = []
+        for n, arc in enumerate(self.SL2R_arcs):
             slopes = []
             for _, S in arc:
                 M.set_tetrahedra_shapes(S, S, [(0, 0)])
@@ -280,7 +305,7 @@ class SL2RLifter(object):
                 elif len(slopes) > 1:
                     slopes.append(None)
             plotlist.append(slopes)
-        self.slope_plot = Plot(plotlist, type=PEPoint)
+        self.flat_slope_plot = Plot(plotlist)
 
     def draw_line(self, curve_on_torus, **kwargs):
         ax = self.plot.figure.axis

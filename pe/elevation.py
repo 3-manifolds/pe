@@ -56,7 +56,7 @@ class Elevation(object):
         if not ignore_saved:
             saved_data, ask_save = self._get_saved_data()
         else:
-            saved_data, ask_save = {}, False
+            saved_data, ask_save = {}, True
         # The manifold may have been replaced with a saved one.
         manifold = self.manifold
         self.hp_manifold = manifold.high_precision()
@@ -496,9 +496,9 @@ class CircleElevation(Elevation):
                 data = eval(datafile.read())
             self._print('Loaded the base fiber from %s'%base_fiber_file)
             M = Manifold(data['manifold'])
-            if M != self.manifold:
+            if not M == self.manifold:
                 if self.verbose:
-                    self._print('The saved base fiber uses a different triangualation of %s!'%M)
+                    self._print('The saved base fiber uses a different triangulation of %s!'%M)
                     response = user_input('Would you like to \n'
                                           '(a) use the saved triangulation; or\n'
                                           '(b) recompute the base fiber\n'

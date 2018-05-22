@@ -6,6 +6,7 @@ transported around a path.
 """
 from __future__ import print_function
 from .input import user_input
+from random import random
 import os, time
 try:
     from cyphc import PolyRing, PHCPoly, ParametrizedSystem
@@ -18,9 +19,11 @@ class Fibrator(object):
     A factory for Fibers, used to construct an initial Fiber.  Either loads
     a pre-computed Fiber from a file, or uses PHC to construct one.
     """
-    def __init__(self, manifold, target=None, shapes=None, tolerance=1.0E-6, base_dir=None):
+    def __init__(self, manifold, target=None, shapes=None, tolerance=1.0E-6,
+                 perturb=None, base_dir=None):
         # The tolerance is used to decode when PHC solutions are regarded
         # as being at infinity.
+        self.perturb = perturb
         self.base_dir = base_dir
         if target is None and shapes is None:
             raise ValueError('Supply either a target or a list of shapes.')
@@ -71,7 +74,7 @@ class Fibrator(object):
         return Fiber(self.manifold, target, PHCsystem=base_system)
 
     @staticmethod
-    def rect_to_PHC(eqn, rhs=None):
+    def rect_to_PHC(eqn, rhs=None, perturb=None):
         """Convert a system of gluing equations to PHC's format."""
         A, B, c = eqn
         left = []
@@ -96,6 +99,13 @@ class Fibrator(object):
         if len(right) == 0:
             right = ['1']
         op = ' - ' if c == 1 else ' + '
+        if perturb:
+            if left:
+                z = 1.0 + perturb*random()*1j
+                left.insert(0, str(z/abs(z)).replace('j', '*i'))
+            if right:
+                z = 1.0 + perturb*random()*1j
+                right.insert(0, str(z/abs(z)).replace('j', '*i'))
         return '*'.join(left) + op + '*'.join(right)
 
     def build_equations(self):
@@ -107,7 +117,7 @@ class Fibrator(object):
         result = []
         for eqn in eqns[:-3]:
             result.append(self.rect_to_PHC(eqn))
-        result.append(self.rect_to_PHC(meridian, rhs='t'))
+        result.append(self.rect_to_PHC(meridian, rhs='t', perturb=self.perturb))
         return result
 
     def write_phc_file(self, filename):

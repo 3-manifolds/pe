@@ -114,8 +114,9 @@ class PlotBase(object):
         """Configure the plot based on keyword arguments."""
         figure = self.figure
         axis = figure.axis
-        limits = self.args.get('limits', None)
-        xlim, ylim = limits if limits else (axis.get_xlim(), axis.get_ylim())
+        xlim, ylim = self.args.get('limits', (None, None))
+        xlim = axis.get_xlim() if xlim is None else xlim
+        ylim = axis.get_ylim() if ylim is None else ylim
         margin_x, margin_y = self.args.get('margins', (0.1, 0.1))
         sx = (xlim[1] - xlim[0])*margin_x
         xlim = (xlim[0] - sx, xlim[1] + sx)
@@ -144,20 +145,6 @@ class PlotBase(object):
 
     def create_plot(self, dummy_arg=None):
         axis = self.figure.axis
-
-        # Configure the plot based on keyword arguments
-        margin_x, margin_y = self.args.get('margins', (0.1, 0.1))
-        limits = self.args.get('limits', None)
-        xlim, ylim = limits if limits else (axis.get_xlim(), axis.get_ylim())
-        sx = (xlim[1] - xlim[0])*margin_x
-        sy = (ylim[1] - ylim[0])*margin_y
-        xlim = (xlim[0] - sx, xlim[1] + sx)
-        ylim = (ylim[0] - sy, ylim[1] + sy)
-        axis.set_xlim(*xlim)
-        axis.set_ylim(*ylim)
-
-        axis.set_aspect(self.args.get('aspect', 'auto'))
-
         extra_lines = self.args.get('extra_lines', None)
         if extra_lines:
             extra_line_args = self.args.get('extra_line_args', {})
