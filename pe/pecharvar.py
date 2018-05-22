@@ -243,8 +243,8 @@ class PECharVariety(object):
         wrappers = [n for n, a in enumerate(self.arcs) if (
             a[0].index[0] == 0 and
             a[-1].index[0] == self.order - 1 and
-            0.001 < a[0].real < 0.999 and
-            0.001 < a[-1].real < 0.9999)]
+            (0.001 < a[0].real < 0.499 or 0.501 < a[0].real < 0.999) and
+            (0.001 < a[-1].real < 0.499 or 0.501 < a[-1].real < 0.999))]
         if wrappers:
             def f(n):
                 a = self.arcs[n]
@@ -253,19 +253,19 @@ class PECharVariety(object):
                     # This is approximate because are 1 step from the start
                     A = array([abs(1.0 - b[-1].real - a[-1].real) for b in self.arcs])
                     result = int(A.argmin())
-                    print(A[result])
                 else:
                     # Glue back to front at the top.
                     # This is essentially exact.
                     A = array([abs(1.0 - b[0].real - a[0].real) for b in self.arcs])
                     result = int(A.argmin())
-                    print(A[result])
                 return result
             for n in wrappers:
                 self.curve_graph.add_edge(n, f(n))
 
     def show(self, show_group=False):
-        """Plot the pillowcase image of this PE Character Variety."""
+        """
+        Plot the pillowcase image of this PE Character Variety.
+        """
         self.build_arcs(show_group)
         Plot(self.arcs,
              number_type=PEPoint,
