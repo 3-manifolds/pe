@@ -262,6 +262,61 @@ class PECharVariety(object):
             for n in wrappers:
                 self.curve_graph.add_edge(n, f(n))
 
+    def lift_component(self, component):
+        """
+        Given a component of the curve graph, build a lift of the associated curve
+        to the universal cover of the pillowcase (R^2).V.curve_graph.components()[0]
+        """
+        G = self.curve_graph
+        arc_set = set(G.components()[component])
+        # Sort the arcs in this component so each arc is joined to its successor.
+        # The component is either a segment or a cycle.  If it is a segment, we
+        # want to start at an endpoint.
+        for a in arc_set:
+            if len(G(a)) == 1:
+                break
+        if a:
+            arc_set.remove(a)
+        else:
+            a = arc_set.pop()
+        sorted_arcs = [a]
+        while arc_set:
+            star = G(a)
+            for e in star:
+                a1 = e(a)
+                if a1 in arc_set:
+                    arc_set.remove(a1)
+                    sorted_arcs.append(a1)
+                    a = a1
+                    break
+        arcs = [self.arcs[n] for n in sorted_arcs]
+        # hack to allow for one missing point.
+        if arcs[0].arctype == arcs[-1].arctype == 'arc':
+            arcs = arcs[1:] + [arcs[0]]
+        lifted_arcs = [self.lift_arc(arc) for arc in arcs]
+        for n in range(len(lifted_arcs)):
+            if lifted_arcs[n-1].arctype == 'cup':
+                lifted_arcs[n].reverse()
+        lift = lifted_arcs.pop(0)
+        for arc in lifted_arcs:
+            winding = round(lift[-1].real - arc[0].real)
+            for p in arc:
+                lift.append(winding + p)
+        return lift
+
+    def lift_arc(self, arc):
+        lift = PEArc(arctype=arc.arctype) 
+        winding = 0.0
+        for p in arc:
+            if p.leave_gap:
+                if p.real == 1.0:
+                    winding += 1.0
+                else:
+                    winding -= 1.0
+            else:
+                lift.append(p + winding)
+        return lift
+
     def show(self, show_group=False):
         """
         Plot the pillowcase image of this PE Character Variety.

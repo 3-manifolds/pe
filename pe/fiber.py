@@ -21,13 +21,14 @@ class Fiber(object):
     """
 
     def __init__(self, manifold, H_meridian, PHCsystem=None, shapes=None,
-                 tolerance=1.0E-06):
+                 tolerance=1.0E-06, isclean=True):
         # The tolerance is used to determine which of the PHC solutions
         # are at infinity.
         self.manifold = manifold
         self.H_meridian = H_meridian
         self.tolerance = tolerance
         self.system = PHCsystem
+        self.isclean = isclean
         if shapes:
             self.shapes = [ShapeSet(manifold, S) for S in shapes]
         elif self.system:

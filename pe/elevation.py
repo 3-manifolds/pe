@@ -173,7 +173,8 @@ class Elevation(object):
             if failures:
                 #print('At point %d: '%m + msg)
                 failed_points.add(m)
-        result = Fiber(self.manifold, target, shapes=shapes)
+        result = Fiber(self.manifold, target, shapes=shapes,
+                       isclean=(len(failed_points) == 0))
         if result.collision() and not allow_collision:
             print("Perturbing the path.")
             result, more_failures = self.retransport(fiber, target, debug=debug,
@@ -292,9 +293,11 @@ class Elevation(object):
             [L_nomial(f.shapes[m].array) if isinstance(f, Fiber) else None
              for f in fiber_list]
             for m in range(self.degree)]
-        # Find the first fiber which has actually been computed.
-        index = 0
-        while not isinstance(fiber_list[index], Fiber):
+        # Find the first fiber which has been successfully computed.
+        for index in range(len(fiber_list)):
+            fiber = fiber_list[index]
+            if isinstance(fiber, Fiber) and fiber.isclean:
+                break
             index += 1
         self._print('Using index %d to determine signs.'%index)
         longitude_traces = self.find_longitude_traces(fiber_list[index])
@@ -579,7 +582,8 @@ class CircleElevation(Elevation):
                 shapes.append(Zn)
                 if msg:
                     failed_points.add(m)
-            result = Fiber(self.manifold, target, shapes=shapes)
+            result = Fiber(self.manifold, target, shapes=shapes,
+                           isclean=(len(failed_points) == 0))
             if result.collision():
                 raise ValueError('The collision recurred.  Perturbation failed.')
         return result, failed_points
