@@ -4,10 +4,11 @@
 % \usepackage{kpfonts}
 \usepackage{unicode-math}
 \setmainfont{Lato Regular}
+%\setmathfont{palooza-math.otf}
 \setmathfont{texgyreschola-math.otf}
 %\setmathfont{texgyreschola-math.otf}[range=sfit->it]
-%\setmathfont[range=it]{Lato Italic}
-\setmathfont{Lato Italic}[range=it]
+\setmathfont[range=it]{Lato Italic}
+%\setmathfont{Lato Italic}[range=it]
 %\setmathfont{latinmodern-math.otf}
 \usepackage{url}
 
@@ -37,6 +38,7 @@
 \newcommand{\FFT}{\text{FFT}}
 \newcommand{\IFFT}{\text{IFFT}}
 \renewcommand{\th}{\text{th}}
+\newcommand{\eval}{\mathcal{E}}
 
 \begin{document}
 \title{The FFT with multiprecision arithmetic}
@@ -85,9 +87,16 @@ $z^N - 1$ splits over $F$, i.e. assume that $F$ contains all of the $N^\th$
 roots of $1$.  (Our assumption that $F$ is a subfield of $\CC$ fits our intended
 application and simplifies this discussion, but could easily be relaxed.)
 
-We will consider the quotient $L_N$ of the ring of polynomials in $z$ over $F$
+It is natural to consider the evaluation map $\eval$ from the polynomial ring
+$F[z]$ to the $N$-dimensional vector space $A_N=F^N$ given by evaluating a
+polynomial at the $N^{th}$ roots of unity.  To be concrete, we fix a primitive
+$N^{th}$ root of unity, $\xi$, and write
+\[ \eval(f(z)) = [f(1), f(\xi), f(\xi^2), \ldots, f(\xi^N)] . \]
+
+Since the polynomial $z^N - 1$ vanishes on all $N^{th}$ roots of $1$, the map
+$\eval$ factors through the quotient $L_N$ of the ring of polynomials in $z$ over $F$
 by its principal ideal with generator $z^N - 1$:
-$$L_N = F[z]/(z^N-1).$$
+$$L_N = F[z]/(z^N - 1).$$
 
 We shall use the symbol $\star$ to denote the multiplication operator in $L_N$
 as a reminder that polynomial multiplication can also be viewed as convolution.
@@ -101,39 +110,25 @@ operation $\star$ is carried out by performing ordinary polynomial
 multiplication and then reducing as much as possible using the relation
 $z^N = 1$.
 
-We will also consider the ring $$A_N = F^N$$ in which we shall denote the
-coordinate-wise multiplication operator by $\circ$.  Clearly
+We will also endow $A_N$ with the structure of a ring under the coordinate-wise
+multiplication operation, which we denote by $\circ$.  Clearly
 $\langle A_N, \circ\rangle$ also forms an $N$-dimensional algebra over $F$.
 
-\begin{lemma}\label{lemma:evaluation}
-For each root $\omega$ of $z^N - 1$ there is a unique algebra
-homomorphism
-$$\phi_\omega:L_N \to F$$
-such that $\phi_\omega(z) = \omega$.
-\end{lemma}
-\proof Since $L_N$ is generated as an algebra by $z$, uniqueness
-follows once it is shown that $\phi_\omega$ is an algebra
-homomorphism.  With the caveat that evaluation of a ``polynomial''
-$f\in L_N$ is only well-defined when the value of the variable is an
-$N^\th$ root of 1, we have $\phi_\omega(f) = f(\omega)$.  It is a
-tautology that an evaluation map is a homomorphism whenever it is
-well-defined.
-\endproof
-
 \begin{definition}\label{definition:fft}
-We define $\FFT_N:L_N \to A_N$ to be the function
-$$\FFT_N = \phi_1 \times \phi_\xi \times \phi_{\xi^2} \times \cdots
-\times \phi_{\xi^{N-1}}$$
-where $\xi$ is a primitive $N^\th$ root of 1.  It follows from
-Lemma \ref{lemma:evaluation} that $\FFT_N$ is an algebra homomorphism.
+Given $\xi$, a fixed primitive $N^{th}$ root of $1$, we define
+$\FFT_N:L_N \to A_N$ to be the function
+\[ \FFT_N([f(z)]) = \eval(f(z)), \]
+where $[f(z)]$ denotes the coset of the ideal $(z^N - 1)$ that contains
+a given polynomial $f(z)$.  By the discussion above, $\FFT_N$ is a well-defined
+algebra homomorphism.  In fact, since every coset in $L_N$ is represented
+by a unique polynomial of degree less than $N$, and since every such polynomial
+is uniquely determined by its values on the $N^{th}$ roots of $1$, we have
+that $\FFT_N$ is an isomorphism of algebras.
 \end{definition}
 
-If $f\in L_N$ is represented by a polynomial $f(z)$ of
-degree less than $N$, and if we write elements of $A_N$ as row vectors
-using the usual basis, then
-$$\FFT_N(f) = [ f(1), f(\xi), \ldots, f(\xi^{N-1}) ].$$
-That is, $FFT_n(f)$ is the vector obtained by evaluating the polynomial $f(z)$
-at the $N^\th$ roots of 1.
+From this point on we will abuse notation in the standard way by conflating a
+coset $C\in L_N$ with the unique polynomial $f(z)$ of degree less than $N$ that
+is contained in $C$.
 
 Next we will derive a matrix which represents the linear
 transformation $\FFT_N$.  People familiar with Vandermonde matrices
@@ -254,21 +249,22 @@ has degree less than $N/k$.
 We now have everything we need to use the ``divide and conquer''
 strategy to describe an efficient recursive algorithm for computing
 $\FFT_N(f)$, when $N$ is a product of powers of small primes.  For
-simplicity, we will give the description for $N = 2^k$. We will
-identify elements of $L_N$ with their polynomial representatives.
-Then the algorithm is:
+simplicity, we will give the description for $N = 2^k$.
+The algorithm is:
 
 \begin{enumerate}
 \item write $f(z) = f_0(z^2)+ zf_1(z^2)$ where $f_i(z)$ has degree less than $N/2$.
-\item write $\FFT_N(f_i(z^2)) = [\FFT_{N/2}(f_i(z)) | \FFT_{N/2}(f_i(z))]$.
+
+\item write $\FFT_N(f_i(z^2)) = [\FFT_{N/2}(f_i(z)) \;|\; \FFT_{N/2}(f_i(z))]$.
+
 \item $\FFT_N(f) = \FFT_{N}(f_0(z^2)) + \FFT_{N}(z)\circ\FFT_{N}(f_1(z^2))$.
 \end{enumerate}
 
-The vector $\FFT_N(z)$, which is the second row of the matrix $[\FFT_N]$ can
-be precomputed and $\FFT_{2^j}(z)$, for $j < k$ is obtained as a subsequence
+The vector $\FFT_N(z)$, which is the second row of the matrix $[\FFT_N]$ can be
+precomputed, and $\FFT_{2^j}(z)$, for $j < k$, can be obtained as a subsequence
 of $\FFT_N(z)$ with stride $2^{k-j}$.  Thus the $k^\th$ stage of the recursion
-essentially involves two evaluations of $\FFT_{2^{k-1}}$ and one $k$-dimensional
-dot product, meaning that the running time is not much worse than $O(log N)$.
+essentially involves two evaluations of $\FFT_{2^{k-1}}$ and one $N$-dimensional
+dot product, meaning that the running time is not much worse than $O(Nlog N)$.
 
 For more details about the algorithm see the actual python code in {\tt
   mpfft.py}, which is as easy to read as pseudocode would be.

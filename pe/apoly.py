@@ -87,6 +87,17 @@ class ComputedApoly(object):
         polynomial_string = ('+'.join(self.monomials())).replace('+-','-')
         return polynomial_string.replace('^', exp)
 
+    def as_dict(self):
+        rows, cols = self.coefficients.shape
+        result = {}
+        for j in range(cols):
+            for i in range(rows):
+                m,n = 2*i, j
+                coeff = int(self.coefficients[i][j])
+                if coeff:
+                    result[(m,n)] = coeff
+        return result
+
     def sage(self):
         return sage_poly_ring(self.as_dict())
 
