@@ -142,13 +142,7 @@ class PECharVariety(object):
             if arc:
                 arc.add_info(elevation)
                 self.arcs.append(arc)
-        self.curve_graph = curve_graph = Graph([], list(range(len(self.arcs))))
         self.add_extrema()
-        # build the color dict
-        self.colors = OrderedDict()
-        for n, component in enumerate(curve_graph.components()):
-            for m in component:
-                self.colors[m] = n
         # Clean up endpoints at the corners of the pillowcase.
         for arc in self.arcs:
             try:
@@ -182,6 +176,7 @@ class PECharVariety(object):
         attempts to compute which arcs should be joined at maxima or
         minima, and adds the "cups" and "caps" to the pillowcase picture.
         """
+        self.curve_graph = curve_graph = Graph([], list(range(len(self.arcs))))
         # Caps
         arcs = [a for a in self.arcs if a.arctype == 'arc']
         arcs.sort(key=lambda x: x[0].imag, reverse=True)
@@ -208,8 +203,8 @@ class PECharVariety(object):
                         cap_arc.append(right[0])
                     n = len(self.arcs)
                     self.arcs.append(cap_arc)
-                    self.curve_graph.add_edge(self.arcs.index(left), n)
-                    self.curve_graph.add_edge(n, self.arcs.index(right))
+                    curve_graph.add_edge(self.arcs.index(left), n)
+                    curve_graph.add_edge(n, self.arcs.index(right))
         # Cups
         arcs = [a for a in self.arcs if a.arctype == 'arc']
         arcs.sort(key=lambda x: x[-1].imag)
@@ -236,8 +231,8 @@ class PECharVariety(object):
                         cup_arc.append(right[-1])
                     n = len(self.arcs)
                     self.arcs.append(cup_arc)
-                    self.curve_graph.add_edge(self.arcs.index(left), n)
-                    self.curve_graph.add_edge(n, self.arcs.index(right))
+                    curve_graph.add_edge(self.arcs.index(left), n)
+                    curve_graph.add_edge(n, self.arcs.index(right))
         # For manifolds which are not S^3 knot complements, closed curves in the
         # PE character variety can wrap vertically around the pillowcase.
         wrappers = [n for n, a in enumerate(self.arcs) if (
@@ -260,7 +255,12 @@ class PECharVariety(object):
                     result = int(A.argmin())
                 return result
             for n in wrappers:
-                self.curve_graph.add_edge(n, f(n))
+                curve_graph.add_edge(n, f(n))
+        # build the color dict
+        self.colors = OrderedDict()
+        for n, component in enumerate(curve_graph.components()):
+            for m in component:
+                self.colors[m] = n
 
     def lift_component(self, component):
         """

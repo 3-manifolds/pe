@@ -53,6 +53,7 @@ class PlotBase(object):
                     for d in data]
         self.data = data
         self.color_dict = kwargs.get('colors', {})
+        self.button_dict = kwargs.get('buttons', {})
         if self.color_dict:
             self.num_colors = len(set(self.color_dict.values()))
         else:
@@ -186,8 +187,9 @@ class TkPlot(PlotBase):
                             padx=3, pady=0, command=self.clearall)
         uncheck.grid(column=0, row=0, sticky=(Tk.N, Tk.W))
         for i, var in enumerate(self.arc_vars):
+            label = self.button_dict.get(i, '%d'%i)
             button = ttk.Checkbutton(func_selector_frame,
-                                     text='%d'% i, variable=var)
+                                     text=label, variable=var)
             button.grid(column=0, row=i+1, sticky=(Tk.N, Tk.W))
         func_selector_frame.grid(column=1, row=0, sticky=(Tk.N))
         window.columnconfigure(1, weight=0)

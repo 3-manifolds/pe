@@ -228,7 +228,7 @@ class Elevation(object):
             else:
                 raise e
         if not F.is_finite():
-            self._print('Degenerate shape! ')
+            self._print('Degenerate shape! (%d)'%n)
 
     def tighten(self, path=None):
         """
