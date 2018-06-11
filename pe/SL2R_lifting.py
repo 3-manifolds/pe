@@ -29,7 +29,8 @@ def in_SL2R(H, f, s):
 def l1_dist(a, b):
     return max(abs(a[0] - b[0]), abs(a[1] - b[1]))
 
-class SL2RLifter(object):
+class EllipticSL2RLifter(object):
+    
     def __init__(self, V, silent=False):
         self.elevation = H = V.elevation
         self.degree = H.degree
@@ -165,17 +166,30 @@ class SL2RLifter(object):
                     print('No lift!')
                     continue
                 try:
-                    m, l = rho_til.peripheral_translations()
-                    P = (float(m), float(l))
-                    while P[0] < 0:
-                        P = (P[0] + self.m_abelian, P[1] + self.l_abelian)
-                    while P[0] >= self.m_abelian:
-                        P = (P[0] - self.m_abelian, P[1] - self.l_abelian)
+                    P = self.normalized_translations(rho_til)
                 except AssertionError:
                     print("Warning: an assertion failed somewhere")
                 translations.append(self._saved_point(P, sn, rho))
             #self._fix_translations(translations)
             self.translation_arcs.append(translations)
+
+    def normalized_translations(self, rho_til):
+        """
+        Normalize the translations of a lifted rep so that the meridian
+        translation lies in the interval [0, 1).
+        """
+        m, l = rho_til.peripheral_translations()
+        P = (float(m), float(l))
+        while P[0] < 0:
+            P = (P[0] + self.m_abelian, P[1] + self.l_abelian)
+        while P[0] >= self.m_abelian:
+            P = (P[0] - self.m_abelian, P[1] - self.l_abelian)
+        return P
+
+    def _saved_point(self, P, sn, rho):
+        point = PEPoint(complex(*P), index=sn)
+        self.translation_dict[sn] = rho.translations = point
+        return point
 
     def _fix_translations(self, translations):
         """
@@ -206,11 +220,6 @@ class SL2RLifter(object):
             neighbor = p
         for n, fixed in fix_list:
             translations[n] = fixed
-
-    def _saved_point(self, P, sn, rho):
-        point = PEPoint(complex(*P), index=sn)
-        self.translation_dict[sn] = rho.translations = point
-        return point
 
     def show_in_snappy_framing(self, add_lines=False):
         self.plot_snappy = Plot(
@@ -330,7 +339,19 @@ class SL2RLifter(object):
         l_space_edges = [vector(ZZ, (X, -1)), vector(ZZ, (X, 1))]
         return [Ainv*v for v in l_space_edges]
 
-class SL2RLifterHomological(SL2RLifter):
+class HyperbolicSL2RLifter(EllipticSL2RLifter):
+
+    def normalized_translations(self, rho_til):
+        """
+        Normalize the translations of a lifted hyperbolic SL2R rep so that the
+        meridian translation is 0.
+        """
+        m, l = rho_til.peripheral_translations()
+        P = (0.0, round(l) - round(m))
+        return P
+
+### FIX ME
+class SL2RLifterHomological(EllipticSL2RLifter):
     def __init__(self, V):
         SL2RLifter.__init__(self, V)
 

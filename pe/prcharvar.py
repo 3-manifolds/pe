@@ -13,6 +13,8 @@ as in the circle case? ]]
 from __future__ import print_function
 from numpy import log
 from snappy import Manifold, ManifoldHP
+from spherogram import Graph
+from collections import OrderedDict
 from .elevation import LineElevation
 from .point import PEPoint
 from .plot import Plot
@@ -67,7 +69,7 @@ class PRCharVariety(object):
                     # Skip over this point since we weren't able to tighten it.
                     continue
                 # Is the longitude eigenvalue non-zero and real?
-                if  abs(ev) > 1.0E-1000 and abs(ev.imag) < 1.0E-6:
+                if  ev and abs(ev) > 1.0E-1000 and abs(ev.imag) < 1.0E-6:
                     if show_group:
                         shape = elevation.T_fibers[n].shapes[m]
                         if shape.has_real_traces():
@@ -83,11 +85,20 @@ class PRCharVariety(object):
                         self.arcs.append(arc)
                     # start a new arc
                     arc = []
-            # If the last point on the track is a real reps, we end up here with
+            # If the last point on the track is a real rep, we end up here with
             # a non-empty arc.
             if len(arc) > 1:
                 self.arcs.append(arc)
+        self.add_extrema()
 
+    def add_extrema(self):
+        self.curve_graph = curve_graph = Graph([], list(range(len(self.arcs))))
+        # build the color dict
+        self.colors = OrderedDict()
+        for n, component in enumerate(curve_graph.components()):
+            for m in component:
+                self.colors[m] = n
+    
     def show(self, show_group=False):
         """Plot this PR Character Variety."""
         self.build_arcs(show_group)

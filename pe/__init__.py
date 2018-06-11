@@ -11,5 +11,4 @@ from .apoly import Apoly, ComputedApoly
 from pe.sage_helper import _within_sage
 from snappy import Manifold, ManifoldHP
 if _within_sage:
-    from .SL2R_lifting import SL2RLifter
-    TranslationExtensionLocus = SL2RLifter
+    from .SL2R_lifting import EllipticSL2RLifter, HyperbolicSL2RLifter
