@@ -102,7 +102,7 @@ class PRCharVariety(object):
     def show(self, show_group=False):
         """Plot this PR Character Variety."""
         self.build_arcs(show_group)
-        Plot(self.arcs,
+        self.plot = Plot(self.arcs,
              number_type=PEPoint,
              margins=(0, 0),
              position=(0.07, 0.07, 0.8, 0.8),

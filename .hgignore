@@ -4,6 +4,8 @@ dist
 *.egg-info
 .DS_Store
 PE_base_fibers
+PR_base_fibers
+.ipynb_checkpoints
 apolys
 apoly_dicts
 hints

@@ -54,6 +54,13 @@ elif backend == 'nbAgg':
     from matplotlib.backends.backend_nbagg import (FigureCanvasNbAgg,
                                                    NavigationToolbar2WebAgg,
                                                    FigureManagerNbAgg)
+elif backend == 'module://ipympl.backend_nbagg':
+    print("Using ipympl's nbAgg as the matplotlib backend.")
+    import ipympl.backend_nbagg as nbagg
+    from ipympl.backend_nbagg import (FigureCanvasNbAgg,
+                                      NavigationToolbar2WebAgg,
+                                      FigureManagerNbAgg)
+
 from matplotlib.figure import Figure
 
 class FigureBase(object):

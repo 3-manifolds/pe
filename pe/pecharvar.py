@@ -322,7 +322,7 @@ class PECharVariety(object):
         Plot the pillowcase image of this PE Character Variety.
         """
         self.build_arcs(show_group)
-        Plot(self.arcs,
+        self.plot = Plot(self.arcs,
              number_type=PEPoint,
              limits=((0.0, 1.0), (0.0, 0.5)),
              margins=(0, 0),
