@@ -5,9 +5,13 @@ backend = matplotlib.get_backend()
 if  backend == 'TkAgg':
     matplotlib.use('tkagg')
     from .figure import MatplotFigure, Tk, ttk
+elif backend.endswith('module://ipympl.backend_nbagg'):
+    from .figure import MatplotFigure
+    from matplotlib.widgets import CheckButtons
 else:
     matplotlib.use('nbagg')
     from .figure import MatplotFigure
+    from matplotlib.widgets import CheckButtons
 
 from .point import PEPoint
 from .input import user_input
@@ -138,7 +142,7 @@ class PlotBase(object):
         for n, group in enumerate(self.arc_views):
             handles.append(group[0])
             labels.append('%d'%n)
-        axis.legend(handles, labels, loc='upper left', bbox_to_anchor=(1.0, 1.0))
+        self.legend = axis.legend(handles, labels, loc='upper left', bbox_to_anchor=(1.0, 1.0))
 
     def color(self, i):
         n = self.color_dict.get(i, i)
@@ -228,7 +232,43 @@ class NbPlot(PlotBase):
         title = self.args.get('title', None)
         if title:
             self.figure.set_title(title)
-    pass
+        self.init_clickable_legend()
+        ax = self.figure
+
+    def init_clickable_legend(self):
+        """
+        Setup legend to turn off and on arcs.
+        """
+        self.legend_to_arc_view = leg_to_view = dict()
+        for leg_line, arc_view in zip(self.legend.get_lines(), self.arc_views):
+            leg_to_view[leg_line] = arc_view
+            leg_line.set_picker(5)
+        self.picklog = []
+
+    def on_legend_click(self, artist):
+        views = self.legend_to_arc_view[artist]
+        new_vis = not views[0].get_visible()
+        for view in views:
+            view.set_visible(new_vis)
+        if new_vis:
+            artist.set_alpha(1.0)
+        else:
+            artist.set_alpha(0.2)
+        self.figure.draw()
+
+    def on_pick(self, event):
+        artist = event.artist
+        if artist in self.legend_to_arc_view:
+            self.on_legend_click(artist)
+        else:
+            num_points = len(event.ind)
+            median = event.ind[num_points // 2]
+            index = self.scatter_point_to_raw_data[artist][median].index
+            message = 'Point index ' + repr(index)
+            if num_points > 1:
+                message += ' (%d others nearby)' % (num_points - 1)
+            self.figure.toolbar.set_message(message)
+
 
 if  backend == 'TkAgg':
     Plot = TkPlot
