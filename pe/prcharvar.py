@@ -92,6 +92,23 @@ class PRCharVariety(object):
         self.add_extrema()
 
     def add_extrema(self):
+        """
+        Tries to improve the picture by adding caps/cups as appropriate.
+        The code is pretty basic, and should be improved.
+        """
+        progress = True
+        while progress:
+            progress = False
+            for i, arc in enumerate(self.arcs):
+                for other in self.arcs[i+1:]:
+                    if arc[0].imag == other[0].imag and abs(arc[0].real - other[0].real) < 0.5:
+                        self.arcs.remove(other)
+                        self.arcs[i] = list(reversed(arc)) + other
+                        progress = True
+                        break
+                if progress:
+                    break
+
         self.curve_graph = curve_graph = Graph([], list(range(len(self.arcs))))
         # build the color dict
         self.colors = OrderedDict()
