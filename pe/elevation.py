@@ -199,10 +199,16 @@ class Elevation(object):
                 self._print(' %-5s\r'%n, end='')
                 sys.stdout.flush()
                 self.R_lift_step(n, 1)
+                if not self.R_fibers[n].is_finite():
+                    self._print('Stopping elevation early! (%s)' % n)
+                    break
             for n in range(base-1, -1, -1):
                 self._print(' %-5s\r'%n, end='')
                 sys.stdout.flush()
                 self.R_lift_step(n, -1)
+                if not self.R_fibers[n].is_finite():
+                    self._print('Stopping elevation early! (%s)' % n)
+                    break
             self._print('Tracked in %.2f seconds.'%(time.time() - start))
             self.R_longitude_holos, self.R_longitude_evs, self.R_choices = self.longidata(
                 self.R_fibers)
@@ -240,6 +246,9 @@ class Elevation(object):
         self._tighten_msg()
         self.tighten_failures = defaultdict(set)
         for n in range(self.order):
+            if isinstance(self.R_fibers[n], int):
+                # R fiber computation failed, so can't tighten.
+                continue
             self._print(' %-5s\r'%n, end='')
             sys.stdout.flush()
             failed_points = set()

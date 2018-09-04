@@ -101,11 +101,14 @@ class PRCharVariety(object):
             progress = False
             for i, arc in enumerate(self.arcs):
                 for other in self.arcs[i+1:]:
-                    if arc[0].imag == other[0].imag and abs(arc[0].real - other[0].real) < 0.5:
-                        self.arcs.remove(other)
-                        self.arcs[i] = list(reversed(arc)) + other
-                        progress = True
-                        break
+                    # The last condition in the below test is to avoid
+                    # joining asymptotes towards the same ideal point.
+                    if arc[0].imag == other[0].imag and arc[0].imag > -1.5:
+                        if abs(arc[0].real - other[0].real) < 0.5:
+                            self.arcs.remove(other)
+                            self.arcs[i] = list(reversed(arc)) + other
+                            progress = True
+                            break
                 if progress:
                     break
 
