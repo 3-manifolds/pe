@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Defines the main class RLCharVariety.
+Defines the main class PRCharVariety.
 
 An PRCharVariety object represents a Peripherally Real Character Variety,
 generically consisting of representations which send peripheral elements to real
@@ -12,6 +12,7 @@ as in the circle case? ]]
 """
 from __future__ import print_function
 from numpy import log
+import numpy as np
 from snappy import Manifold, ManifoldHP
 from spherogram import Graph
 from collections import OrderedDict
@@ -19,6 +20,24 @@ from .elevation import LineElevation
 from .point import PEPoint
 from .plot import Plot
 import sys, os
+
+def quad_fit(x, y):
+    """
+    Given 1-dim arrays x and y describing 6 points in the plane, find a
+    quadratic almost passing through the middle two points and which
+    least-squares approximates the others.
+    """
+    x, y = np.asarray(x), np.asarray(y)
+    assert len(x) == len(y) == 6
+    A = np.asarray([np.ones(6), x, x*x]).transpose()
+    B, z = A.copy(), y.copy()
+    # Modify the equations a bit so that we will pass very close to the middle points
+    B[2:4] *= 10
+    z[2:4] *= 10
+    poly = np.linalg.lstsq(B, z)[0]
+    #Ccompute actual error
+    error = np.linalg.norm(np.dot(A, poly) - y)
+    return poly, error
 
 class PRCharVariety(object):
     """
@@ -93,8 +112,14 @@ class PRCharVariety(object):
 
     def add_extrema(self):
         """
-        Tries to improve the picture by adding caps/cups as appropriate.
-        The code is pretty basic, and should be improved.
+        Tries to improve the picture by adding caps/cups as
+        appropriate.  The code is pretty basic since so far we have
+        only seen components that look like hyperbolas where we have
+        only to add a single cap joining two existing arcs.
+
+        To avoid a flat plateau at the top of each hill, we compute
+        the parabolic approximations of the ends of the two arcs we
+        wish to join and use those to fill in the gap.
         """
         progress = True
         while progress:
@@ -104,10 +129,18 @@ class PRCharVariety(object):
                     # The last condition in the below test is to avoid
                     # joining asymptotes towards the same ideal point.
                     if arc[0].imag == other[0].imag and arc[0].imag > -1.5:
-                        if abs(arc[0].real - other[0].real) < 0.5:
-                            self.arcs.remove(other)
-                            self.arcs[i] = list(reversed(arc)) + other
-                            progress = True
+                        if abs(arc[0].real - other[0].real) < 1.5:
+                            points = [arc[1], arc[2], arc[0], other[0], other[1], other[2]]
+                            xs = [p.real for p in points]
+                            ys = [p.imag for p in points]
+                            poly, error = quad_fit(xs, ys)
+                            if error < 1e-2:
+                                xfill = np.linspace(xs[2], xs[3], 6)[1:-1]
+                                yfill = poly[0] + poly[1]*xfill + poly[2]*xfill*xfill
+                                new_seg = [PEPoint(x, y, marker='h') for x, y in zip(xfill, yfill)]
+                                self.arcs.remove(other)
+                                self.arcs[i] = list(reversed(arc)) + new_seg + other
+                                progress = True
                             break
                 if progress:
                     break
