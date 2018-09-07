@@ -91,7 +91,10 @@ class PRCharVariety(object):
                 if  ev and abs(ev) > 1.0E-1000 and abs(ev.imag) < 1.0E-6:
                     if show_group:
                         shape = elevation.T_fibers[n].shapes[m]
-                        if shape.has_real_traces():
+                        # Since the peripheral holonomy is hyperbolic,
+                        # if these shapes give a PSL(2, R) repn then
+                        # the shapes themselves must be flat.
+                        if shape.has_real_shapes():
                             marker = '.'
                         else:
                             marker = 'x'

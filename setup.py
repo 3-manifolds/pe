@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup( name = 'pe',
-       version = '0.1.4',
+       version = '0.1.5',
        install_requires = ['snappy>=2.6.1'],
        dependency_links = [],
        packages = ['pe'],
