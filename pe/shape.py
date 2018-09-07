@@ -125,14 +125,26 @@ class ShapeSet(object):
         G = self.manifold.fundamental_group()
         return G.O31(word)
 
+    def _is_real(self, z):
+        # We look at the relative rather than absolue size of the
+        # imaginary part as this is more reliable when we are near an
+        # ideal point.
+        return abs(z.imag)/abs(z.real) < self.reality_tolerance
+
+    def has_real_shapes(self):
+        """True if the shapes are (nearly) real"""
+        return all(self._is_real(z) for z in self.array)
+
     def has_real_traces(self):
         """True if the holonomy rep associated to these shapes has a real character"""
+        if self.has_real_shapes():
+            return True
         tolerance = self.reality_tolerance
         gens = self.manifold.fundamental_group().generators()
         gen_mats = [self._SL2C(g) for g in gens]
         for A in gen_mats:
             tr = complex(A[0, 0] + A[1, 1])
-            if abs(tr.imag) > tolerance:
+            if not self._is_real(tr):
                 return False
         mats = gen_mats[:]
         for _ in range(1, len(gens) + 1):
@@ -141,7 +153,7 @@ class ShapeSet(object):
                 for B in mats:
                     C = B*A
                     tr = complex(C[0, 0] + C[1, 1])
-                    if abs(tr.imag) > tolerance:
+                    if not self._is_real(tr):
                         return False
                     new_mats.append(C)
         return True
