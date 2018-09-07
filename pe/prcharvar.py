@@ -88,7 +88,7 @@ class PRCharVariety(object):
                     # Skip over this point since we weren't able to tighten it.
                     continue
                 # Is the longitude eigenvalue non-zero and real?
-                if  ev and abs(ev) > 1.0E-1000 and abs(ev.imag) < 1.0E-6:
+                if  ev and abs(ev) > 1.0E-1000 and abs(ev.imag)/abs(ev.real) < 1.0E-6:
                     if show_group:
                         shape = elevation.T_fibers[n].shapes[m]
                         # Since the peripheral holonomy is hyperbolic,
