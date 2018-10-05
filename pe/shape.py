@@ -107,9 +107,9 @@ class ShapeSet(object):
         """True if any shape in this ShapeSet is degenerate."""
         moduli = abs(self.array)
         dist_to_1 = abs(self.array - 1.0)
-        return ((moduli < 1.0E-6).any() or
-                (dist_to_1 < 1.0E-6).any() or
-                (moduli > 1.0E6).any())
+        return ((moduli < 1.0E-5).any() or
+                (dist_to_1 < 1.0E-5).any() or
+                (moduli > 1.0E5).any())
 
     def volume(self):
         self.manifold.set_tetrahedra_shapes(self.array, None, [(0, 0)])
