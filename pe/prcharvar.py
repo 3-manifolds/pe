@@ -63,9 +63,9 @@ class PRCharVariety(object):
     """
     An object representating the PE Character Variety of a 3-manifold.
     """
-    def __init__(self, manifold, order=128, offset=0.02, elevation=None,
+    def __init__(self, manifold, order=128, offset=0.001, elevation=None,
                  base_dir='PR_base_fibers', hint_dir='PR_hints',
-                 ignore_saved=True):
+                 ignore_saved=False):
         self.base_dir = base_dir
         if not isinstance(manifold, (Manifold, ManifoldHP)):
             manifold = Manifold(manifold)
