@@ -134,7 +134,7 @@ class PRCharVariety(object):
             if len(arc) > 1:
                 self.arcs.append(arc)
         self.add_extrema()
-        #self.add_trans_num_of_hom_longitude()
+        self.add_trans_num_of_hom_longitude()
 
     def add_extrema(self):
         """
@@ -200,21 +200,27 @@ class PRCharVariety(object):
 
     def add_trans_num_of_hom_longitude(self):
         trans_nums = []
-        for arc in self.arcs:
-            # Pick a point along the arc, not in a cap
-            valid = [p for p in arc if p.marker != 'h']
+        for i, arc in enumerate(self.arcs):
+            valid = [p for p in arc if p.marker not in 'xh']
+            if len(valid) == 0:
+                trans_nums.append(None)
+                continue
+            else:
+                if any(p.marker == 'x' for p in arc):
+                    print('WARNING: Arc %d has both PSL(2, R) reps and exotic reps!' % i)
             # focus on the middle, where things are less
             # degenerate.
             if len(valid) > 10:
                 a = len(valid)//4
                 valid = valid[a:-a]
-            sample = random.sample(valid, 3)
+            sample = random.sample(valid, 6)
             def comp_trans(p):
                 rho = self.get_rep(p.index[0], p.index[1])
                 return hom_long_trans_of_lift_to_PSL2Rtilde(rho)
             trans = {comp_trans(p) for p in sample}
-            assert len(trans) == 1
-            trans_nums.append(list(trans)[0])
+            if len(trans) != 1:
+                print('WARNING: Inconsistent translation numbers found on one arc!')
+            trans_nums.append(tuple(sorted((trans))))
 
         self.hom_longitude_trans_nums = trans_nums
 
