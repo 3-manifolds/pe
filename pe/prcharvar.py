@@ -38,7 +38,7 @@ def quad_fit(x, y):
     B[2:4] *= 10
     z[2:4] *= 10
     poly = np.linalg.lstsq(B, z)[0]
-    #Ccompute actual error
+    # Compute actual error
     error = np.linalg.norm(np.dot(A, poly) - y)
     return poly, error
 
@@ -116,7 +116,7 @@ class PRCharVariety(object):
                     # Since the peripheral holonomy is hyperbolic,
                     # if these shapes give a PSL(2, R) repn then
                     # the shapes themselves must be flat.
-                    if shape.has_real_shapes():
+                    if shape.has_real_shapes() and shape.has_real_traces():
                         marker = '.'
                     else:
                         marker = 'x'
@@ -134,7 +134,7 @@ class PRCharVariety(object):
             if len(arc) > 1:
                 self.arcs.append(arc)
         self.add_extrema()
-        self.add_trans_num_of_hom_longitude()
+        #self.add_trans_num_of_hom_longitude()
 
     def add_extrema(self):
         """

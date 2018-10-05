@@ -129,6 +129,8 @@ class ShapeSet(object):
         # We look at the relative rather than absolue size of the
         # imaginary part as this is more reliable when we are near an
         # ideal point.
+        if abs(z.real) == 0:
+            return abs(z.imag) != 0
         return abs(z.imag)/abs(z.real) < self.reality_tolerance
 
     def has_real_shapes(self):
@@ -137,8 +139,6 @@ class ShapeSet(object):
 
     def has_real_traces(self):
         """True if the holonomy rep associated to these shapes has a real character"""
-        if self.has_real_shapes():
-            return True
         tolerance = self.reality_tolerance
         gens = self.manifold.fundamental_group().generators()
         gen_mats = [self._SL2C(g) for g in gens]
