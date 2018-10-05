@@ -1,7 +1,11 @@
 from setuptools import setup
+import re
+
+version_data = open('pe/version.py').read()
+version = re.match("version = '(.*)'", version_data).groups()[0]
 
 setup( name = 'pe',
-       version = '0.1.6',
+       version = version,
        install_requires = ['snappy>=2.6.1'],
        dependency_links = [],
        packages = ['pe'],
