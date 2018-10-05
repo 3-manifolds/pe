@@ -89,6 +89,32 @@ class Elevation(object):
         raise ValueError('Only subclasses of Elevation can be instantiated.')
 
     def _get_saved_data(self):
+        base_fiber_file=os.path.join(self.base_dir, self.manifold.name()+'.base')
+        ask_save = False
+        try:
+            with open(base_fiber_file) as datafile:
+                data = eval(datafile.read())
+            self._print('Loaded the base fiber from %s'%base_fiber_file)
+            M = Manifold(data['manifold'])
+            if not M == self.manifold:
+                if self.verbose:
+                    self._print('The saved base fiber uses a different triangulation of %s!'%M)
+                    response = user_input('Would you like to \n'
+                                          '(a) use the saved triangulation; or\n'
+                                          '(b) recompute the base fiber\n'
+                                          '? ')
+                    while response.lower() not in ('a', 'b'):
+                        response = user_input('Please type "a" or "b": ')
+                    if response.lower() == 'a':
+                        self.manifold = M
+                    elif response == 'b':
+                        ask_save = True
+                        data = {}
+                else:
+                    data = {}
+        except IOError:
+            data = {}
+        return data, ask_save
         raise ValueError('Only subclasses of Elevation can be instantiated.')
 
     def _get_fibrator_target(self):
@@ -500,34 +526,6 @@ class CircleElevation(Elevation):
         self.T_path = [self.tight_radius*exp(-n*Darg*1j) for n in range(order)]
         self.R_path = [self.radius*exp(-n*Darg*1j) for n in range(order)]
 
-    def _get_saved_data(self):
-        base_fiber_file=os.path.join(self.base_dir, self.manifold.name()+'.base')
-        ask_save = False
-        try:
-            with open(base_fiber_file) as datafile:
-                data = eval(datafile.read())
-            self._print('Loaded the base fiber from %s'%base_fiber_file)
-            M = Manifold(data['manifold'])
-            if not M == self.manifold:
-                if self.verbose:
-                    self._print('The saved base fiber uses a different triangulation of %s!'%M)
-                    response = user_input('Would you like to \n'
-                                          '(a) use the saved triangulation; or\n'
-                                          '(b) recompute the base fiber\n'
-                                          '? ')
-                    while response.lower() not in ('a', 'b'):
-                        response = user_input('Please type "a" or "b": ')
-                    if response.lower() == 'a':
-                        self.manifold = M
-                    elif response == 'b':
-                        ask_save = True
-                        data = {}
-                else:
-                    data = {}    
-        except IOError:
-            data = {}
-        return data, ask_save
-
     def _get_fibrator_target(self, saved_data):
         """
         Return a target value of H_meridian at the base fiber.  Also stores
@@ -615,13 +613,23 @@ class LineElevation(Elevation):
         self.T_path = [(1.0 - n*dx) for n in range(order)]
         self.R_path = [(1.0 - n*dx) + self.offset*1j for n in range(order)]
 
-    def _get_saved_data(self):
-        return {}, False
-
     def _get_fibrator_target(self, saved_data):
-        self.base_index = base_index = randint(0, self.order-2)
-        self._print('Choosing random base index: %d'%base_index)
-        target = self.R_path[base_index]
+        """
+        Return a target value of H_meridian at the base fiber.  Also stores
+        the index of the base fiber as self.base_fiber.
+        """
+        target = saved_data.get('H_meridian', None)
+        if target:
+            if target.imag != self.offset:
+                raise ValueError('Saved fiber has wrong offset')
+            self.base_index = (self.order - int(target.real*self.order)) % self.order
+        else:
+            # Choose something nearish the middle to avoid being too close
+            # to any ideal points.
+            s = self.order//4
+            self.base_index = base_index = randint(s, 3*s)
+            self._print('Choosing random base index: %d'%base_index)
+            target = self.R_path[base_index]
         return target
 
     def _finalize(self):
