@@ -21,6 +21,7 @@ from .point import PEPoint
 from .plot import Plot
 from .complex_reps import PSL2CRepOf3ManifoldGroup
 from .real_reps import PSL2RRepOf3ManifoldGroup
+from sage.all import RR
 import sys, os
 import random
 
@@ -148,26 +149,30 @@ class PRCharVariety(object):
         wish to join and use those to fill in the gap.
         """
         progress = True
+        elev = self.elevation
         while progress:
             progress = False
             for i, arc in enumerate(self.arcs):
                 for other in self.arcs[i+1:]:
                     # The last condition in the below test is to avoid
                     # joining asymptotes towards the same ideal point.
-                    if arc[0].imag == other[0].imag and -0.01 > arc[0].imag > -1.5:
+                    if arc[0].imag == other[0].imag and -0.1 > arc[0].imag > -1.5:
                         if abs(arc[0].real - other[0].real) < 1.5:
-                            points = [arc[1], arc[2], arc[0], other[0], other[1], other[2]]
-                            xs = [p.real for p in points]
-                            ys = [p.imag for p in points]
-                            poly, error = quad_fit(xs, ys)
-                            if error < 1e-2:
-                                xfill = np.linspace(xs[2], xs[3], 6)[1:-1]
-                                yfill = poly[0] + poly[1]*xfill + poly[2]*xfill*xfill
-                                new_seg = [PEPoint(x, y, marker='h') for x, y in zip(xfill, yfill)]
-                                self.arcs.remove(other)
-                                self.arcs[i] = list(reversed(arc)) + new_seg + other
-                                progress = True
-                            break
+                            traces0 = self.get_rep(*arc[0].index).trace_field_generators()
+                            traces1 = self.get_rep(*other[0].index).trace_field_generators()
+                            diff = max([abs(t0 - t1) for t0, t1 in zip(traces0, traces1)])
+                            if diff < 0.5:
+                                points = [arc[1], arc[2], arc[0], other[0], other[1], other[2]]
+                                xs = [p.real for p in points]
+                                ys = [p.imag for p in points]
+                                poly, error = quad_fit(xs, ys)
+                                if error < 1e-2:
+                                    xfill = np.linspace(xs[2], xs[3], 6)[1:-1]
+                                    yfill = poly[0] + poly[1]*xfill + poly[2]*xfill*xfill
+                                    new_seg = [PEPoint(x, y, marker='h') for x, y in zip(xfill, yfill)]
+                                    self.arcs.remove(other)
+                                    self.arcs[i] = list(reversed(arc)) + new_seg + other
+                                    progress = True
                 if progress:
                     break
 
@@ -186,6 +191,39 @@ class PRCharVariety(object):
              position=(0.07, 0.07, 0.8, 0.8),
              title='PR Character Variety of %s'%self.manifold.name(),
              show_group=show_group)
+
+    def show_homological(self, show_group=False):
+        M = self.manifold
+        a, b = M.homological_longitude()
+        if abs(b) != 1:
+            raise ValueError('Meridian does not intersect longitudinal slope once')
+        if b < 0:
+            a, b = -a, -b
+        plot_arcs = []
+        x_max = 0
+        for arc in self.arcs:
+            plot_arc = []
+            for p in arc:
+                y, x = -p.real, -p.imag
+                x_max = max(x, x_max)
+                plot_arc.append(PEPoint(x, a*x + b*y, marker=p.marker, index=p.index))
+            plot_arcs.append(plot_arc)
+
+        self.plot = plot = Plot(plot_arcs,
+             number_type=PEPoint,
+             margins=(0, 0),
+             position=(0.07, 0.07, 0.8, 0.8),
+             title='PR Character Variety of %s (homological framing)'%self.manifold.name(),
+             show_group=show_group)
+
+        plot.draw_line([0, x_max], [0, 0], color='0.4')
+        axis = plot.figure.axis
+        alex = M.alexander_polynomial()
+        for root, mult in alex.roots(RR):
+            if root > 0:
+                color = 'red' if mult==1 else 'purple'
+                axis.plot([0.5*root.log()], [0], color=color,
+                          marker='o', markeredgecolor='black')
 
     def get_rep(self, fiber_index, shape_index, precision=1000):
         elev = self.elevation
