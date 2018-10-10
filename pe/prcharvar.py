@@ -161,7 +161,7 @@ class PRCharVariety(object):
                             traces0 = self.get_rep(*arc[0].index).trace_field_generators()
                             traces1 = self.get_rep(*other[0].index).trace_field_generators()
                             diff = max([abs(t0 - t1) for t0, t1 in zip(traces0, traces1)])
-                            if diff < 0.5:
+                            if diff < 1:
                                 points = [arc[1], arc[2], arc[0], other[0], other[1], other[2]]
                                 xs = [p.real for p in points]
                                 ys = [p.imag for p in points]
@@ -236,6 +236,10 @@ class PRCharVariety(object):
         rho.index = (shape_index, fiber_index)
         return rho
 
+    def _hom_longitude_trans(self, fiber_index, shape_index):
+        rho = self.get_rep(fiber_index, shape_index)
+        return hom_long_trans_of_lift_to_PSL2Rtilde(rho)
+
     def add_trans_num_of_hom_longitude(self):
         trans_nums = []
         for i, arc in enumerate(self.arcs):
@@ -252,10 +256,7 @@ class PRCharVariety(object):
                 a = len(valid)//4
                 valid = valid[a:-a]
             sample = random.sample(valid, 6)
-            def comp_trans(p):
-                rho = self.get_rep(p.index[0], p.index[1])
-                return hom_long_trans_of_lift_to_PSL2Rtilde(rho)
-            trans = {comp_trans(p) for p in sample}
+            trans = {abs(self._hom_longitude_trans(*p.index)) for p in sample}
             if len(trans) != 1:
                 print('WARNING: Inconsistent translation numbers found on one arc!')
             trans_nums.append(tuple(sorted((trans))))
