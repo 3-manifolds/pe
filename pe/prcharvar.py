@@ -158,10 +158,11 @@ class PRCharVariety(object):
                     # joining asymptotes towards the same ideal point.
                     if arc[0].imag == other[0].imag and -0.1 > arc[0].imag > -1.5:
                         if abs(arc[0].real - other[0].real) < 1.5:
-                            traces0 = self.get_rep(*arc[0].index).trace_field_generators()
-                            traces1 = self.get_rep(*other[0].index).trace_field_generators()
-                            diff = max([abs(t0 - t1) for t0, t1 in zip(traces0, traces1)])
-                            if diff < 1:
+                            #traces0 = self.get_rep(*arc[0].index).trace_field_generators()
+                            #traces1 = self.get_rep(*other[0].index).trace_field_generators()
+                            #diff = max([abs(t0 - t1) for t0, t1 in zip(traces0, traces1)])
+                            #if diff < 1:
+                            if True:
                                 points = [arc[1], arc[2], arc[0], other[0], other[1], other[2]]
                                 xs = [p.real for p in points]
                                 ys = [p.imag for p in points]
