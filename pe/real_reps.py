@@ -4,7 +4,7 @@ Define the class PSL2RRepOf3ManifoldGroup which represents an
 arbitrary precision holonomy representation with image in SL(2,R).
 """
 
-from .sage_helper import (get_pi, matrix, vector, RealField, Id2, complex_I)
+from .sage_helper import (get_pi, matrix, vector, RealField, RR, Id2, complex_I)
 
 from .complex_reps import (PSL2CRepOf3ManifoldGroup, polished_group,
                            apply_representation, inverse_word,
@@ -252,7 +252,7 @@ class PSL2RRepOf3ManifoldGroup(PSL2CRepOf3ManifoldGroup):
             raise ValueError("Need to have a nontrivial precision set")
         mangled = "polished_holonomy_%s" % precision
         if mangled not in self._cache:
-            epsilon = 2.0**(-0.8*precision)
+            epsilon = RR(2.0)**(-0.8*precision)
             G = polished_group(self.manifold,
                                self.polished_shapes().shapelist,
                                precision,
