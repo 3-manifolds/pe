@@ -224,8 +224,8 @@ class PolishedShapeSet(object):
     >>> import snappy
     >>> M = snappy.Manifold('m071(0,0)')
     >>> rough = ShapeSet(M)
-    >>> rough[0]
-    (0.94501569508040595+1.0738656547982881j)
+    >>> '{:.15f}'.format(rough[0])
+    '0.945015695080406+1.073865654798288j'
     >>> polished = PolishedShapeSet(rough, target_holonomy=1.0)
     >>> '%.55s'%polished[0].real()
     '0.94501569508040449844398481070855256180052530814866749'

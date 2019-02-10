@@ -98,7 +98,8 @@ def polished_group(M, shapes, precision=100,
     f = FundamentalPolyhedronEngine(m)
     t = TransferKernelStructuresEngine(m, M)
     t.add_shapes(shapes)
-    t.add_choose_generators_info(M._choose_generators_info())
+    t.choose_and_transfer_generators(compute_corners=True,
+                                     centroid_at_origin=False)
     T = m.ChooseGenInitialTet
     z = T.ShapeParameters[E01]
     init_tet_vertices = {V0:0, V1:Infinity, V2:z, V3:1}
