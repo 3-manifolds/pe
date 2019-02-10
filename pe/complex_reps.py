@@ -19,32 +19,6 @@ if _within_sage:
 else:
     coboundary_matrix = pari.matrix
 
-def reconstruct_representation(G, geom_mats):
-    mats = [None]
-    mats += [geom_mats[i] for i in range(1, G.num_original_generators()+1)]
-    moves = G._word_moves()
-    while len(moves) > 0:
-        a = moves.pop(0)
-        if a >= len(mats): # new generator added
-            n = moves.index(a)  # end symbol location
-            word, moves = moves[:n], moves[n+1:]
-            mats.append(prod([mats[g] if g > 0 else SL2C_inverse(mats[-g])
-                                  for g in word]))
-        else:
-            b = moves.pop(0)
-            if a == b:  # generator removed
-                mats[a] = mats[-1]
-                mats = mats[:-1]
-            elif a == -b: # invert generator
-                mats[a] = SL2C_inverse(mats[a])
-            else: #handle slide
-                A, B = mats[abs(a)], mats[abs(b)]
-                if a*b < 0:
-                    B = SL2C_inverse(B)
-                mats[abs(a)] = A*B if a > 0 else B*A
-
-    return mats[1:]
-
 def random_word(letters, N):
     return ''.join([random.choice(letters) for _ in range(N)])
 
@@ -106,10 +80,10 @@ def polished_group(M, shapes, precision=100,
     f.unglue()
     f.visit_tetrahedra_to_compute_vertices(T, init_tet_vertices)
     f.compute_matrices(normalize_matrices=True)
-    gen_mats = [clean_matrix(A, error=error, prec=precision)
-                for A in reconstruct_representation(G, m.GeneratorMatrices)]
+    mats = f.matrices_for_presentation(G, match_snappea=False)
+    clean_mats = [clean_matrix(A, error=error, prec=precision) for A in mats]
     PG = ManifoldGroup(
-        G.generators(), G.relators(), G.peripheral_curves(), gen_mats)
+        G.generators(), G.relators(), G.peripheral_curves(), clean_mats)
     if lift_to_SL2:
         PG.lift_to_SL2C()
     else:
