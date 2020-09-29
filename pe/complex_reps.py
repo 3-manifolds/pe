@@ -80,7 +80,7 @@ def polished_group(M, shapes, precision=100,
     f.unglue()
     f.visit_tetrahedra_to_compute_vertices(T, init_tet_vertices)
     f.compute_matrices(normalize_matrices=True)
-    mats = f.matrices_for_presentation(G, match_snappea=False)
+    mats = f.matrices_for_presentation(G, match_kernel=False)
     clean_mats = [clean_matrix(A, error=error, prec=precision) for A in mats]
     PG = ManifoldGroup(
         G.generators(), G.relators(), G.peripheral_curves(), clean_mats)

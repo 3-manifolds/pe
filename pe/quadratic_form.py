@@ -2,7 +2,7 @@ from mpmath import mp
 from sage.all import ZZ, RealField, ComplexField, block_matrix, matrix, vector
 
 def SL2C_inverse(A):
-    return A.adjoint()
+    return A.adjugate()
 
 def sage_matrix_to_mpmath(A):
     return mp.matrix([list(row) for row in A])

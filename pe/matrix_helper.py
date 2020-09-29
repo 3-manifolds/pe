@@ -2,10 +2,10 @@ from .sage_helper import (matrix, vector, Id2, eigenvalues, get_pi,
                           complex_field, complex_I, pari, arg)
 
 def SL2C_inverse(A):
-    return A.adjoint()
+    return A.adjugate()
 
 def GL2C_inverse(A):
-    return (1/A.det())*A.adjoint()
+    return (1/A.det())*A.adjugate()
 
 def normalize_vector(v):
     """Divide this non-zero vector by its L2 norm."""
