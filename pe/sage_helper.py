@@ -76,15 +76,15 @@ def cyopengl_replacement():
 if _within_sage:
     class DocTestParser(doctest.DocTestParser):
         def parse(self, string, name='<string>'):
-            string = re.subn('#doctest: \+CYOPENGL', cyopengl_replacement(), string)[0]
-            string = re.subn('([\n\A]\s*)sage:', '\g<1>>>>', string)[0]
+            string = re.subn(r'#doctest: \+CYOPENGL', cyopengl_replacement(), string)[0]
+            string = re.subn(r'(\n\s*)sage:|(\A\s*)sage:', r'\g<1>>>>', string)[0]
             return doctest.DocTestParser.parse(self, string, name)
 
     globs = {'PSL':sage.all.PSL, 'BraidGroup':sage.all.BraidGroup}
 else:
     class DocTestParser(doctest.DocTestParser):
         def parse(self, string, name='<string>'):
-            string = re.subn('#doctest: \+CYOPENGL', cyopengl_replacement(), string)[0]
+            string = re.subn(r'#doctest: \+CYOPENGL', cyopengl_replacement(), string)[0]
             return doctest.DocTestParser.parse(self, string, name)
 
     globs = dict()

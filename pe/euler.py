@@ -22,13 +22,16 @@ from __future__ import print_function
 from .sage_helper import Id2, sqrt
 from .matrix_helper import elliptic_rotation_angle, eigenvectors
 
+def sign(a):
+    return bool(a > 0) - bool(a < 0)
+
 def wedge(a, b):
     """Return the wedge product of two 2-vectors."""
     return -a[0]*b[1] + a[1]*b[0]
 
 def orientation(a, b, c):
     """Is the oriented triangle Δ(a,b,c) counterclockwise?"""
-    return cmp(wedge(a, b) * wedge(b, c) * wedge(c, a), 0)
+    return sign(wedge(a, b) * wedge(b, c) * wedge(c, a))
 
 class PointInP1R(object):
     """
