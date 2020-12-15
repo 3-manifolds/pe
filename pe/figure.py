@@ -47,7 +47,7 @@ if backend == 'TkAgg':
     from matplotlib.figure import Figure
     import matplotlib.backends.backend_tkagg as tkagg
     from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,
-                                                   NavigationToolbar2TkAgg)
+                                                   NavigationToolbar2Tk)
 elif backend == 'nbAgg':
     print('Using nbAgg as the matplotlib backend.')
     import matplotlib.backends.backend_nbagg as nbagg
@@ -78,15 +78,15 @@ class FigureBase(object):
 
     def set_cursor(self, cursor_name):
         toolbar = self.toolbar
-        tkagg.cursord[1] = cursor_name
+#        tkagg.cursord[1] = cursor_name
         if not toolbar._active:
-            toolbar.set_cursor(1)
+            toolbar.set_cursor(cursor_name)
 
     def unset_cursor(self):
         toolbar = self.canvas.toolbar
-        tkagg.cursord[1] = self.default_cursor
+#        tkagg.cursord[1] = self.default_cursor
         if not toolbar._active:
-            toolbar.set_cursor(1)
+            toolbar.set_cursor(self.default_cursor)
 
     def save(self, filename):
         self.figure.savefig(filename, bbox_inches='tight', transparent='true')
@@ -120,7 +120,7 @@ class TkFigure(FigureBase):
         W, H = size
         canvas = FigureCanvasTkAgg(figure, master=figure_frame)
         canvas._tkcanvas.config(highlightthickness=0, width=W*dpi, height=H*dpi)
-        toolbar = NavigationToolbar2TkAgg(canvas, figure_frame)
+        toolbar = NavigationToolbar2Tk(canvas, figure_frame)
         toolbar.pack(side=Tk.TOP, fill=Tk.X)
         canvas._tkcanvas.pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
         toolbar.update()
@@ -130,7 +130,7 @@ class TkFigure(FigureBase):
         window.rowconfigure(0, weight=1)
         self.window, self.canvas, self.toolbar = window, canvas, toolbar
         self.figure_frame = figure_frame
-        self.default_cursor = tkagg.cursord[1]
+        self.default_cursor = 'arrow'
 
     def draw(self):
         self.canvas.draw()

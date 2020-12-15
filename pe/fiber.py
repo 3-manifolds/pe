@@ -32,7 +32,7 @@ class Fiber(object):
         if shapes:
             self.shapes = [ShapeSet(manifold, S) for S in shapes]
         elif self.system:
-            N = self.system.num_variables()/2
+            N = self.system.num_variables() // 2
             self.solutions = self.system.solution_list(tolerance=self.tolerance)
             # We only keep the "X" variables.
             self.shapes = [ShapeSet(self.manifold, S.point[:N]) for S in self.solutions]

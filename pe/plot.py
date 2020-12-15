@@ -205,11 +205,13 @@ class TkPlot(PlotBase):
         print(self.scatter_point_to_raw_data[event.artist][median])
 
     def on_hover(self, event):
-        for verts in self.vertex_sets:
-            if verts.hitlist(event):
-                self.figure.set_cursor('hand1')
-                return
-        self.figure.unset_cursor()
+        pass
+#       The hitlist was removed in matplotlib 3.1.0 with no replacement.    
+#        for verts in self.vertex_sets:
+#            if verts.hitlist(event):
+#                self.figure.set_cursor('hand1')
+#                return
+#        self.figure.unset_cursor()
 
     def arc_button_callback(self, var_name, *args):
         var = self.arc_vars[var_name]

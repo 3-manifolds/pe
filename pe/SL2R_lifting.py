@@ -335,7 +335,7 @@ class EllipticSL2RLifter(object):
         A = M.is_isometric_to(K, True)[0].cusp_maps()[0]
         A = matrix(ZZ, [[A[0, 0], A[0, 1]], [A[1, 0], A[1, 1]]])
         Ainv = A**(-1)
-        X = hyperbolic_torsion(M, bits_prec=1000).degree()/2
+        X = hyperbolic_torsion(M, bits_prec=1000).degree()//2
         l_space_edges = [vector(ZZ, (X, -1)), vector(ZZ, (X, 1))]
         return [Ainv*v for v in l_space_edges]
 
