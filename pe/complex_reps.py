@@ -209,11 +209,15 @@ class PSL2CRepOf3ManifoldGroup(object):
     def is_PSL2R_rep(self, precision=None):
         if not self.has_real_traces(precision):
             return False
-        G = self.polished_holonomy()
-        ans, sig, _ = preserves_hermitian_form(G._matrices)
-        if ans == False:
-            raise ValueError('Rep with real traces does not preserve quad form')
-        return sig != 'definite'
+        try:
+            G = self.polished_holonomy()
+            ans, sig, _ = preserves_hermitian_form(G._matrices)
+            if ans == False:
+                raise ValueError('Rep with real traces does not preserve quad form')
+            return sig != 'definite'
+        except:
+            pass
+        return False
 
     def is_reducible(self, precision=None):
         G = self.polished_holonomy(precision)

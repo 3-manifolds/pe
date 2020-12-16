@@ -58,8 +58,6 @@ def hom_long_trans_of_lift_to_PSL2Rtilde(rho):
     a, b = rho.manifold.homological_longitude()
     return a*M + b*L
 
-
-
 class PRCharVariety(object):
     """
     An object representating the PE Character Variety of a 3-manifold.
@@ -257,9 +255,14 @@ class PRCharVariety(object):
                 a = len(valid)//4
                 valid = valid[a:-a]
             sample = random.sample(valid, 6)
-            trans = {abs(self._hom_longitude_trans(*p.index)) for p in sample}
-            if len(trans) != 1:
-                print('WARNING: Inconsistent translation numbers found on one arc!')
+            trans = set()
+            for p in sample:
+                try:
+                    trans.add(abs(self._hom_longitude_trans(*p.index)))
+                except:
+                    pass
+            if len(trans) > 1:
+                print('WARNING: An arc has multiple translation numbers: %s'%trans)
             trans_nums.append(tuple(sorted((trans))))
 
         self.hom_longitude_trans_nums = trans_nums
