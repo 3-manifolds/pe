@@ -7,11 +7,9 @@ if  backend == 'TkAgg':
     from .figure import MatplotFigure, Tk, ttk
 elif backend.endswith('module://ipympl.backend_nbagg'):
     from .figure import MatplotFigure
-    from matplotlib.widgets import CheckButtons
 else:
     matplotlib.use('nbagg')
     from .figure import MatplotFigure
-    from matplotlib.widgets import CheckButtons
 
 from .point import PEPoint
 from .input import user_input
@@ -244,6 +242,7 @@ class NbPlot(PlotBase):
         self.legend_to_arc_view = leg_to_view = dict()
         for leg_line, arc_view in zip(self.legend.get_lines(), self.arc_views):
             leg_to_view[leg_line] = arc_view
+            leg_line.set_picker(True)
             leg_line.set_pickradius(5)
         self.picklog = []
 

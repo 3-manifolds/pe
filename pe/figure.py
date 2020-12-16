@@ -34,6 +34,7 @@ So inaddition one may need to recompile the Tkinter module via
 """
 
 import matplotlib
+import matplotlib.pyplot
 backend = matplotlib.get_backend()
 
 if backend == 'TkAgg':
@@ -50,16 +51,8 @@ if backend == 'TkAgg':
                                                    NavigationToolbar2Tk)
 elif backend == 'nbAgg':
     print('Using nbAgg as the matplotlib backend.')
-    import matplotlib.backends.backend_nbagg as nbagg
-    from matplotlib.backends.backend_nbagg import (FigureCanvasNbAgg,
-                                                   NavigationToolbar2WebAgg,
-                                                   FigureManagerNbAgg)
 elif backend == 'module://ipympl.backend_nbagg':
     print("Using ipympl's nbAgg as the matplotlib backend.")
-    import ipympl.backend_nbagg as nbagg
-    from ipympl.backend_nbagg import (FigureCanvasNbAgg,
-                                      NavigationToolbar2WebAgg,
-                                      FigureManagerNbAgg)
 
 from matplotlib.figure import Figure
 
@@ -98,12 +91,12 @@ class FigureBase(object):
 
 class NbFigure(FigureBase):
     def __init__(self, add_subplot=True, root=None, size=(10, 6), dpi=72, **kwargs):
-        figure = Figure(figsize=size, dpi=dpi, facecolor='white')
+        figure = matplotlib.pyplot.figure(figsize=size, dpi=dpi, facecolor='white')
         axis = figure.add_subplot(111) if add_subplot else None
         self.figure, self.axis = figure, axis
-        self.canvas = FigureCanvasNbAgg(figure)
-        self.toolbar = NavigationToolbar2WebAgg(self.canvas)
-        self.manager = FigureManagerNbAgg(self.canvas, 1)
+        self.canvas = figure.canvas
+        self.toolbar = figure.canvas.toolbar
+        self.manager = figure.canvas.manager
 
     def draw(self):
         self.canvas.draw()
