@@ -1,4 +1,3 @@
-syntax: glob
 build
 dist
 *.egg-info
@@ -10,6 +9,7 @@ apolys
 apoly_dicts
 hints
 saved_hints
+__pycache__
 plots
 slurm*
 *.pyc
