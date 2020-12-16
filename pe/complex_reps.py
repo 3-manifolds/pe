@@ -124,7 +124,7 @@ class PSL2CRepOf3ManifoldGroup(object):
                  fundamental_group_args=tuple()):
         self.precision = precision
         self.manifold = manifold.copy()
-        if rough_shapes != None:
+        if rough_shapes is not None:
             self.manifold.set_tetrahedra_shapes(rough_shapes, rough_shapes)
         else:
             rough_shapes = manifold.tetrahedra_shapes('rect')
@@ -141,7 +141,7 @@ class PSL2CRepOf3ManifoldGroup(object):
                 ", ".join([format_complex(z) for z in self.rough_shapes]) + "]>")
 
     def _update_precision(self, precision):
-        if precision != None:
+        if precision is not None:
             self.precision = precision
 
     def advance_holonomy(self, p, q):

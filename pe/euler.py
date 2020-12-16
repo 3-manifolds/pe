@@ -45,7 +45,7 @@ class PointInP1R(object):
     the image of t under our universal covering map.
     """
     def __init__(self, v=None, t=None):
-        if t != None:
+        if t is not None:
             if t == 0:
                 R = t.parent()
                 self.v = (R(1), R(0))
