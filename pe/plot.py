@@ -244,7 +244,7 @@ class NbPlot(PlotBase):
         self.legend_to_arc_view = leg_to_view = dict()
         for leg_line, arc_view in zip(self.legend.get_lines(), self.arc_views):
             leg_to_view[leg_line] = arc_view
-            leg_line.set_picker(5)
+            leg_line.set_pickradius(5)
         self.picklog = []
 
     def on_legend_click(self, artist):
