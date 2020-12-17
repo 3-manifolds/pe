@@ -152,13 +152,12 @@ signature                                                                  2
 import snappy
 import taskdb2
 import pe
-import cPickle as pickle
+import pickle
 import bz2
 import json
 import random
 from sage.all import ComplexField, RealField, PolynomialRing, QQ, RR, floor, prod, gcd
-from pe.plot import MatplotPlot as Plot
-import nplot
+from pe.plot import Plot
 import matplotlib
 import matplotlib.style
 
@@ -511,7 +510,7 @@ def reallynonZHC():
         phi = snappy.snap.nsagetools.MapToFreeAbelianization(G)
         m, l = [phi(g)[0] for g in G.peripheral_curves()[0]]
         if gcd(m, l) != 1:
-            print M.name(), m, l
+            print(M.name(), m, l)
     
 def orientation_pres_isometric(M, N):
     for iso in M.is_isometric_to(N, True):
