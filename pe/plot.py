@@ -13,6 +13,7 @@ else:
 
 from .point import PEPoint
 from .input import user_input
+import collections
 from collections.abc import Sequence
 import numpy
 
