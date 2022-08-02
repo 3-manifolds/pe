@@ -152,7 +152,7 @@ class GluingSystem(object):
         target = ones(len(self), dtype='complex128')
         target[-1] = M_target
         error = target - self(Z)
-        dZ = lstsq(J, error)[0]
+        dZ = lstsq(J, error, rcond=-1)[0]
         return dZ, target
 
     def newton1(self, Z, M_target, debug=False):

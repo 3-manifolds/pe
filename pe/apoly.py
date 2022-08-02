@@ -17,7 +17,7 @@ class Infinity(object):
 
 try:
     from sage.all import PolynomialRing, IntegerRing, RationalField, RealField, ComplexField
-    from sage.rings.complex_number import is_ComplexNumber
+    from sage.rings.complex_mpfr import is_ComplexNumber
     from .mpfft import ComplexFFT
     ZZ = IntegerRing()
     QQ = RationalField()

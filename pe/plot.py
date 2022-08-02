@@ -13,11 +13,7 @@ else:
 
 from .point import PEPoint
 from .input import user_input
-import collections
-try:
-    from collections import Sequence
-except ImportError:
-    from collections.abc import Sequence
+from collections.abc import Sequence
 import numpy
 
 def attribute_map(listlike, attribute):
