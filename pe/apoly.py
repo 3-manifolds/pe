@@ -416,9 +416,9 @@ class Apoly(object):
             powers = -array(list(range(1+N//2))+list(range(-(N//2), 0)))
         renorm = array([radius**n for n in powers])
         self.normalized_coeffs = self.raw_coeffs*renorm
-        self.int_coeffs = array([map(self._rounded_real, x) for x in self.normalized_coeffs],
+        self.int_coeffs = array([[self._rounded_real(x) for x in xs] for xs in self.normalized_coeffs],
                                 dtype='O')
-        #self.int_coeffs = array([[self. for z in row]
+        # self.int_coeffs = array([[self. for z in row]
         #                              for row in self.normalized_coeffs], dtype='O')
         self.height = int(max([max(abs(x)) for x in self.int_coeffs]))
         self.bits_height = int(ceil(log(float(self.height))/log(2)))
