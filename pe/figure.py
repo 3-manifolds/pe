@@ -51,8 +51,10 @@ if backend == 'TkAgg':
                                                    NavigationToolbar2Tk)
 elif backend == 'nbAgg':
     print('Using nbAgg as the matplotlib backend.')
-elif backend == 'module://ipympl.backend_nbagg':
+elif backend in ['module://ipympl.backend_nbagg', 'widget']:
     print("Using ipympl's nbAgg as the matplotlib backend.")
+elif backend == 'inline':
+    print('Using inline as the matplotlib backend.')
 
 from matplotlib.figure import Figure
 

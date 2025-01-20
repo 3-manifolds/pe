@@ -8,7 +8,6 @@ if  backend == 'TkAgg':
 elif backend.endswith('module://ipympl.backend_nbagg') or backend == 'widget':
     from .figure import MatplotFigure
 else:
-    matplotlib.use('inline')
     from .figure import MatplotFigure
 
 from .point import PEPoint
