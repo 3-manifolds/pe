@@ -5,10 +5,10 @@ backend = matplotlib.get_backend()
 if  backend == 'TkAgg':
     matplotlib.use('tkagg')
     from .figure import MatplotFigure, Tk, ttk
-elif backend.endswith('module://ipympl.backend_nbagg'):
+elif backend.endswith('module://ipympl.backend_nbagg') or backend == 'widget':
     from .figure import MatplotFigure
 else:
-    matplotlib.use('nbagg')
+    matplotlib.use('inline')
     from .figure import MatplotFigure
 
 from .point import PEPoint

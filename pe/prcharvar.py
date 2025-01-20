@@ -38,7 +38,7 @@ def quad_fit(x, y):
     # Modify the equations a bit so that we will pass very close to the middle points
     B[2:4] *= 10
     z[2:4] *= 10
-    poly = np.linalg.lstsq(B, z)[0]
+    poly = np.linalg.lstsq(B, z, rcond=-1)[0]
     # Compute actual error
     error = np.linalg.norm(np.dot(A, poly) - y)
     return poly, error
