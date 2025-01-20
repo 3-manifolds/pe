@@ -52,7 +52,7 @@ if backend == 'TkAgg':
 elif backend == 'nbAgg':
     print('Using nbAgg as the matplotlib backend.')
 elif backend in ['module://ipympl.backend_nbagg', 'widget']:
-    print("Using ipympl's nbAgg as the matplotlib backend.")
+    print("Using ipympl's widget as the matplotlib backend.")
 elif backend == 'inline':
     print('Using inline as the matplotlib backend.')
 
@@ -93,7 +93,8 @@ class FigureBase(object):
 
 class NbFigure(FigureBase):
     def __init__(self, add_subplot=True, root=None, size=(10, 6), dpi=72, **kwargs):
-        figure = matplotlib.pyplot.figure(figsize=size, dpi=dpi, facecolor='white')
+        with matplotlib.pyplot.ioff(): # Prevents figure from appearing twice
+            figure = matplotlib.pyplot.figure(figsize=size, dpi=dpi, facecolor='white')
         axis = figure.add_subplot(111) if add_subplot else None
         self.figure, self.axis = figure, axis
         self.canvas = figure.canvas
